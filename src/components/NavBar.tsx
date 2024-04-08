@@ -1,0 +1,49 @@
+import { Outlet, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import * as React from 'react';
+
+interface NavBarProps {
+  keyValue: string;
+  setKey: (val: string) => void;
+}
+
+
+const NavBar : React.FC<NavBarProps> = (props: NavBarProps) => {
+
+  const [nostrExists, setNostrExists] = useState(false);
+
+  useEffect(() => {
+    setNostrExists(window.nostr ? true : false);
+  }, []);
+
+
+  return (
+    <>
+      <nav>
+        <ul>
+          <li>
+            <div className="px-32 py-32">
+              <label htmlFor="private_key" 
+                className="block mb-2 text-sm font-medium text-white">Private key: </label>
+              <input type="password" id="private_key" 
+                className={nostrExists ? "text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 disabled" : "text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"} 
+                placeholder={nostrExists ? "Key detected" : "npub..."}
+                disabled={nostrExists}
+                onChange={(e) => props.setKey(e.target.value)} />
+            </div>
+          </li>
+          <li>
+            <Link to="/">Home</Link>
+          </li>
+          <li>
+            <Link to="/edit-profile">Edit Profile</Link>
+          </li>
+        </ul>
+      </nav>
+
+      <Outlet />
+    </>
+  )
+};
+
+export default NavBar;
