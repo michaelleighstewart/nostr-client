@@ -15,7 +15,7 @@ interface HomeProps {
 
 export const RELAYS = [
   //"wss://relay.damus.io"
-  "ws://localhost:8008"
+  "wss://relay.ghostcopywrite.com"
 ]
 
 export interface Metadata {
