@@ -1,20 +1,61 @@
 
-import { useState } from "react";
 import { SimplePool } from "nostr-tools";
 import { bech32Decoder } from "../utils/helperFunctions";
 import { getPublicKey, finalizeEvent } from 'nostr-tools';
 import { RELAYS } from "../utils/constants";
+import { useState, useEffect } from "react";
 
 interface EditProfileProps {
     keyValue: string;
     pool: SimplePool | null;
     nostrExists: boolean;
+}
+export interface Metadata {
+    name?: string;
+    about?: string;
+    picture?: string;
+    nip05?: string;
   }
 
 const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
-    const [name, setName] = useState('');
-    const [about, setAbout] = useState('');
-    const [picture, setPicture] = useState('');
+    const [name, setName] = useState<string|undefined>('');
+    const [about, setAbout] = useState<string|undefined>('');
+    const [picture, setPicture] = useState<string|undefined>('');
+
+    useEffect(() => {
+        //load profile
+        const fetchData = async() => {
+            let authors = [];
+            if (props.nostrExists) {
+                let pk = await window.nostr.getPublicKey();
+                authors.push(pk);
+            }
+            else {
+                let sk = props.keyValue;
+                let skDecoded = bech32Decoder('nsec', sk);
+                let pk = getPublicKey(skDecoded);
+                authors.push(pk);
+            }
+            const subMeta = props.pool?.subscribeMany(RELAYS, [
+                {
+                kinds: [0],
+                authors: authors,
+                },
+            ],
+            {
+                onevent(event) {
+                const metadata = JSON.parse(event.content) as Metadata;
+                setName(metadata.name);
+                setAbout(metadata.about);
+                setPicture(metadata.picture);
+                },
+                oneose() {
+                subMeta?.close();
+                }
+            });
+        }
+        fetchData();
+      }, [props.nostrExists]);
 
 
     async function saveProfile() {
