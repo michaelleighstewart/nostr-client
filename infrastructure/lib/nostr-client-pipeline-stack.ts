@@ -30,6 +30,7 @@ export class NostrClientPipelineStack extends Stack {
                     'npm install -g aws-cdk-lib'
                 ],
                 commands: [
+                    "cd infrastructure",
                     "npm i",
                     "npm run build",
                     "npx cdk synth",
