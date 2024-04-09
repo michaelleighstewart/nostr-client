@@ -3,20 +3,23 @@ import { SimplePool } from "nostr-tools";
 import { useState, useEffect, useRef } from "react";
 import NotesList from "./NotesList";
 import { useDebounce } from "use-debounce";
-import { insertEventIntoDescendingList } from "../utils/helperFunctions";
+import { insertEventIntoDescendingList, bech32Decoder } from "../utils/helperFunctions";
 import { Event } from "nostr-tools";
 import { getPublicKey, finalizeEvent } from 'nostr-tools';
-import { bech32 } from 'bech32';
-import { Buffer } from 'buffer';
+import { RELAYS } from "../utils/constants";
+//import { bech32 } from 'bech32';
+//import { Buffer } from 'buffer';
 
 interface HomeProps {
   keyValue: string;
+  pool: SimplePool | null;
+  nostrExists: boolean;
 }
 
-export const RELAYS = [
-  //"wss://relay.damus.io"
-  "wss://relay.ghostcopywrite.com"
-]
+//export const RELAYS = [
+//  //"wss://relay.damus.io"
+//  "wss://relay.ghostcopywrite.com"
+//]
 
 export interface Metadata {
   name?: string;
@@ -30,31 +33,17 @@ declare global {
 }
 
 const Home : React.FC<HomeProps> = (props: HomeProps) => {
-    const [pool, setPool] = useState<SimplePool | null>(null);
     const [eventsImmediate, setEvents] = useState<Event[]>([]);
     const [events] = useDebounce(eventsImmediate, 1500);
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const metadataFetched = useRef<Record<string, boolean>>({});
   
-
     const [message, setMessage] = useState('');
   
-    const [nostrExists, setNostrExists] = useState(false);
-  
     useEffect(() => {
-      const _pool = new SimplePool();
-      setPool(_pool);
-  
-      return () => {
-        _pool.close(RELAYS);
-      }
-    }, [])
-  
-    useEffect(() => {
-      if (!pool) return;
-      setNostrExists(window.nostr ? true : false);
+      if (!props.pool) return;
       setEvents([]);
-      const subPosts = pool.subscribeMany(RELAYS, [{
+      const subPosts = props.pool.subscribeMany(RELAYS, [{
         kinds: [1],
         limit: 5,
         //"#t": ["bitcoin"]
@@ -67,10 +56,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       return () => {
         subPosts.close();
       }
-    }, [pool])
+    }, [props.pool]);
   
     useEffect(() => {
-      if (!pool) return;
+      if (!props.pool) return;
   
       const pubkeysToFetch = events
         .filter((event) => metadataFetched.current[event.pubkey] !== true)
@@ -80,7 +69,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         (pubkey) => (metadataFetched.current[pubkey] = true)
       );
   
-      const subMeta = pool.subscribeMany(RELAYS, [
+      const subMeta = props.pool.subscribeMany(RELAYS, [
         {
           kinds: [0],
           authors: pubkeysToFetch,
@@ -101,43 +90,36 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       });
   
       return () => {};
-    }, [events, pool]);
-
-    function bech32Decoder(currPrefix: string, data: string) {
-        const { prefix, words } = bech32.decode(data);
-        if (prefix !== currPrefix) {
-            throw Error('Invalid address format');
-        }
-        return Buffer.from(bech32.fromWords(words));
-      }
+    }, [events, props.pool]);
     
-      async function sendMessage() {
-        if (nostrExists) {
-          let event = {
-            kind: 1,
-            created_at: Math.floor(Date.now() / 1000),
-            tags: [],
-            content: message,
-          }
-          await window.nostr.signEvent(event).then(async (eventToSend: any) => {
-            await pool?.publish(RELAYS, eventToSend);
-          });
+    async function sendMessage() {
+      if (!props.pool) return;
+      if (props.nostrExists) {
+        let event = {
+          kind: 1,
+          created_at: Math.floor(Date.now() / 1000),
+          tags: [],
+          content: message,
         }
-        else {
-          let sk = props.keyValue;
-          let skDecoded = bech32Decoder('nsec', sk);
-          let pk = getPublicKey(skDecoded);
-          let event = {
-            kind: 1,
-            pubkey: pk,
-            created_at: Math.floor(Date.now() / 1000),
-            tags: [],
-            content: message,
-          }
-          let eventFinal = finalizeEvent(event, skDecoded);
-          await pool?.publish(RELAYS, eventFinal);
-        }
+        await window.nostr.signEvent(event).then(async (eventToSend: any) => {
+          await props.pool?.publish(RELAYS, eventToSend);
+        });
       }
+      else {
+        let sk = props.keyValue;
+        let skDecoded = bech32Decoder('nsec', sk);
+        let pk = getPublicKey(skDecoded);
+        let event = {
+          kind: 1,
+          pubkey: pk,
+          created_at: Math.floor(Date.now() / 1000),
+          tags: [],
+          content: message,
+        }
+        let eventFinal = finalizeEvent(event, skDecoded);
+        await props.pool?.publish(RELAYS, eventFinal);
+      }
+    }
 
     return (
       <div className="py-64">

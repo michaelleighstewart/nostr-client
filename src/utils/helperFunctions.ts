@@ -1,4 +1,6 @@
 import { Event } from "nostr-tools";
+import { bech32 } from 'bech32';
+import { Buffer } from 'buffer';
 
 export function insertEventIntoDescendingList<T extends Event>(
   sortedArray: T[],
@@ -43,4 +45,12 @@ export function insertEventIntoDescendingList<T extends Event>(
   }
 
   return sortedArray;
+}
+
+export function bech32Decoder(currPrefix: string, data: string) {
+  const { prefix, words } = bech32.decode(data);
+  if (prefix !== currPrefix) {
+      throw Error('Invalid address format');
+  }
+  return Buffer.from(bech32.fromWords(words));
 }

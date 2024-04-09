@@ -1,10 +1,56 @@
 
 import { useState } from "react";
+import { SimplePool } from "nostr-tools";
+import { bech32Decoder } from "../utils/helperFunctions";
+import { getPublicKey, finalizeEvent } from 'nostr-tools';
+import { RELAYS } from "../utils/constants";
 
-const EditProfile = () => {
+interface EditProfileProps {
+    keyValue: string;
+    pool: SimplePool | null;
+    nostrExists: boolean;
+  }
+
+const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
     const [name, setName] = useState('');
     const [about, setAbout] = useState('');
     const [picture, setPicture] = useState('');
+
+
+    async function saveProfile() {
+        console.log('not implemented yet');
+        if (!props.pool) return;
+        const profile = {
+            name: name,
+            about: about,
+            picture: picture
+        }
+        if (props.nostrExists) {
+            let event = {
+              kind: 0,
+              created_at: Math.floor(Date.now() / 1000),
+              tags: [],
+              content: JSON.stringify(profile),
+            }
+            await window.nostr.signEvent(event).then(async (eventToSend: any) => {
+              await props.pool?.publish(RELAYS, eventToSend);
+            });
+          }
+          else {
+            let sk = props.keyValue;
+            let skDecoded = bech32Decoder('nsec', sk);
+            let pk = getPublicKey(skDecoded);
+            let event = {
+              kind: 0,
+              pubkey: pk,
+              created_at: Math.floor(Date.now() / 1000),
+              tags: [],
+              content: JSON.stringify(profile),
+            }
+            let eventFinal = finalizeEvent(event, skDecoded);
+            await props.pool?.publish(RELAYS, eventFinal);
+          }
+    }
 
     return (
         <div className="py-64">
@@ -35,6 +81,14 @@ const EditProfile = () => {
                         placeholder={"Location of avatar picture"}
                         value={picture}
                         onChange={(e) => setPicture(e.target.value)} />
+                </div>
+                <div className="h-64">
+                    <div className="float-right">
+                    <button 
+                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded"
+                        onClick={saveProfile}
+                    >Save</button>
+                    </div>
                 </div>
             </div>
         </div>
