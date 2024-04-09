@@ -29,7 +29,7 @@ export class NostrClientStack extends Stack {
     }
     const certificate = Certificate.fromCertificateArn(this, 'GhostcopywriteDomainCert_' + env, certificateArn);
   
-    /*const siteBucket = new Bucket(this, props!.environmentName! + ".ghostcopywrite.com", {
+    const siteBucket = new Bucket(this, props!.environmentName! + ".ghostcopywrite.com", {
       bucketName: env == 'prod' ? 'ghostcopywrite.com' : props!.environmentName! + ".ghostcopywrite.com",
       websiteIndexDocument: "index.html",
       websiteErrorDocument: "index.html",
@@ -76,7 +76,7 @@ export class NostrClientStack extends Stack {
           target: siteTarget
         }
       );
-    }*/
+    }
 
 
   }
