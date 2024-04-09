@@ -34,7 +34,7 @@ export class NostrClientStack extends Stack {
       websiteIndexDocument: "index.html",
       websiteErrorDocument: "index.html",
       publicReadAccess: true,
-      removalPolicy: RemovalPolicy.DESTROY
+      removalPolicy: RemovalPolicy.RETAIN
     });
   
     const siteDistribution = new CloudFrontWebDistribution(this, "GhostcopywriteSiteDistribution_" + props!.environmentName!, {
