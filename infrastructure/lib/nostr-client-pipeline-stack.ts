@@ -33,7 +33,7 @@ export class NostrClientPipelineStack extends Stack {
                     "npm i",
                     "npm run build",
                     "cd infrastructure",
-                    //"npm i",
+                    "npm i",
                     //"npm run build",
                     "cdk synth",
                 ],
