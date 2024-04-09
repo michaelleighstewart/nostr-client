@@ -4,6 +4,7 @@ import { bech32Decoder } from "../utils/helperFunctions";
 import { getPublicKey, finalizeEvent } from 'nostr-tools';
 import { RELAYS } from "../utils/constants";
 import { useState, useEffect } from "react";
+import Loading from "./Loading";
 
 interface EditProfileProps {
     keyValue: string;
@@ -21,9 +22,10 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
     const [name, setName] = useState<string|undefined>('');
     const [about, setAbout] = useState<string|undefined>('');
     const [picture, setPicture] = useState<string|undefined>('');
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        //load profile
+        setLoading(true);
         const fetchData = async() => {
             let authors = [];
             if (props.nostrExists) {
@@ -48,9 +50,11 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                 setName(metadata.name);
                 setAbout(metadata.about);
                 setPicture(metadata.picture);
+                setLoading(false);
                 },
                 oneose() {
-                subMeta?.close();
+                    subMeta?.close();
+                    setLoading(false);
                 }
             });
         }
@@ -59,7 +63,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
 
 
     async function saveProfile() {
-        console.log('not implemented yet');
+        setLoading(true);
         if (!props.pool) return;
         const profile = {
             name: name,
@@ -75,6 +79,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
             }
             await window.nostr.signEvent(event).then(async (eventToSend: any) => {
               await props.pool?.publish(RELAYS, eventToSend);
+              setLoading(false);
             });
           }
           else {
@@ -90,8 +95,11 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
             }
             let eventFinal = finalizeEvent(event, skDecoded);
             await props.pool?.publish(RELAYS, eventFinal);
+            setLoading(false);
           }
     }
+
+    if (loading) return <Loading></Loading>
 
     return (
         <div className="py-64">

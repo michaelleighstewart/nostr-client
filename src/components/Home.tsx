@@ -7,19 +7,13 @@ import { insertEventIntoDescendingList, bech32Decoder } from "../utils/helperFun
 import { Event } from "nostr-tools";
 import { getPublicKey, finalizeEvent } from 'nostr-tools';
 import { RELAYS } from "../utils/constants";
-//import { bech32 } from 'bech32';
-//import { Buffer } from 'buffer';
+import Loading from "./Loading";
 
 interface HomeProps {
   keyValue: string;
   pool: SimplePool | null;
   nostrExists: boolean;
 }
-
-//export const RELAYS = [
-//  //"wss://relay.damus.io"
-//  "wss://relay.ghostcopywrite.com"
-//]
 
 export interface Metadata {
   name?: string;
@@ -37,11 +31,13 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [events] = useDebounce(eventsImmediate, 1500);
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const metadataFetched = useRef<Record<string, boolean>>({});
-  
+    const [loading, setLoading] = useState(true);
+    const [posting, setPosting] = useState(false);
     const [message, setMessage] = useState('');
   
     useEffect(() => {
       if (!props.pool) return;
+      setLoading(true);
       setEvents([]);
       const subPosts = props.pool.subscribeMany(RELAYS, [{
         kinds: [1],
@@ -83,6 +79,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             ...cur,
             [event.pubkey]: metadata,
           }));
+          setLoading(false);
         },
         oneose() {
           subMeta.close();
@@ -94,6 +91,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     
     async function sendMessage() {
       if (!props.pool) return;
+      setPosting(true);
       if (props.nostrExists) {
         let event = {
           kind: 1,
@@ -103,6 +101,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         }
         await window.nostr.signEvent(event).then(async (eventToSend: any) => {
           await props.pool?.publish(RELAYS, eventToSend);
+          setPosting(false);
         });
       }
       else {
@@ -118,6 +117,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         }
         let eventFinal = finalizeEvent(event, skDecoded);
         await props.pool?.publish(RELAYS, eventFinal);
+        setPosting(false);
       }
     }
 
@@ -126,7 +126,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         <div>
           <div className="pb-2">
             <input type="text" id="message" 
-              className="w-full text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" 
+              className="w-full text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
               placeholder="What is happening?!" required
               value={message}
               onChange={(e) => setMessage(e.target.value)} />
@@ -134,15 +134,18 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           <div className="h-64">
             <div className="float-right">
               <button 
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded"
+                className={posting ? "bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded opacity-50 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded"}
                 onClick={sendMessage}
+                disabled={posting}
               >Post</button>
             </div>
           </div>
         </div>
-        <div className="pt-32">
-          <NotesList metadata={metadata} notes={events} />
-        </div>
+        {loading ? <Loading></Loading> :
+          <div className="pt-32">
+            <NotesList metadata={metadata} notes={events} />
+          </div>
+        }
       </div>
     )
   }
