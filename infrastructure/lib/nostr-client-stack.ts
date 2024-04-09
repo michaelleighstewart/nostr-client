@@ -34,7 +34,7 @@ export class NostrClientStack extends Stack {
       websiteIndexDocument: "index.html",
       websiteErrorDocument: "index.html",
       publicReadAccess: true,
-      removalPolicy: RemovalPolicy.RETAIN
+      removalPolicy: RemovalPolicy.DESTROY
     });
   
     const siteDistribution = new CloudFrontWebDistribution(this, "GhostcopywriteSiteDistribution_" + props!.environmentName!, {
@@ -54,7 +54,7 @@ export class NostrClientStack extends Stack {
     });
   
     new BucketDeployment(this, "GhostcopywriteDeployment_" + props!.environmentName!, {
-      sources: [Source.asset("../dist"), Source.data('config.json', latestConfig)],
+      sources: [Source.asset("../dist"), Source.asset("../dist/assets"), Source.data('config.json', latestConfig)],
       destinationBucket: siteBucket,
       distribution: siteDistribution,
       distributionPaths: ["/*"]
