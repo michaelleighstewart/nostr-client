@@ -33,9 +33,8 @@ export class NostrClientPipelineStack extends Stack {
                     "cd infrastructure",
                     "npm i",
                     "npm run build",
-                    "npx cdk synth",
+                    "cdk synth",
                 ],
-                primaryOutputDirectory: 'cdk.out'
             },
         )
     });
