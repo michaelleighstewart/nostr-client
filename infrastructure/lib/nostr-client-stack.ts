@@ -33,7 +33,7 @@ export class NostrClientStack extends Stack {
       bucketName: env == 'prod' ? 'ghostcopywrite.com' : props!.environmentName! + ".ghostcopywrite.com",
       websiteIndexDocument: "index.html",
       websiteErrorDocument: "index.html",
-      publicReadAccess: false,
+      publicReadAccess: true,
       removalPolicy: RemovalPolicy.RETAIN
     });
   

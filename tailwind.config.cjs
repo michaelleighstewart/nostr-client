@@ -7,6 +7,7 @@ module.exports = {
       "./src/layouts/**/*.{html,js,ts,tsx,jsx}",
       "./src/index.html",
       "./src/App.tsx",
+      "./src/main.tsx"
     ],
     theme: {
       extend: {
