@@ -26,7 +26,8 @@ export class NostrClientPipelineStack extends Stack {
                     privileged: true
                 },
                 installCommands: [
-                    'npm install -g aws-cdk'
+                    'npm install -g aws-cdk',
+                    'npm install -g aws-cdk-lib'
                 ],
                 commands: [
                     "npm i",
