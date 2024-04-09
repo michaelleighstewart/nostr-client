@@ -11,19 +11,15 @@ function App() {
   const [key, setKey] = useState('');
 
   return (
-    <div className="app">
-    <Layout>
-    <div>
+    <div className="h-full">
       <Router>
-        <NavBar keyValue={key} setKey={setKey}></NavBar>
-          <Routes>
-            <Route path="/" element={<Layout />}></Route>
-            <Route index element={<Home keyValue={key} />}></Route>
-            <Route path="edit-profile" element={<EditProfile />} />
-          </Routes>
+          <NavBar keyValue={key} setKey={setKey}></NavBar>
+              <Routes>
+                <Route path="/" element={<Layout />}></Route>
+                <Route index element={<Home keyValue={key} />}></Route>
+                <Route path="edit-profile" element={<EditProfile />} />
+              </Routes>
       </Router>
-    </div>
-    </Layout>
     </div>
   )
 }

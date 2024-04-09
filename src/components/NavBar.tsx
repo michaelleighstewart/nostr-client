@@ -18,11 +18,11 @@ const NavBar : React.FC<NavBarProps> = (props: NavBarProps) => {
 
 
   return (
-    <>
+    <div className="sticky top-0 w-full h-200">
       <nav>
         <ul>
           <li>
-            <div className="px-32 py-32">
+            <div>
               <label htmlFor="private_key" 
                 className="block mb-2 text-sm font-medium text-white">Private key: </label>
               <input type="password" id="private_key" 
@@ -32,17 +32,17 @@ const NavBar : React.FC<NavBarProps> = (props: NavBarProps) => {
                 onChange={(e) => props.setKey(e.target.value)} />
             </div>
           </li>
-          <li>
+          <li className="float-left pr-32">
             <Link to="/">Home</Link>
           </li>
-          <li>
+          <li className="float-left pr-32">
             <Link to="/edit-profile">Edit Profile</Link>
           </li>
         </ul>
       </nav>
 
       <Outlet />
-    </>
+    </div>
   )
 };
 

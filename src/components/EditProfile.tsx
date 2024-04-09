@@ -7,9 +7,9 @@ const EditProfile = () => {
     const [picture, setPicture] = useState('');
 
     return (
-        <div className="flex flex-col gap-16">
+        <div className="py-64">
             <div>
-                <div className="px-32 py-32">
+                <div className="pb-24">
                     <label htmlFor="name" 
                         className="block mb-2 text-sm font-medium text-white">Name: </label>
                     <input type="text" id="name" 
@@ -18,7 +18,7 @@ const EditProfile = () => {
                         value={name}
                         onChange={(e) => setName(e.target.value)} />
                 </div>
-                <div className="px-32 py-32">
+                <div className="pb-24">
                     <label htmlFor="about" 
                         className="block mb-2 text-sm font-medium text-white">About: </label>
                     <input type="text" id="about" 
@@ -27,7 +27,7 @@ const EditProfile = () => {
                         value={about}
                         onChange={(e) => setAbout(e.target.value)} />
                 </div>
-                <div className="px-32 py-32">
+                <div className="pb-24">
                     <label htmlFor="picture" 
                         className="block mb-2 text-sm font-medium text-white">Picture: </label>
                     <input type="text" id="picture" 

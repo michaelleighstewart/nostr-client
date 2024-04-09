@@ -36,7 +36,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const metadataFetched = useRef<Record<string, boolean>>({});
   
-    //const [key, setKey] = useState('');
+
     const [message, setMessage] = useState('');
   
     const [nostrExists, setNostrExists] = useState(false);
@@ -140,16 +140,16 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       }
 
     return (
-      <div className="flex flex-col gap-16">
+      <div className="py-64">
         <div>
-          <div className="flex flex-row px-32 py-32 w-full">
+          <div className="pb-2">
             <input type="text" id="message" 
               className="w-full text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" 
               placeholder="What is happening?!" required
               value={message}
               onChange={(e) => setMessage(e.target.value)} />
           </div>
-          <div className="flow-root px-32 w-full">
+          <div className="h-64">
             <div className="float-right">
               <button 
                 className="bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded"
@@ -158,7 +158,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             </div>
           </div>
         </div>
-        <div className="py-32">
+        <div className="pt-32">
           <NotesList metadata={metadata} notes={events} />
         </div>
       </div>
