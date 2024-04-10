@@ -1,5 +1,5 @@
 import { RELAYS } from "../utils/constants";
-import { signEvent } from 'nostr-tools';
+//import { signEvent } from 'nostr-tools';
 import { LightningAddress } from "@getalby/lightning-tools";
 
 interface Props {
