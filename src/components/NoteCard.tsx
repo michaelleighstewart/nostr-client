@@ -1,3 +1,7 @@
+import { RELAYS } from "../utils/constants";
+//import { signEvent } from 'nostr-tools';
+import { LightningAddress } from "@getalby/lightning-tools";
+
 interface Props {
     content: string;
     user: {
@@ -15,6 +19,23 @@ interface Props {
     created_at,
     hashtags,
   }: Props) {
+
+    async function sendZap() {
+      const ln = new LightningAddress("holidayverdict83@walletofsatoshi.com");
+      await ln.fetch();
+
+      console.log(ln.lnurlpData);
+
+      const response = await ln.zap({
+        satoshi: 1000,
+        comment: "Awesome post",
+        relays: RELAYS,
+        e: "467d2bb6c0dd1067cf72eb517fa875bc4555b8370905fd97d593ceb1b479b2eb"
+      });
+
+      console.log(response.preimage);
+    }
+
     return (
       <div className="rounded p-16 border border-gray-600 bg-gray-700 flex flex-col gap-16 break-words">
         <div className="flex gap-12 items-center overflow-hidden">
@@ -48,6 +69,10 @@ interface Props {
               </li>
             ))}
         </ul>
+        <div>
+          <button
+          onClick={sendZap}>Zap</button>
+        </div>
       </div>
     );
   }
