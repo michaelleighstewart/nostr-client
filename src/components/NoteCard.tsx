@@ -1,5 +1,5 @@
 import { RELAYS } from "../utils/constants";
-//import { signEvent } from 'nostr-tools';
+import { signEvent } from 'nostr-tools';
 import { LightningAddress } from "@getalby/lightning-tools";
 
 interface Props {
@@ -21,19 +21,33 @@ interface Props {
   }: Props) {
 
     async function sendZap() {
-      const ln = new LightningAddress("holidayverdict83@walletofsatoshi.com");
+      const ln = new LightningAddress("mikk@vlt.ge");
+      //const ln = new LightningAddress("holidayverdict83@walletofsatoshi.com");
       await ln.fetch();
 
       console.log(ln.lnurlpData);
 
-      const response = await ln.zap({
-        satoshi: 1000,
-        comment: "Awesome post",
-        relays: RELAYS,
-        e: "467d2bb6c0dd1067cf72eb517fa875bc4555b8370905fd97d593ceb1b479b2eb"
-      });
+      const event = {
+          satoshi: 10,
+          comment: "Awesome post",
+          relays: RELAYS,
+          e: "467d2bb6c0dd1067cf72eb517fa875bc4555b8370905fd97d593ceb1b479b2eb"
+      };
+      //const signed = await window.nostr.signEvent(event);
+      const response = await ln.zap(event);
+      //const response = await ln.zap({
+      //  satoshi: 10,
+      //  comment: "Awesome post",
+      //  relays: RELAYS,
+      //  e: "467d2bb6c0dd1067cf72eb517fa875bc4555b8370905fd97d593ceb1b479b2eb"
+      //});
 
       console.log(response.preimage);
+
+      //const invoice = await ln.requestInvoice({ satoshi: 1 });
+
+      //console.log(invoice.paymentRequest);
+      //console.log(invoice.paymentHash);
     }
 
     return (
