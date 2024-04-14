@@ -1,19 +1,21 @@
 import { RELAYS } from "../utils/constants";
-//import { signEvent } from 'nostr-tools';
 import { LightningAddress } from "@getalby/lightning-tools";
 
 interface Props {
+    id: string;
     content: string;
     user: {
       name: string;
       image: string | undefined;
       pubkey: string;
+      nip05: string | undefined;
     };
     created_at: number;
     hashtags: string[];
   }
   
   export default function NoteCard({
+    id,
     content,
     user,
     created_at,
@@ -21,33 +23,17 @@ interface Props {
   }: Props) {
 
     async function sendZap() {
-      const ln = new LightningAddress("mikk@vlt.ge");
-      //const ln = new LightningAddress("holidayverdict83@walletofsatoshi.com");
-      await ln.fetch();
-
-      console.log(ln.lnurlpData);
-
-      const event = {
-          satoshi: 10,
-          comment: "Awesome post",
-          relays: RELAYS,
-          e: "467d2bb6c0dd1067cf72eb517fa875bc4555b8370905fd97d593ceb1b479b2eb"
-      };
-      //const signed = await window.nostr.signEvent(event);
-      const response = await ln.zap(event);
-      //const response = await ln.zap({
-      //  satoshi: 10,
-      //  comment: "Awesome post",
-      //  relays: RELAYS,
-      //  e: "467d2bb6c0dd1067cf72eb517fa875bc4555b8370905fd97d593ceb1b479b2eb"
-      //});
-
-      console.log(response.preimage);
-
-      //const invoice = await ln.requestInvoice({ satoshi: 1 });
-
-      //console.log(invoice.paymentRequest);
-      //console.log(invoice.paymentHash);
+      if (user.nip05) {
+        const ln = new LightningAddress(user.nip05);
+        await ln.fetch();
+        const event = {
+            satoshi: 10,
+            comment: "Awesome post!",
+            relays: RELAYS,
+            e: id
+        };
+        await ln.zap(event);
+      }
     }
 
     return (

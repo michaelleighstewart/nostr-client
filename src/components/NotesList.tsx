@@ -12,6 +12,7 @@ export default function NotesList({ notes, metadata } : Props) {
         <div className="flex flex-col gap-16">
             {notes.map((note) => (
                 <NoteCard
+                id={note.id}
                 created_at={note.created_at}
                 user={{
                     name:
@@ -20,6 +21,7 @@ export default function NotesList({ notes, metadata } : Props) {
                     image:
                       metadata[note.pubkey]?.picture,
                     pubkey: note.pubkey,
+                    nip05: metadata[note.pubkey]?.nip05
                   }}
                 key={note.id}
                 content={note.content}

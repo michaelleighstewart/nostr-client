@@ -22,6 +22,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
     const [name, setName] = useState<string|undefined>('');
     const [about, setAbout] = useState<string|undefined>('');
     const [picture, setPicture] = useState<string|undefined>('');
+    const [lightningAddress, setLightningAddress] = useState<string|undefined>('');
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -50,6 +51,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                 setName(metadata.name);
                 setAbout(metadata.about);
                 setPicture(metadata.picture);
+                setLightningAddress(metadata.nip05);
                 setLoading(false);
                 },
                 oneose() {
@@ -68,7 +70,8 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
         const profile = {
             name: name,
             about: about,
-            picture: picture
+            picture: picture,
+            nip05: lightningAddress
         }
         if (props.nostrExists) {
             let event = {
@@ -130,6 +133,15 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                         placeholder={"Location of avatar picture"}
                         value={picture}
                         onChange={(e) => setPicture(e.target.value)} />
+                </div>
+                <div className="pb-24">
+                    <label htmlFor="lightning-address"
+                        className="block mb-2 text-sm font-medium text-white">Lightning Wallet Address: </label>
+                    <input type="text" id="lightning-address"
+                        className={"text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"} 
+                        placeholder={"Lightning Wallet Address - eg. john@getalby.com"}
+                        value={lightningAddress}
+                        onChange={(e) => setLightningAddress(e.target.value)} /> 
                 </div>
                 <div className="h-64">
                     <div className="float-right">
