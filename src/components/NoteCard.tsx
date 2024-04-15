@@ -1,5 +1,6 @@
 import { RELAYS } from "../utils/constants";
 import { LightningAddress } from "@getalby/lightning-tools";
+import { BoltIcon } from "@heroicons/react/16/solid";
 
 interface Props {
     id: string;
@@ -70,8 +71,10 @@ interface Props {
             ))}
         </ul>
         <div>
-          <button
-          onClick={sendZap}>Zap</button>
+          <BoltIcon
+          className={user.nip05 ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
+          title={user.nip05 ? "Zap " + user.name + " for this post" : user.name + " does not have zaps enabled"}
+          onClick={sendZap}></BoltIcon>
         </div>
       </div>
     );

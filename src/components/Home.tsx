@@ -45,7 +45,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         //"#t": ["bitcoin"]
       }],
       {onevent(event) {
-        console.log(event);
         setEvents((events) => insertEventIntoDescendingList(events, event));
       }});
   
