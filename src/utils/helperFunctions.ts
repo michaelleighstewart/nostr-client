@@ -1,6 +1,15 @@
 import { Event } from "nostr-tools";
 import { bech32 } from 'bech32';
 import { Buffer } from 'buffer';
+import { RELAYS } from "../utils/constants";
+import { LightningAddress } from "@getalby/lightning-tools";
+
+export interface User {
+    name: string;
+    image: string | undefined;
+    pubkey: string;
+    nip05: string | undefined;
+}
 
 export function insertEventIntoDescendingList<T extends Event>(
   sortedArray: T[],
@@ -29,13 +38,10 @@ export function insertEventIntoDescendingList<T extends Event>(
       } else if (sortedArray[midPoint].created_at < event.created_at) {
         end = midPoint;
       } else {
-        // aMidPoint === num
         position = midPoint;
         break;
       }
     }
-
-  // insert when num is NOT already in (no duplicates)
   if (sortedArray[position]?.id !== event.id) {
     return [
       ...sortedArray.slice(0, position),
@@ -53,4 +59,18 @@ export function bech32Decoder(currPrefix: string, data: string) {
       throw Error('Invalid address format');
   }
   return Buffer.from(bech32.fromWords(words));
+}
+
+export async function sendZap(user: User, id: string) {
+  if (user.nip05) {
+    const ln = new LightningAddress(user.nip05);
+    await ln.fetch();
+    const event = {
+        satoshi: 10,
+        comment: "Awesome post!",
+        relays: RELAYS,
+        e: id
+    };
+    await ln.zap(event);
+  }
 }

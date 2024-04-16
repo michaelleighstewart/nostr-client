@@ -1,16 +1,10 @@
-import { RELAYS } from "../utils/constants";
-import { LightningAddress } from "@getalby/lightning-tools";
 import { BoltIcon } from "@heroicons/react/16/solid";
+import { User, sendZap} from "../utils/helperFunctions";
 
 interface Props {
     id: string;
     content: string;
-    user: {
-      name: string;
-      image: string | undefined;
-      pubkey: string;
-      nip05: string | undefined;
-    };
+    user: User;
     created_at: number;
     hashtags: string[];
   }
@@ -22,20 +16,6 @@ interface Props {
     created_at,
     hashtags,
   }: Props) {
-
-    async function sendZap() {
-      if (user.nip05) {
-        const ln = new LightningAddress(user.nip05);
-        await ln.fetch();
-        const event = {
-            satoshi: 10,
-            comment: "Awesome post!",
-            relays: RELAYS,
-            e: id
-        };
-        await ln.zap(event);
-      }
-    }
 
     return (
       <div className="rounded p-16 border border-gray-600 bg-gray-700 flex flex-col gap-16 break-words">
@@ -74,7 +54,7 @@ interface Props {
           <BoltIcon
           className={user.nip05 ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
           title={user.nip05 ? "Zap " + user.name + " for this post" : user.name + " does not have zaps enabled"}
-          onClick={sendZap}></BoltIcon>
+          onClick={() => sendZap(user, id)}></BoltIcon>
         </div>
       </div>
     );
