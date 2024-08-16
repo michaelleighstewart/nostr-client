@@ -3,6 +3,7 @@ import { bech32 } from 'bech32';
 import { Buffer } from 'buffer';
 import { RELAYS } from "../utils/constants";
 import { LightningAddress } from "@getalby/lightning-tools";
+import { SimplePool } from "nostr-tools";
 
 export interface User {
     name: string;
@@ -72,5 +73,28 @@ export async function sendZap(user: User, id: string) {
         e: id
     };
     await ln.zap(event);
+  }
+}
+
+//NIP-25: https://github.com/nostr-protocol/nips/blob/master/25.md
+export async function likePost(user: User, id: string, pool: SimplePool | null, nostrExists: boolean) {
+  if (nostrExists) {
+    const event = {
+      kind: 7,
+      created_at: Math.floor(Date.now() / 1000),
+      content: "+",
+      tags: [
+        ['e', id],
+        ['p', user.pubkey]
+      ]
+    };
+    try {
+      await window.nostr.signEvent(event).then(async (eventToSend: any) => {
+        await pool?.publish(RELAYS, eventToSend);
+      });
+    }
+    catch {
+      console.log("Unable to like post");
+    }
   }
 }

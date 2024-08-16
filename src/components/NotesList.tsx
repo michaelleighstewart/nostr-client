@@ -1,13 +1,17 @@
 import { Event, nip19 } from "nostr-tools";
 import NoteCard from "./NoteCard";
-import { Metadata } from "./Home";
+import { Metadata, Reaction } from "./Home";
+import { SimplePool } from "nostr-tools";
 
 interface Props {
     notes: Event[];
     metadata: Record<string, Metadata>;
+    pool: SimplePool | null;
+    nostrExists: boolean;
+    reactions: Record<string, Reaction[]>;
 }
 
-export default function NotesList({ notes, metadata } : Props) {
+export default function NotesList({ notes, metadata, pool, nostrExists, reactions } : Props) {
     return (
         <div className="flex flex-col gap-16">
             {notes.map((note) => (
@@ -26,6 +30,9 @@ export default function NotesList({ notes, metadata } : Props) {
                 key={note.id}
                 content={note.content}
                 hashtags={note.tags.filter((t) => t[0] === "t").map((t) => t[1])}
+                pool={pool}
+                nostrExists={nostrExists}
+                reactions={reactions[note.id]}
                 />
             ))}
         </div>

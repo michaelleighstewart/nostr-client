@@ -22,6 +22,11 @@ export interface Metadata {
   nip05?: string;
 }
 
+export interface Reaction {
+  liker_pubkey: string;
+  type: string;
+}
+
 declare global {
   interface Window { nostr: any; }
 }
@@ -30,7 +35,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [eventsImmediate, setEvents] = useState<Event[]>([]);
     const [events] = useDebounce(eventsImmediate, 1500);
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
+    const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
     const metadataFetched = useRef<Record<string, boolean>>({});
+    const reactionsFetched = useRef<Record<string, boolean>>({});
     const [loading, setLoading] = useState(true);
     const [posting, setPosting] = useState(false);
     const [message, setMessage] = useState('');
@@ -56,9 +63,12 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     useEffect(() => {
       if (!props.pool) return;
   
+      //get authors
       const pubkeysToFetch = events
         .filter((event) => metadataFetched.current[event.pubkey] !== true)
         .map((event) => event.pubkey);
+
+      let noAuthors = pubkeysToFetch.length === 0;
   
       pubkeysToFetch.forEach(
         (pubkey) => (metadataFetched.current[pubkey] = true)
@@ -84,6 +94,50 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           subMeta.close();
         }
       });
+
+      //get likes
+      const postsToFetch = events
+        .filter((event) => reactionsFetched.current[event.id] !== true)
+        .map((event) => event.id);
+
+      if (noAuthors && postsToFetch.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      postsToFetch.forEach(
+        (id) => (reactionsFetched.current[id] = true)
+      );
+
+      const subReactions = props.pool.subscribeMany(
+        RELAYS,
+        postsToFetch.map((postId) => ({
+          kinds: [7],
+          '#e': [postId],
+        })),
+        {
+          onevent(event) {
+            setReactions((cur) => {
+              const newReaction: Reaction = {
+                liker_pubkey: event.pubkey,
+                type: event.content,
+              };
+              const updatedReactions = { ...cur };
+              if (updatedReactions[event.tags[0][1]]) {
+                updatedReactions[event.tags[0][1]].push(newReaction);
+              } else {
+                updatedReactions[event.tags[0][1]] = [newReaction];
+              }
+              return updatedReactions;
+            });
+            setLoading(false);
+          },
+          oneose() {
+            subReactions.close();
+          }
+        }
+      );
+  
   
       return () => {};
     }, [events, props.pool]);
@@ -142,7 +196,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         </div>
         {loading ? <Loading></Loading> :
           <div className="pt-32">
-            <NotesList metadata={metadata} notes={events} />
+            <NotesList metadata={metadata} reactions={reactions} notes={events} pool={props.pool} nostrExists={props.nostrExists} />
           </div>
         }
       </div>
