@@ -2,7 +2,7 @@ import { BoltIcon, HandThumbUpIcon } from "@heroicons/react/16/solid";
 import { User, sendZap, likePost } from "../utils/helperFunctions";
 import { SimplePool } from "nostr-tools";
 import { Reaction } from "./Home";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 
 interface Props {
     id: string;
