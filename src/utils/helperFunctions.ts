@@ -77,12 +77,12 @@ export async function sendZap(user: User, id: string) {
 }
 
 //NIP-25: https://github.com/nostr-protocol/nips/blob/master/25.md
-export async function likePost(user: User, id: string, pool: SimplePool | null, nostrExists: boolean) {
+export async function reactToPost(user: User, id: string, pool: SimplePool | null, nostrExists: boolean, reaction: string) {
   if (nostrExists) {
     const event = {
       kind: 7,
       created_at: Math.floor(Date.now() / 1000),
-      content: "+",
+      content: reaction,
       tags: [
         ['e', id],
         ['p', user.pubkey]

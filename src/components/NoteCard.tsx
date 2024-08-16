@@ -1,5 +1,5 @@
-import { BoltIcon, HandThumbUpIcon } from "@heroicons/react/16/solid";
-import { User, sendZap, likePost } from "../utils/helperFunctions";
+import { BoltIcon, HandThumbUpIcon, HandThumbDownIcon } from "@heroicons/react/16/solid";
+import { User, sendZap, reactToPost } from "../utils/helperFunctions";
 import { SimplePool } from "nostr-tools";
 import { Reaction } from "./Home";
 import { useState, useEffect } from "react";
@@ -25,7 +25,8 @@ interface Props {
     nostrExists,
     reactions
   }: Props) {
-    const [alreadyReacted, setAlreadyReacted] = useState(false);
+    const [alreadyLiked, setAlreadyLiked] = useState(false);
+    const [alreadyDisliked, setAlreadyDisliked] = useState(false);
     const [publicKey, setPublicKey] = useState<string | null>(null);
   
     useEffect(() => {
@@ -40,9 +41,11 @@ interface Props {
   
     useEffect(() => {
       if (publicKey && reactions) {
-        setAlreadyReacted(reactions.some((r: Reaction) => r.liker_pubkey === publicKey));
+        setAlreadyLiked(reactions.some((r: Reaction) => r.liker_pubkey === publicKey && r.type === "+"));
+        setAlreadyDisliked(reactions.some((r: Reaction) => r.liker_pubkey === publicKey && r.type === "-"));
       } else if (!user.pubkey) {
-        setAlreadyReacted(true);
+        setAlreadyLiked(true);
+        setAlreadyDisliked(true);
       }
     }, [publicKey, reactions, user.pubkey]);
     return (
@@ -86,16 +89,28 @@ interface Props {
               onClick={() => sendZap(user, id)}>
             </BoltIcon>
           </div>
-          <div className="p-4">
+          <div className="p-4 pl-32">
               <HandThumbUpIcon
-                className={!alreadyReacted  ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
-                title={!alreadyReacted ? "Like this post" : "You have already liked this post"}
-                onClick={() => likePost(user, id, pool, nostrExists)}>
+                className={!alreadyLiked  ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
+                title={!alreadyLiked ? "Like this post" : "You have already liked this post"}
+                onClick={() => reactToPost(user, id, pool, nostrExists, "+")}>
               </HandThumbUpIcon>
           </div>
           <div className="p-4">
             <span className="text-body5 text-gray-400">
-              {reactions?.length ?? 0} likes
+            {reactions?.filter((r) => r.type === "+").length ?? 0} like{reactions?.filter((r) => r.type === "+").length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <div className="p-4 pl-32">
+            <HandThumbDownIcon
+              className={!alreadyDisliked  ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
+              title={!alreadyDisliked ? "Dislike this post" : "You have already disliked this post"}
+              onClick={() => reactToPost(user, id, pool, nostrExists, "-")}>
+            </HandThumbDownIcon>
+          </div>
+          <div className="p-4">
+            <span className="text-body5 text-gray-400">
+            {reactions?.filter((r) => r.type === "-").length ?? 0} dislike{reactions?.filter((r) => r.type === "-").length !== 1 ? "s" : ""}
             </span>
           </div>
         </div>
