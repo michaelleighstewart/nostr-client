@@ -94,7 +94,7 @@ export async function reactToPost(user: User, id: string, pool: SimplePool | nul
       });
     }
     catch {
-      console.log("Unable to like post");
+      console.log("Unable to react to post");
     }
   }
 }

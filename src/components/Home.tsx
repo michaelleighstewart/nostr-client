@@ -49,12 +49,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       const subPosts = props.pool.subscribeMany(RELAYS, [{
         kinds: [1],
         limit: 5,
-        //"#t": ["bitcoin"]
       }],
       {onevent(event) {
         setEvents((events) => insertEventIntoDescendingList(events, event));
       }});
-  
       return () => {
         subPosts.close();
       }
@@ -104,11 +102,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         setLoading(false);
         return;
       }
-
       postsToFetch.forEach(
         (id) => (reactionsFetched.current[id] = true)
       );
-
       const subReactions = props.pool.subscribeMany(
         RELAYS,
         postsToFetch.map((postId) => ({
@@ -137,8 +133,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           }
         }
       );
-  
-  
       return () => {};
     }, [events, props.pool]);
     

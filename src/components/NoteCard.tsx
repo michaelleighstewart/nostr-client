@@ -93,7 +93,7 @@ interface Props {
               <HandThumbUpIcon
                 className={!alreadyLiked  ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
                 title={!alreadyLiked ? "Like this post" : "You have already liked this post"}
-                onClick={() => reactToPost(user, id, pool, nostrExists, "+")}>
+                onClick={!alreadyLiked ? () => reactToPost(user, id, pool, nostrExists, "+") : undefined}>
               </HandThumbUpIcon>
           </div>
           <div className="p-4">
@@ -105,7 +105,7 @@ interface Props {
             <HandThumbDownIcon
               className={!alreadyDisliked  ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
               title={!alreadyDisliked ? "Dislike this post" : "You have already disliked this post"}
-              onClick={() => reactToPost(user, id, pool, nostrExists, "-")}>
+              onClick={!alreadyDisliked ? () => reactToPost(user, id, pool, nostrExists, "-") : undefined}>
             </HandThumbDownIcon>
           </div>
           <div className="p-4">
