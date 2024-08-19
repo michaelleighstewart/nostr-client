@@ -28,6 +28,7 @@ interface Props {
     const [alreadyLiked, setAlreadyLiked] = useState(false);
     const [alreadyDisliked, setAlreadyDisliked] = useState(false);
     const [publicKey, setPublicKey] = useState<string | null>(null);
+    const [localReactions, setLocalReactions] = useState<Reaction[]>(reactions || []);
   
     useEffect(() => {
       async function fetchPublicKey() {
@@ -38,16 +39,29 @@ interface Props {
       }
       fetchPublicKey();
     }, []);
+
+    useEffect(() => {
+      setLocalReactions(reactions || []);
+    }, [reactions]);
   
     useEffect(() => {
-      if (publicKey && reactions) {
-        setAlreadyLiked(reactions.some((r: Reaction) => r.liker_pubkey === publicKey && r.type === "+"));
-        setAlreadyDisliked(reactions.some((r: Reaction) => r.liker_pubkey === publicKey && r.type === "-"));
+      if (publicKey && localReactions) {
+        setAlreadyLiked(localReactions.some((r) => r.liker_pubkey === publicKey && r.type === "+"));
+        setAlreadyDisliked(localReactions.some((r) => r.liker_pubkey === publicKey && r.type === "-"));
       } else if (!user.pubkey) {
         setAlreadyLiked(true);
         setAlreadyDisliked(true);
       }
-    }, [publicKey, reactions, user.pubkey]);
+    }, [publicKey, localReactions, user.pubkey]);
+  
+    const handleReaction = (type: string) => {
+      reactToPost(user, id, pool, nostrExists, type, publicKey).then((newReaction) => {
+        if (newReaction) {
+          setLocalReactions((prevReactions) => [...prevReactions, newReaction]);
+        }
+      });
+    };
+
     return (
       <div className="rounded p-16 border border-gray-600 bg-gray-700 flex flex-col gap-16 break-words">
         <div className="flex gap-12 items-center overflow-hidden">
@@ -90,27 +104,27 @@ interface Props {
             </BoltIcon>
           </div>
           <div className="p-4 pl-32">
-              <HandThumbUpIcon
-                className={!alreadyLiked  ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
-                title={!alreadyLiked ? "Like this post" : "You have already liked this post"}
-                onClick={!alreadyLiked ? () => reactToPost(user, id, pool, nostrExists, "+") : undefined}>
-              </HandThumbUpIcon>
+            <HandThumbUpIcon
+              className={!alreadyLiked ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
+              title={!alreadyLiked ? "Like this post" : "You have already liked this post"}
+              onClick={!alreadyLiked ? () => handleReaction("+") : undefined}
+            />
           </div>
           <div className="p-4">
             <span className="text-body5 text-gray-400">
-            {reactions?.filter((r) => r.type === "+").length ?? 0} like{reactions?.filter((r) => r.type === "+").length !== 1 ? "s" : ""}
+              {localReactions.filter((r) => r.type === "+").length} like{localReactions.filter((r) => r.type === "+").length !== 1 ? "s" : ""}
             </span>
           </div>
           <div className="p-4 pl-32">
             <HandThumbDownIcon
-              className={!alreadyDisliked  ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
+              className={!alreadyDisliked ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
               title={!alreadyDisliked ? "Dislike this post" : "You have already disliked this post"}
-              onClick={!alreadyDisliked ? () => reactToPost(user, id, pool, nostrExists, "-") : undefined}>
-            </HandThumbDownIcon>
+              onClick={!alreadyDisliked ? () => handleReaction("-") : undefined}
+            />
           </div>
           <div className="p-4">
             <span className="text-body5 text-gray-400">
-            {reactions?.filter((r) => r.type === "-").length ?? 0} dislike{reactions?.filter((r) => r.type === "-").length !== 1 ? "s" : ""}
+              {localReactions.filter((r) => r.type === "-").length} dislike{localReactions.filter((r) => r.type === "-").length !== 1 ? "s" : ""}
             </span>
           </div>
         </div>

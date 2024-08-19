@@ -4,6 +4,7 @@ import { Buffer } from 'buffer';
 import { RELAYS } from "../utils/constants";
 import { LightningAddress } from "@getalby/lightning-tools";
 import { SimplePool } from "nostr-tools";
+import { Reaction } from "../components/Home";
 
 export interface User {
     name: string;
@@ -77,7 +78,7 @@ export async function sendZap(user: User, id: string) {
 }
 
 //NIP-25: https://github.com/nostr-protocol/nips/blob/master/25.md
-export async function reactToPost(user: User, id: string, pool: SimplePool | null, nostrExists: boolean, reaction: string) {
+export async function reactToPost(user: User, id: string, pool: SimplePool | null, nostrExists: boolean, reaction: string, publicKey: string | null): Promise<Reaction | null> {
   if (nostrExists) {
     const event = {
       kind: 7,
@@ -85,16 +86,20 @@ export async function reactToPost(user: User, id: string, pool: SimplePool | nul
       content: reaction,
       tags: [
         ['e', id],
-        ['p', user.pubkey]
-      ]
+        ['p', user.pubkey],
+      ],
     };
     try {
-      await window.nostr.signEvent(event).then(async (eventToSend: any) => {
-        await pool?.publish(RELAYS, eventToSend);
-      });
-    }
-    catch {
+      const signedEvent = await window.nostr.signEvent(event);
+      await pool?.publish(RELAYS, signedEvent);
+      return {
+        liker_pubkey: publicKey ?? "",
+        type: reaction,
+        sig: signedEvent.sig,
+      };
+    } catch {
       console.log("Unable to react to post");
     }
   }
+  return null;
 }
