@@ -25,6 +25,7 @@ export interface Metadata {
 export interface Reaction {
   liker_pubkey: string;
   type: string;
+  sig: string;
 }
 
 declare global {
@@ -57,7 +58,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         subPosts.close();
       }
     }, [props.pool]);
-  
+ 
     useEffect(() => {
       if (!props.pool) return;
   
@@ -97,7 +98,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       const postsToFetch = events
         .filter((event) => reactionsFetched.current[event.id] !== true)
         .map((event) => event.id);
-
       if (noAuthors && postsToFetch.length === 0) {
         setLoading(false);
         return;
@@ -105,6 +105,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       postsToFetch.forEach(
         (id) => (reactionsFetched.current[id] = true)
       );
+      
       const subReactions = props.pool.subscribeMany(
         RELAYS,
         postsToFetch.map((postId) => ({
@@ -117,13 +118,22 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               const newReaction: Reaction = {
                 liker_pubkey: event.pubkey,
                 type: event.content,
+                sig: event.sig
               };
               const updatedReactions = { ...cur };
-              if (updatedReactions[event.tags[0][1]]) {
-                updatedReactions[event.tags[0][1]].push(newReaction);
-              } else {
-                updatedReactions[event.tags[0][1]] = [newReaction];
+
+              const postReactions = updatedReactions[event.tags[0][1]] || [];
+              const isDuplicate = postReactions.some(
+                (reaction) => reaction.sig === newReaction.sig
+              );
+    
+              if (!isDuplicate) {
+                updatedReactions[event.tags[0][1]] = [
+                  ...postReactions,
+                  newReaction,
+                ];
               }
+    
               return updatedReactions;
             });
             setLoading(false);
