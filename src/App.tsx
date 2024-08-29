@@ -8,6 +8,8 @@ import NavBar from "./components/NavBar";
 import { SimplePool } from "nostr-tools";
 import { useState, useEffect } from "react";
 import { RELAYS } from "./utils/constants";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   const [pool, setPool] = useState<SimplePool | null>(null);
@@ -34,6 +36,7 @@ function App() {
                 <Route path="edit-profile" element={<EditProfile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
               </Routes>
       </Router>
+      <ToastContainer />
     </div>
   )
 }

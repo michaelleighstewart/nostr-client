@@ -123,7 +123,7 @@ export async function deletePost(id: string, pool: SimplePool | null, nostrExist
         success: true,
       };
     } catch {
-      console.log("Unable to react to post");
+      console.log("Unable to delete post");
     }
   }
   return {

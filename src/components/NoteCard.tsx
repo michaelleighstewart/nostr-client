@@ -4,6 +4,7 @@ import { SimplePool, getPublicKey} from "nostr-tools";
 import { bech32Decoder } from "../utils/helperFunctions";
 import { Reaction } from "./Home";
 import { useState, useEffect } from "react";
+import { toast } from 'react-toastify';
 
 interface Props {
     id: string;
@@ -15,6 +16,7 @@ interface Props {
     nostrExists: boolean;
     reactions: Reaction[];
     keyValue: string;
+    deleted: boolean;
   }
   
   export default function NoteCard({
@@ -33,6 +35,7 @@ interface Props {
     const [publicKey, setPublicKey] = useState<string | null>(null);
     const [localReactions, setLocalReactions] = useState<Reaction[]>(reactions || []);
     const [canDelete, setCanDelete] = useState(false);
+    const [deleted, setDeleted] = useState(false);
   
     useEffect(() => {
       async function fetchPublicKey() {
@@ -85,13 +88,22 @@ interface Props {
     const handleDelete = (id: string) => {
       deletePost(id, pool, nostrExists).then((result) => {
         if (result.success) {
-          alert("Post deleted");
-        } else {
-          alert("Failed to delete post");
+          toast.success("Post deleted");
+          setDeleted(true);
+        }
+        else {
+          toast.error("Failed to delete post");
         }
       });
     }
 
+    if (deleted) {
+      return (
+        <div className="rounded p-16 border border-gray-600 bg-gray-700 flex flex-col gap-16 break-words">
+          <p className="text-body3 text-gray-400">This post has been deleted</p>
+        </div>
+      );
+    }
     return (
       <div className="rounded p-16 border border-gray-600 bg-gray-700 flex flex-col gap-16 break-words">
         <div className="flex gap-12 items-center overflow-hidden">
