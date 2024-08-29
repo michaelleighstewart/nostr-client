@@ -9,9 +9,10 @@ interface Props {
     pool: SimplePool | null;
     nostrExists: boolean;
     reactions: Record<string, Reaction[]>;
+    keyValue: string;
 }
 
-export default function NotesList({ notes, metadata, pool, nostrExists, reactions } : Props) {
+export default function NotesList({ notes, metadata, pool, nostrExists, reactions, keyValue } : Props) {
     return (
         <div className="flex flex-col gap-16">
             {notes.map((note) => (
@@ -33,6 +34,7 @@ export default function NotesList({ notes, metadata, pool, nostrExists, reaction
                 pool={pool}
                 nostrExists={nostrExists}
                 reactions={reactions[note.id]}
+                keyValue={keyValue}
                 />
             ))}
         </div>

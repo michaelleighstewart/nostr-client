@@ -14,6 +14,9 @@ interface HomeProps {
   pool: SimplePool | null;
   nostrExists: boolean;
 }
+export interface ExtendedEvent extends Event {
+  deleted?: boolean;
+}
 
 export interface Metadata {
   name?: string;
@@ -33,7 +36,7 @@ declare global {
 }
 
 const Home : React.FC<HomeProps> = (props: HomeProps) => {
-    const [eventsImmediate, setEvents] = useState<Event[]>([]);
+    const [eventsImmediate, setEvents] = useState<ExtendedEvent[]>([]);
     const [events] = useDebounce(eventsImmediate, 1500);
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
@@ -49,11 +52,29 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       setEvents([]);
       const subPosts = props.pool.subscribeMany(RELAYS, [{
         kinds: [1],
-        limit: 5,
+        limit: 50,
       }],
-      {onevent(event) {
-        setEvents((events) => insertEventIntoDescendingList(events, event));
-      }});
+      {onevent(event: ExtendedEvent) {
+        props?.pool?.subscribeMany(
+          RELAYS,
+          [{
+            kinds: [5],
+            '#e': [event.id],
+          }],
+          {
+            onevent(deleteEvent) {
+              if (deleteEvent.pubkey === event.pubkey) event.deleted = true;
+            },
+            oneose() {
+              if (!event.deleted) {
+                setEvents((events) => insertEventIntoDescendingList(events, event));
+              }
+            }
+          }
+        );
+      }
+      });
+      
       return () => {
         subPosts.close();
       }
@@ -200,7 +221,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         </div>
         {loading ? <Loading></Loading> :
           <div className="pt-32">
-            <NotesList metadata={metadata} reactions={reactions} notes={events} pool={props.pool} nostrExists={props.nostrExists} />
+            <NotesList metadata={metadata} reactions={reactions} notes={events} pool={props.pool} nostrExists={props.nostrExists} keyValue={props.keyValue} />
           </div>
         }
       </div>

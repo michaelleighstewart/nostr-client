@@ -103,3 +103,30 @@ export async function reactToPost(user: User, id: string, pool: SimplePool | nul
   }
   return null;
 }
+
+//NIP-09: https://github.com/nostr-protocol/nips/blob/master/09.md
+export async function deletePost(id: string, pool: SimplePool | null, nostrExists: boolean) {
+  if (nostrExists) {
+    const event = {
+      kind: 5,
+      created_at: Math.floor(Date.now() / 1000),
+      content: "Post deleted",
+      tags: [
+        ['e', id],
+        ['k', '1']
+      ],
+    };
+    try {
+      const signedEvent = await window.nostr.signEvent(event);
+      await pool?.publish(RELAYS, signedEvent);
+      return {
+        success: true,
+      };
+    } catch {
+      console.log("Unable to react to post");
+    }
+  }
+  return {
+    success: false,
+  }
+}

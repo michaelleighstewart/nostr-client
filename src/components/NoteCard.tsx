@@ -1,6 +1,7 @@
-import { BoltIcon, HandThumbUpIcon, HandThumbDownIcon } from "@heroicons/react/16/solid";
-import { User, sendZap, reactToPost } from "../utils/helperFunctions";
-import { SimplePool } from "nostr-tools";
+import { BoltIcon, HandThumbUpIcon, HandThumbDownIcon, TrashIcon } from "@heroicons/react/16/solid";
+import { User, sendZap, reactToPost, deletePost } from "../utils/helperFunctions";
+import { SimplePool, getPublicKey} from "nostr-tools";
+import { bech32Decoder } from "../utils/helperFunctions";
 import { Reaction } from "./Home";
 import { useState, useEffect } from "react";
 
@@ -13,6 +14,7 @@ interface Props {
     pool: SimplePool | null;
     nostrExists: boolean;
     reactions: Reaction[];
+    keyValue: string;
   }
   
   export default function NoteCard({
@@ -23,22 +25,40 @@ interface Props {
     hashtags,
     pool,
     nostrExists,
-    reactions
+    reactions,
+    keyValue
   }: Props) {
     const [alreadyLiked, setAlreadyLiked] = useState(false);
     const [alreadyDisliked, setAlreadyDisliked] = useState(false);
     const [publicKey, setPublicKey] = useState<string | null>(null);
     const [localReactions, setLocalReactions] = useState<Reaction[]>(reactions || []);
+    const [canDelete, setCanDelete] = useState(false);
   
     useEffect(() => {
       async function fetchPublicKey() {
         if (window.nostr && window.nostr.getPublicKey) {
           const pk = await window.nostr.getPublicKey();
+          if (pk === user.pubkey) {
+            setCanDelete(true);
+          }
           setPublicKey(pk);
         }
       }
       fetchPublicKey();
     }, []);
+
+    useEffect(() => {
+      if (keyValue) {
+        try {
+          let skDecoded = bech32Decoder('nsec', keyValue);
+          let pk = getPublicKey(skDecoded);
+          if (pk === user.pubkey) {
+            setCanDelete(true);
+          }
+        }
+        catch {}
+      }
+    }, [keyValue]);
 
     useEffect(() => {
       setLocalReactions(reactions || []);
@@ -61,6 +81,16 @@ interface Props {
         }
       });
     };
+
+    const handleDelete = (id: string) => {
+      deletePost(id, pool, nostrExists).then((result) => {
+        if (result.success) {
+          alert("Post deleted");
+        } else {
+          alert("Failed to delete post");
+        }
+      });
+    }
 
     return (
       <div className="rounded p-16 border border-gray-600 bg-gray-700 flex flex-col gap-16 break-words">
@@ -126,6 +156,13 @@ interface Props {
             <span className="text-body5 text-gray-400">
               {localReactions.filter((r) => r.type === "-").length} dislike{localReactions.filter((r) => r.type === "-").length !== 1 ? "s" : ""}
             </span>
+          </div>
+          <div className="p-4 pl-32">
+            <TrashIcon
+              className={canDelete ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
+              title={canDelete ? "Delete this post" : "You cannot delete this post"}
+              onClick={canDelete ?() => handleDelete(id) : undefined}
+              />
           </div>
         </div>
       </div>
