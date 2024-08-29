@@ -35,6 +35,7 @@ export default function NotesList({ notes, metadata, pool, nostrExists, reaction
                 nostrExists={nostrExists}
                 reactions={reactions[note.id]}
                 keyValue={keyValue}
+                deleted={false}
                 />
             ))}
         </div>
