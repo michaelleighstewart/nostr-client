@@ -85,9 +85,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           const followers = await getFollowers(pool);
     
           // Then subscribe to posts
+          const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
           const subPosts = pool.subscribeMany(
             RELAYS, 
-            [{ kinds: [1], limit: 10, authors: followers }],
+            [{ kinds: [1], since: oneDayAgo, authors: followers }],
             {
               onevent(event: Event) {
                 if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
