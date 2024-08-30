@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./components/Home";
 import EditProfile from "./components/EditProfile";
 import GenerateKey from "./components/GenerateKey";
+import PeopleToFollow from "./components/PeopleToFollow";
 import NavBar from "./components/NavBar";
 import { SimplePool } from "nostr-tools";
 import { useState, useEffect } from "react";
@@ -66,6 +67,7 @@ function App() {
           <Route index element={<Home keyValue={key} pool={pool} nostrExists={nostrExists} />}></Route>
           <Route path="edit-profile" element={<EditProfile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
           <Route path="generate-key" element={<GenerateKey />} />
+          <Route path="people-to-follow" element={<PeopleToFollow keyValue={key} pool={pool} nostrExists={nostrExists} />} />
         </Routes>
       </Router>
       <ToastContainer />
