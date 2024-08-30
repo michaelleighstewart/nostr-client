@@ -60,7 +60,12 @@ interface Props {
             setCanDelete(true);
           }
         }
-        catch {}
+        catch {
+          setCanDelete(false)
+        }
+      }
+      else {
+        setCanDelete(false);
       }
     }, [keyValue]);
 
