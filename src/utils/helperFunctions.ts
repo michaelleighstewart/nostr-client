@@ -1,4 +1,3 @@
-import { Event } from "nostr-tools";
 import { bech32 } from 'bech32';
 import { Buffer } from 'buffer';
 import { RELAYS } from "../utils/constants";
