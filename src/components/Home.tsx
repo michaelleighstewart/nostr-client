@@ -40,7 +40,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [message, setMessage] = useState('');
 
     async function getFollowers(pool: SimplePool): Promise<string[]> {
-      let pk: string;
+      let pk: string = "";
       let followers: string[] = [];
       if (props.nostrExists) { 
         try {
@@ -58,6 +58,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         let skDecoded = bech32Decoder('nsec', sk);
         pk = getPublicKey(skDecoded);
       }
+      if (pk && !followers.includes(pk)) followers.push(pk);
       return new Promise((resolve) => {
         
         pool.subscribeMany(
