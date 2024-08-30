@@ -32,7 +32,7 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
           <li>
             <div>
               <label htmlFor="private_key" 
-                className="block mb-2 text-sm font-medium text-white">Private key: </label>
+                className="block mb-2 text-sm font-medium text-white">Private ey: </label>
               <input 
                 type="password" 
                 id="private_key" 
@@ -48,6 +48,9 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
           </li>
           <li className="float-left pr-32">
             <Link to="/edit-profile">Edit Profile</Link>
+          </li>
+          <li className="float-left pr-32">
+            <Link to="/generate-key">Generate New Private Key</Link>
           </li>
         </ul>
       </nav>
