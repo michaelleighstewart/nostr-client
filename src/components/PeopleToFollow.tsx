@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { SimplePool } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 
@@ -9,20 +9,20 @@ interface PeopleToFollowProps {
     nostrExists: boolean;
 }
 
-interface Person {
+/*interface Person {
     name: string;
     npub: string;
-}
+}*/
 
 const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowProps) => {
-    const [peopleToFollow, setPeopleToFollow] = useState<Person[]>([]);
-    const [loading, setLoading] = useState(true);
+    //const [peopleToFollow, setPeopleToFollow] = useState<Person[]>([]);
+    //const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (!props.pool) return;
 
         const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-        const subPosts = props.pool.subscribeMany(
+        props.pool.subscribeMany(
             RELAYS, 
             [{ kinds: [1], since: oneDayAgo, '#t': ['bitcoin', 'btc'] }],
             {
