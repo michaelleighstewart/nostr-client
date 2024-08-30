@@ -30,7 +30,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
         const fetchData = async() => {
             let authors = [];
             if (props.nostrExists) {
-                let pk = await window.nostr.getPublicKey();
+                let pk = await (window as any).nostr.getPublicKey();
                 authors.push(pk);
             }
             else {
@@ -80,7 +80,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
               tags: [],
               content: JSON.stringify(profile),
             }
-            await window.nostr.signEvent(event).then(async (eventToSend: any) => {
+            await (window as any).nostr.signEvent(event).then(async (eventToSend: any) => {
               await props.pool?.publish(RELAYS, eventToSend);
               setLoading(false);
             });

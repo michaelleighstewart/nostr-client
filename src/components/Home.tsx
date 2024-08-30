@@ -28,10 +28,6 @@ export interface Reaction {
   sig: string;
 }
 
-declare global {
-  interface Window { nostr: any; }
-}
-
 const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [eventsImmediate, setEvents] = useState<ExtendedEvent[]>([]);
     const [events] = useDebounce(eventsImmediate, 1500);
@@ -43,61 +39,109 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [posting, setPosting] = useState(false);
     const [message, setMessage] = useState('');
 
-  
-    useEffect(() => {
-      if (!props.pool) return;
-      setLoading(true);
-      setEvents([]);
-      //we should paginate based on date
-      const subPosts = props.pool.subscribeMany(RELAYS, [{
-        kinds: [1],
-        limit: 10,
-      }],
-      {onevent(event: Event) {
-        console.log("Got an event with content: ", event.content);
-        const extendedEvent: ExtendedEvent = {
-          ...event,
-          id: event.id,
-          pubkey: event.pubkey,
-          created_at: event.created_at,
-          content: event.content,
-          tags: event.tags,
-          deleted: false
-        };
-
-        props?.pool?.subscribeMany(
+    async function getFollowers(pool: SimplePool): Promise<string[]> {
+      let pk: string;
+      let followers: string[] = [];
+      if (props.nostrExists) { 
+        try {
+          pk = await (window as any).nostr.getPublicKey();
+        }
+        catch (error) {
+          console.log("Error getting public key: ", error);
+        }
+      }
+      else {
+        const sk = props.keyValue;
+        if (!sk) {
+          return [];
+        }
+        let skDecoded = bech32Decoder('nsec', sk);
+        pk = getPublicKey(skDecoded);
+      }
+      return new Promise((resolve) => {
+        
+        pool.subscribeMany(
           RELAYS,
-          [{
-            kinds: [5],
-            '#e': [extendedEvent.id ?? ""],
-          }],
+          [{ authors: [pk], kinds: [3] }],
           {
-            onevent(deleteEvent) {
-              if (deleteEvent.pubkey === extendedEvent.pubkey) {
-                extendedEvent.deleted = true;
-                setEvents((prevEvents) => {
-                  const updatedEvents = prevEvents.map(event => 
-                    event.id === extendedEvent.id ? {...event, deleted: true} : event
-                  );
-                  console.log('Updated events:', updatedEvents);
-                  return updatedEvents;
-                });
-              }
-            },
-            oneose() {
-              if (!extendedEvent.deleted) {
-                setEvents((events) => insertEventIntoDescendingList(events, extendedEvent));
-              }
+            onevent(event: Event) {
+              followers = event.tags.map((tag) => tag[1]);
+              resolve(followers);
             }
           }
         );
-      }
       });
+    }
+
+    useEffect(() => {
+      if (!props.pool) return;
       
-      return () => {
-        subPosts.close();
-      }
-    }, [props.pool]);
+      const fetchData = async (pool: SimplePool) => {
+        try {
+          setLoading(true);
+          setEvents([]);
+          
+          // First, get the followers
+          const followers = await getFollowers(pool);
+    
+          // Then subscribe to posts
+          const subPosts = pool.subscribeMany(
+            RELAYS, 
+            [{ kinds: [1], limit: 10, authors: followers }],
+            {
+              onevent(event: Event) {
+                //console.log("Got an event with content: ", event.content);
+                const extendedEvent: ExtendedEvent = {
+                  ...event,
+                  id: event.id,
+                  pubkey: event.pubkey,
+                  created_at: event.created_at,
+                  content: event.content,
+                  tags: event.tags,
+                  deleted: false
+                };
+    
+                // Subscribe to delete events
+                props?.pool?.subscribeMany(
+                  RELAYS,
+                  [{ kinds: [5], '#e': [extendedEvent.id ?? ""] }],
+                  {
+                    onevent(deleteEvent) {
+                      if (deleteEvent.pubkey === extendedEvent.pubkey) {
+                        extendedEvent.deleted = true;
+                        setEvents((prevEvents) => {
+                          const updatedEvents = prevEvents.map(event => 
+                            event.id === extendedEvent.id ? {...event, deleted: true} : event
+                          );
+                          console.log('Updated events:', updatedEvents);
+                          return updatedEvents;
+                        });
+                      }
+                    },
+                    oneose() {
+                      if (!extendedEvent.deleted) {
+                        setEvents((events) => insertEventIntoDescendingList(events, extendedEvent));
+                      }
+                    }
+                  }
+                );
+              }
+            }
+          );
+    
+          // Return a cleanup function
+          return () => {
+            subPosts.close();
+          };
+        } catch (error) {
+          console.error("Error fetching data: ", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+    
+      fetchData(props.pool);
+    }, [props.pool, props.keyValue]);
  
     useEffect(() => {
       if (!props.pool) return;
@@ -196,7 +240,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           tags: [],
           content: message,
         }
-        await window.nostr.signEvent(event).then(async (eventToSend: any) => {
+        await (window as any).nostr.signEvent(event).then(async (eventToSend: any) => {
           await props.pool?.publish(RELAYS, eventToSend);
           setPosting(false);
         });

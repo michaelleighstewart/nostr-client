@@ -98,7 +98,7 @@ export async function reactToPost(user: User, id: string, pool: SimplePool | nul
       ],
     };
     try {
-      const signedEvent = await window.nostr.signEvent(event);
+      const signedEvent = await (window as any).nostr.signEvent(event);
       await pool?.publish(RELAYS, signedEvent);
       return {
         liker_pubkey: publicKey ?? "",
@@ -125,7 +125,7 @@ export async function deletePost(id: string, pool: SimplePool | null, nostrExist
       ],
     };
     try {
-      const signedEvent = await window.nostr.signEvent(event);
+      const signedEvent = await (window as any).nostr.signEvent(event);
       await pool?.publish(RELAYS, signedEvent);
       return {
         success: true,

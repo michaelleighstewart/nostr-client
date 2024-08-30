@@ -40,8 +40,8 @@ interface Props {
   
     useEffect(() => {
       async function fetchPublicKey() {
-        if (window.nostr && window.nostr.getPublicKey) {
-          const pk = await window.nostr.getPublicKey();
+        if ((window as any).nostr && (window as any).nostr.getPublicKey) {
+          const pk = await (window as any).nostr.getPublicKey();
           if (pk === user.pubkey) {
             setCanDelete(true);
           }
