@@ -90,41 +90,43 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             [{ kinds: [1], limit: 10, authors: followers }],
             {
               onevent(event: Event) {
-                //console.log("Got an event with content: ", event.content);
-                const extendedEvent: ExtendedEvent = {
-                  ...event,
-                  id: event.id,
-                  pubkey: event.pubkey,
-                  created_at: event.created_at,
-                  content: event.content,
-                  tags: event.tags,
-                  deleted: false
-                };
-    
-                // Subscribe to delete events
-                props?.pool?.subscribeMany(
-                  RELAYS,
-                  [{ kinds: [5], '#e': [extendedEvent.id ?? ""] }],
-                  {
-                    onevent(deleteEvent) {
-                      if (deleteEvent.pubkey === extendedEvent.pubkey) {
-                        extendedEvent.deleted = true;
-                        setEvents((prevEvents) => {
-                          const updatedEvents = prevEvents.map(event => 
-                            event.id === extendedEvent.id ? {...event, deleted: true} : event
-                          );
-                          console.log('Updated events:', updatedEvents);
-                          return updatedEvents;
-                        });
-                      }
-                    },
-                    oneose() {
-                      if (!extendedEvent.deleted) {
-                        setEvents((events) => insertEventIntoDescendingList(events, extendedEvent));
+                if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
+                //  console.log("Original post:", event);
+                  const extendedEvent: ExtendedEvent = {
+                    ...event,
+                    id: event.id,
+                    pubkey: event.pubkey,
+                    created_at: event.created_at,
+                    content: event.content,
+                    tags: event.tags,
+                    deleted: false
+                  };
+      
+                  // Subscribe to delete events
+                  props?.pool?.subscribeMany(
+                    RELAYS,
+                    [{ kinds: [5], '#e': [extendedEvent.id ?? ""] }],
+                    {
+                      onevent(deleteEvent) {
+                        if (deleteEvent.pubkey === extendedEvent.pubkey) {
+                          extendedEvent.deleted = true;
+                          setEvents((prevEvents) => {
+                            const updatedEvents = prevEvents.map(event => 
+                              event.id === extendedEvent.id ? {...event, deleted: true} : event
+                            );
+                            console.log('Updated events:', updatedEvents);
+                            return updatedEvents;
+                          });
+                        }
+                      },
+                      oneose() {
+                        if (!extendedEvent.deleted) {
+                          setEvents((events) => insertEventIntoDescendingList(events, extendedEvent));
+                        }
                       }
                     }
-                  }
-                );
+                  );
+                }
               }
             }
           );
