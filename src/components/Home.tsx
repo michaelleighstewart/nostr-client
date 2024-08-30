@@ -3,7 +3,7 @@ import { SimplePool } from "nostr-tools";
 import { useState, useEffect, useRef } from "react";
 import NotesList from "./NotesList";
 import { useDebounce } from "use-debounce";
-import { insertEventIntoDescendingList, bech32Decoder } from "../utils/helperFunctions";
+import { insertEventIntoDescendingList, bech32Decoder, ExtendedEvent } from "../utils/helperFunctions";
 import { Event } from "nostr-tools";
 import { getPublicKey, finalizeEvent } from 'nostr-tools';
 import { RELAYS } from "../utils/constants";
@@ -13,9 +13,6 @@ interface HomeProps {
   keyValue: string;
   pool: SimplePool | null;
   nostrExists: boolean;
-}
-export interface ExtendedEvent extends Event {
-  deleted?: boolean;
 }
 
 export interface Metadata {
@@ -45,29 +42,51 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [loading, setLoading] = useState(true);
     const [posting, setPosting] = useState(false);
     const [message, setMessage] = useState('');
+
   
     useEffect(() => {
       if (!props.pool) return;
       setLoading(true);
       setEvents([]);
+      //we should paginate based on date
       const subPosts = props.pool.subscribeMany(RELAYS, [{
         kinds: [1],
-        limit: 50,
+        limit: 10,
       }],
-      {onevent(event: ExtendedEvent) {
+      {onevent(event: Event) {
+        console.log("Got an event with content: ", event.content);
+        const extendedEvent: ExtendedEvent = {
+          ...event,
+          id: event.id,
+          pubkey: event.pubkey,
+          created_at: event.created_at,
+          content: event.content,
+          tags: event.tags,
+          deleted: false
+        };
+
         props?.pool?.subscribeMany(
           RELAYS,
           [{
             kinds: [5],
-            '#e': [event.id],
+            '#e': [extendedEvent.id ?? ""],
           }],
           {
             onevent(deleteEvent) {
-              if (deleteEvent.pubkey === event.pubkey) event.deleted = true;
+              if (deleteEvent.pubkey === extendedEvent.pubkey) {
+                extendedEvent.deleted = true;
+                setEvents((prevEvents) => {
+                  const updatedEvents = prevEvents.map(event => 
+                    event.id === extendedEvent.id ? {...event, deleted: true} : event
+                  );
+                  console.log('Updated events:', updatedEvents);
+                  return updatedEvents;
+                });
+              }
             },
             oneose() {
-              if (!event.deleted) {
-                setEvents((events) => insertEventIntoDescendingList(events, event));
+              if (!extendedEvent.deleted) {
+                setEvents((events) => insertEventIntoDescendingList(events, extendedEvent));
               }
             }
           }

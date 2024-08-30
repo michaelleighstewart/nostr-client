@@ -16,7 +16,7 @@ interface Props {
     nostrExists: boolean;
     reactions: Reaction[];
     keyValue: string;
-    deleted: boolean;
+    deleted: boolean | undefined;
   }
   
   export default function NoteCard({
@@ -28,14 +28,15 @@ interface Props {
     pool,
     nostrExists,
     reactions,
-    keyValue
+    keyValue,
+    deleted
   }: Props) {
     const [alreadyLiked, setAlreadyLiked] = useState(false);
     const [alreadyDisliked, setAlreadyDisliked] = useState(false);
     const [publicKey, setPublicKey] = useState<string | null>(null);
     const [localReactions, setLocalReactions] = useState<Reaction[]>(reactions || []);
     const [canDelete, setCanDelete] = useState(false);
-    const [deleted, setDeleted] = useState(false);
+    const [localDeleted, setLocalDeleted] = useState(deleted);
   
     useEffect(() => {
       async function fetchPublicKey() {
@@ -89,7 +90,7 @@ interface Props {
       deletePost(id, pool, nostrExists).then((result) => {
         if (result.success) {
           toast.success("Post deleted");
-          setDeleted(true);
+          setLocalDeleted(true);
         }
         else {
           toast.error("Failed to delete post");
@@ -97,7 +98,7 @@ interface Props {
       });
     }
 
-    if (deleted) {
+    if (localDeleted) {
       return (
         <div className="rounded p-16 border border-gray-600 bg-gray-700 flex flex-col gap-16 break-words">
           <p className="text-body3 text-gray-400">This post has been deleted</p>
