@@ -45,16 +45,16 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
             </div>
           </li>
           <div className="flex justify-center">
-            <li className="inline-block mr-4 text-center pr-64">
+            <li className="inline-block mr-4 text-center pr-24">
               <Link to="/">Home</Link>
             </li>
-            <li className="inline-block mr-4 text-center pr-64">
+            <li className="inline-block mr-4 text-center pr-24">
               <Link to="/edit-profile">Edit Profile</Link>
             </li>
-            <li className="inline-block mr-4 text-center pr-64">
+            <li className="inline-block mr-4 text-center pr-24">
               <Link to="/generate-key">Generate New Private Key</Link>
             </li>
-            <li className="inline-block mr-4 text-center pr-64">
+            <li className="inline-block mr-4 text-center pr-24">
               <Link to="/people-to-follow">People to Follow</Link>
             </li>
           </div>
