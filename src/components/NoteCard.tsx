@@ -184,7 +184,7 @@ interface Props {
           </div>
           <div className="p-4">
             <span className="text-body5 text-gray-400">
-              {localReactions.filter((r) => r.type === "+").length} like{localReactions.filter((r) => r.type === "+").length !== 1 ? "s" : ""}
+              {localReactions.filter((r) => r.type === "+").length}
             </span>
           </div>
           <div className="p-4 pl-32">
@@ -196,7 +196,7 @@ interface Props {
           </div>
           <div className="p-4">
             <span className="text-body5 text-gray-400">
-              {localReactions.filter((r) => r.type === "-").length} dislike{localReactions.filter((r) => r.type === "-").length !== 1 ? "s" : ""}
+              {localReactions.filter((r) => r.type === "-").length}
             </span>
           </div>
           <div className="p-4 pl-32">
