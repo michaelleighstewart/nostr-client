@@ -68,6 +68,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             onevent(event: Event) {
               followers = event.tags.map((tag) => tag[1]);
               resolve(followers);
+            },
+            oneose() {
+              resolve(followers);
             }
           }
         );
