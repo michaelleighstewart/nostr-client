@@ -37,6 +37,16 @@ interface Props {
     const [localReactions, setLocalReactions] = useState<Reaction[]>(reactions || []);
     const [canDelete, setCanDelete] = useState(false);
     const [localDeleted, setLocalDeleted] = useState(deleted);
+
+    function checkReactions() {
+      if (publicKey && localReactions) {
+        setAlreadyLiked(localReactions.some((r) => r.liker_pubkey === publicKey && r.type === "+"));
+        setAlreadyDisliked(localReactions.some((r) => r.liker_pubkey === publicKey && r.type === "-"));
+      } else if (!user.pubkey) {
+        setAlreadyLiked(true);
+        setAlreadyDisliked(true);
+      }
+    }
   
     useEffect(() => {
       async function fetchPublicKey() {
@@ -47,8 +57,28 @@ interface Props {
           }
           setPublicKey(pk);
         }
+        else {
+        if (keyValue) {
+          try {
+            let skDecoded = bech32Decoder('nsec', keyValue);
+            let pk = getPublicKey(skDecoded);
+            setPublicKey(pk);
+            if (pk === user.pubkey) {
+              setCanDelete(true);
+            }
+          } catch (error) {
+            console.error("Error decoding key or getting public key:", error);
+            setPublicKey(null);
+            setCanDelete(false);
+          }
+        } else {
+          setPublicKey(null);
+          setCanDelete(false);
+        }
+        }
       }
       fetchPublicKey();
+      checkReactions();
     }, []);
 
     useEffect(() => {
@@ -74,13 +104,7 @@ interface Props {
     }, [reactions]);
   
     useEffect(() => {
-      if (publicKey && localReactions) {
-        setAlreadyLiked(localReactions.some((r) => r.liker_pubkey === publicKey && r.type === "+"));
-        setAlreadyDisliked(localReactions.some((r) => r.liker_pubkey === publicKey && r.type === "-"));
-      } else if (!user.pubkey) {
-        setAlreadyLiked(true);
-        setAlreadyDisliked(true);
-      }
+      checkReactions();
     }, [publicKey, localReactions, user.pubkey]);
   
     const handleReaction = (type: string) => {

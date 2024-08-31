@@ -205,7 +205,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         })),
         {
           onevent(event) {
-            console.log("Reaction event:", event);
             setReactions((cur) => {
               const newReaction: Reaction = {
                 liker_pubkey: event.pubkey,
