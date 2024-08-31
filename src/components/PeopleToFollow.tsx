@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { SimplePool, finalizeEvent } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import { bech32Decoder } from "../utils/helperFunctions";
+import Loading from "./Loading";
 
 interface PeopleToFollowProps {
     keyValue: string;
@@ -165,6 +166,10 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
         setPeopleToFollow(prev => prev.map(p => p.npub === person.npub ? { ...p, loadingFollowing: false } : p));
     };
 
+    if (loading) {
+        return <Loading vCentered={false} />
+    }
+
     if (peopleToFollow.length === 0) {
         return <div className="py-64">
             <p>No people to follow</p>
@@ -174,7 +179,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     return (
         <div className="py-64">
             {loading ? (
-                <p>Loading...</p>
+                <Loading vCentered={true} />
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {peopleToFollow.map((person, index) => (

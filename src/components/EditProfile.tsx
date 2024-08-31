@@ -102,7 +102,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
           }
     }
 
-    if (loading) return <Loading></Loading>
+    if (loading) return <Loading vCentered={false}></Loading>
 
     return (
         <div className="py-64">

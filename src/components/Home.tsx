@@ -8,6 +8,7 @@ import { Event } from "nostr-tools";
 import { getPublicKey, finalizeEvent } from 'nostr-tools';
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
+import { toast } from 'react-toastify';
 
 interface HomeProps {
   keyValue: string;
@@ -36,6 +37,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const metadataFetched = useRef<Record<string, boolean>>({});
     const reactionsFetched = useRef<Record<string, boolean>>({});
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [posting, setPosting] = useState(false);
     const [message, setMessage] = useState('');
 
@@ -77,77 +79,79 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       });
     }
 
-    useEffect(() => {
-      if (!props.pool) return;
-      
-      const fetchData = async (pool: SimplePool) => {
-        try {
-          setLoading(true);
-          setEvents([]);
-          
-          // First, get the followers
-          const followers = await getFollowers(pool);
+    const fetchData = async (pool: SimplePool) => {
+      try {
+        setLoading(true);
+        setError(null);
+        setEvents([]);
+        
+        // First, get the followers
+        const followers = await getFollowers(pool);
+  
+        // Then subscribe to posts
+        const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
+        const subPosts = pool.subscribeMany(
+          RELAYS, 
+          [{ kinds: [1], since: oneDayAgo, authors: followers }],
+          {
+            onevent(event: Event) {
+              console.log("event", event);
+              if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
+                const extendedEvent: ExtendedEvent = {
+                  ...event,
+                  id: event.id,
+                  pubkey: event.pubkey,
+                  created_at: event.created_at,
+                  content: event.content,
+                  tags: event.tags,
+                  deleted: false
+                };
     
-          // Then subscribe to posts
-          const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-          const subPosts = pool.subscribeMany(
-            RELAYS, 
-            [{ kinds: [1], since: oneDayAgo, authors: followers }],
-            {
-              onevent(event: Event) {
-                console.log("event", event);
-                if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
-                //  console.log("Original post:", event);
-                  const extendedEvent: ExtendedEvent = {
-                    ...event,
-                    id: event.id,
-                    pubkey: event.pubkey,
-                    created_at: event.created_at,
-                    content: event.content,
-                    tags: event.tags,
-                    deleted: false
-                  };
-      
-                  // Subscribe to delete events
-                  props?.pool?.subscribeMany(
-                    RELAYS,
-                    [{ kinds: [5], '#e': [extendedEvent.id ?? ""] }],
-                    {
-                      onevent(deleteEvent) {
-                        if (deleteEvent.pubkey === extendedEvent.pubkey) {
-                          extendedEvent.deleted = true;
-                          setEvents((prevEvents) => {
-                            const updatedEvents = prevEvents.map(event => 
-                              event.id === extendedEvent.id ? {...event, deleted: true} : event
-                            );
-                            console.log('Updated events:', updatedEvents);
-                            return updatedEvents;
-                          });
-                        }
-                      },
-                      oneose() {
-                        if (!extendedEvent.deleted) {
-                          setEvents((events) => insertEventIntoDescendingList(events, extendedEvent));
-                        }
+                // Subscribe to delete events
+                props?.pool?.subscribeMany(
+                  RELAYS,
+                  [{ kinds: [5], '#e': [extendedEvent.id ?? ""] }],
+                  {
+                    onevent(deleteEvent) {
+                      if (deleteEvent.pubkey === extendedEvent.pubkey) {
+                        extendedEvent.deleted = true;
+                        setEvents((prevEvents) => {
+                          const updatedEvents = prevEvents.map(event => 
+                            event.id === extendedEvent.id ? {...event, deleted: true} : event
+                          );
+                          console.log('Updated events:', updatedEvents);
+                          return updatedEvents;
+                        });
+                      }
+                    },
+                    oneose() {
+                      if (!extendedEvent.deleted) {
+                        setEvents((events) => insertEventIntoDescendingList(events, extendedEvent));
                       }
                     }
-                  );
-                }
+                  }
+                );
               }
+            },
+            oneose() {
+              setLoading(false);
             }
-          );
-    
-          // Return a cleanup function
-          return () => {
-            subPosts.close();
-          };
-        } catch (error) {
-          console.error("Error fetching data: ", error);
-        } finally {
-          setLoading(false);
-        }
-      };
-    
+          }
+        );
+  
+        // Return a cleanup function
+        return () => {
+          subPosts.close();
+        };
+      } catch (error) {
+        console.error("Error fetching data: ", error);
+        setError("An error occurred while fetching posts. Please try again later.");
+        setLoading(false);
+      }
+    };
+
+    useEffect(() => {
+      if (!props.pool) return;
       fetchData(props.pool);
     }, [props.pool, props.keyValue]);
  
@@ -179,7 +183,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             ...cur,
             [event.pubkey]: metadata,
           }));
-          setLoading(false);
         },
         oneose() {
           subMeta.close();
@@ -191,7 +194,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         .filter((event) => reactionsFetched.current[event.id] !== true)
         .map((event) => event.id);
       if (noAuthors && postsToFetch.length === 0) {
-        setLoading(false);
         return;
       }
       postsToFetch.forEach(
@@ -230,7 +232,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       
               return updatedReactions;
             });
-            setLoading(false);
           },
           oneose() {
             subReactions.close();
@@ -243,31 +244,42 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     async function sendMessage() {
       if (!props.pool) return;
       setPosting(true);
-      if (props.nostrExists) {
-        let event = {
-          kind: 1,
-          created_at: Math.floor(Date.now() / 1000),
-          tags: [],
-          content: message,
+      try {
+        if (props.nostrExists) {
+          let event = {
+            kind: 1,
+            created_at: Math.floor(Date.now() / 1000),
+            tags: [],
+            content: message,
+          }
+          await (window as any).nostr.signEvent(event).then(async (eventToSend: any) => {
+            await props.pool?.publish(RELAYS, eventToSend);
+          });
         }
-        await (window as any).nostr.signEvent(event).then(async (eventToSend: any) => {
-          await props.pool?.publish(RELAYS, eventToSend);
-          setPosting(false);
-        });
-      }
-      else {
-        let sk = props.keyValue;
-        let skDecoded = bech32Decoder('nsec', sk);
-        let pk = getPublicKey(skDecoded);
-        let event = {
-          kind: 1,
-          pubkey: pk,
-          created_at: Math.floor(Date.now() / 1000),
-          tags: [],
-          content: message,
+        else {
+          let sk = props.keyValue;
+          let skDecoded = bech32Decoder('nsec', sk);
+          let pk = getPublicKey(skDecoded);
+          let event = {
+            kind: 1,
+            pubkey: pk,
+            created_at: Math.floor(Date.now() / 1000),
+            tags: [],
+            content: message,
+          }
+          let eventFinal = finalizeEvent(event, skDecoded);
+          await props.pool?.publish(RELAYS, eventFinal);
         }
-        let eventFinal = finalizeEvent(event, skDecoded);
-        await props.pool?.publish(RELAYS, eventFinal);
+        setMessage('');
+        toast.success("Post sent successfully!");
+        // Refresh the list of posts
+        if (props.pool) {
+          await fetchData(props.pool);
+        }
+      } catch (error) {
+        console.error("Error sending message: ", error);
+        toast.error("Failed to send post. Please try again.");
+      } finally {
         setPosting(false);
       }
     }
@@ -288,15 +300,25 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 className={posting ? "bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded opacity-50 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded"}
                 onClick={sendMessage}
                 disabled={posting}
-              >Post</button>
+              >
+                {posting ? 'Posting...' : 'Post'}
+              </button>
             </div>
           </div>
         </div>
-        {loading ? <Loading></Loading> :
+        {events.length === 0 && !loading && !error && (
+          <div className="text-gray-500 text-center mt-4">No posts yet.</div>
+        )}
+        {loading ? (
+          <Loading vCentered={false} />
+        ) : error ? (
+          <div className="text-red-500 text-center mt-4">{error}</div>
+        ) : (
+          events.length > 0 && (
           <div className="pt-32">
             <NotesList metadata={metadata} reactions={reactions} notes={events} pool={props.pool} nostrExists={props.nostrExists} keyValue={props.keyValue} />
-          </div>
-        }
+          </div>)
+        )}
       </div>
     )
   }
