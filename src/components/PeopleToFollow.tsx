@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { SimplePool, finalizeEvent } from "nostr-tools";
+import { SimplePool, finalizeEvent, getPublicKey } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import { bech32Decoder } from "../utils/helperFunctions";
 import Loading from "./Loading";
@@ -22,10 +22,41 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     const [loading, setLoading] = useState(true);
     const [followingList, setFollowingList] = useState<string[]>([]);
 
+    async function getCurrentUserPubkey() {
+        if (props.nostrExists) {
+            return await (window as any).nostr.getPublicKey();
+        } else {
+            const sk = props.keyValue;
+            const skDecoded = bech32Decoder('nsec', sk);
+            return getPublicKey(skDecoded);
+        }
+    }
+
+    async function fetchFollowingList() {
+        if (!props.pool) return;
+
+        const pubkey = await getCurrentUserPubkey();
+        
+        props.pool.subscribeMany(
+            RELAYS,
+            [{ kinds: [3], authors: [pubkey] }],
+            {
+                onevent(event) {
+                    const following = event.tags
+                        .filter(tag => tag[0] === 'p')
+                        .map(tag => tag[1]);
+                    setFollowingList(following);
+                },
+                oneose() {
+                    setLoading(false);
+                }
+            }
+        );
+    }
+
     function setupFollowingList() {
         if (!props.pool || !props.keyValue) return;
 
-        // Fetch the current following list
         const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
         props.pool.subscribeMany(
             RELAYS, 
@@ -34,13 +65,11 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                 onevent(event) {
                     const name = event.tags.find(tag => tag[0] === 'name')?.[1] || 'Unknown';
                     const npub = event.pubkey;
-                    // Fetch metadata for the poster
                     props.pool?.subscribeMany(
                         RELAYS,
                         [{ kinds: [0], authors: [npub] }],
                         {
                             onevent(metadataEvent) {
-                                //console.log("metadataEvent", metadataEvent);
                                 try {
                                     const metadata = JSON.parse(metadataEvent.content);
                                     const updatedName = metadata.name || name;
@@ -62,7 +91,6 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                         }
                         return prev;
                     });
-                    setLoading(false);
                 }
             }
         );
@@ -70,75 +98,12 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
 
     useEffect(() => {
         setupFollowingList();
+        fetchFollowingList();
     }, []);
 
     useEffect(() => {
-        /*if (!props.pool || !props.keyValue) return;
-
-        // Fetch the current following list
-        const fetchFollowingList = async () => {
-            const pubkey = props.nostrExists 
-                ? await (window as any).nostr.getPublicKey() 
-                : bech32Decoder('npub', props.keyValue);
-
-            props.pool?.subscribeMany(
-                RELAYS,
-                [{ kinds: [3], authors: [pubkey] }],
-                {
-                    onevent(event) {
-                        console.log("event", event);
-                        const following = event.tags
-                            .filter(tag => tag[0] === 'p')
-                            .map(tag => tag[1]);
-                        setFollowingList(following);
-                    }
-                }
-            );
-        };
-
-        fetchFollowingList();
-
-        const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-        props.pool.subscribeMany(
-            RELAYS, 
-            [{ kinds: [1], since: oneDayAgo, limit: 10, '#t': ['bitcoin', 'btc'] }],
-            {
-                onevent(event) {
-                    const name = event.tags.find(tag => tag[0] === 'name')?.[1] || 'Unknown';
-                    const npub = event.pubkey;
-                    // Fetch metadata for the poster
-                    props.pool?.subscribeMany(
-                        RELAYS,
-                        [{ kinds: [0], authors: [npub] }],
-                        {
-                            onevent(metadataEvent) {
-                                //console.log("metadataEvent", metadataEvent);
-                                try {
-                                    const metadata = JSON.parse(metadataEvent.content);
-                                    const updatedName = metadata.name || name;
-                                    const picture = metadata.picture;
-                                    setPeopleToFollow(prev => prev.map(person => 
-                                        person.npub === npub 
-                                            ? { ...person, name: updatedName, picture } 
-                                            : person
-                                    ));
-                                } catch (error) {
-                                    console.error("Error parsing metadata:", error);
-                                }
-                            }
-                        }
-                    );
-                    setPeopleToFollow(prev => {
-                        if (!prev.some(person => person.npub === npub)) {
-                            return [...prev, { name, npub, loadingFollowing: false }];
-                        }
-                        return prev;
-                    });
-                    setLoading(false);
-                }
-            }
-        );*/
         setupFollowingList();
+        fetchFollowingList();
     }, [props.pool, props.keyValue, props.nostrExists]);
 
     const handleFollow = async (person: Person) => {
