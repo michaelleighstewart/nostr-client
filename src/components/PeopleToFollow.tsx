@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { SimplePool, finalizeEvent } from "nostr-tools";
+import { SimplePool, finalizeEvent, getPublicKey } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import { bech32Decoder } from "../utils/helperFunctions";
 
@@ -21,8 +21,58 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     const [loading, setLoading] = useState(true);
     const [followingList, setFollowingList] = useState<string[]>([]);
 
-    useEffect(() => {
+    function setupFollowingList() {
         if (!props.pool || !props.keyValue) return;
+
+        // Fetch the current following list
+        const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
+        props.pool.subscribeMany(
+            RELAYS, 
+            [{ kinds: [1], since: oneDayAgo, limit: 10, '#t': ['bitcoin', 'btc'] }],
+            {
+                onevent(event) {
+                    const name = event.tags.find(tag => tag[0] === 'name')?.[1] || 'Unknown';
+                    const npub = event.pubkey;
+                    // Fetch metadata for the poster
+                    props.pool?.subscribeMany(
+                        RELAYS,
+                        [{ kinds: [0], authors: [npub] }],
+                        {
+                            onevent(metadataEvent) {
+                                //console.log("metadataEvent", metadataEvent);
+                                try {
+                                    const metadata = JSON.parse(metadataEvent.content);
+                                    const updatedName = metadata.name || name;
+                                    const picture = metadata.picture;
+                                    setPeopleToFollow(prev => prev.map(person => 
+                                        person.npub === npub 
+                                            ? { ...person, name: updatedName, picture } 
+                                            : person
+                                    ));
+                                } catch (error) {
+                                    console.error("Error parsing metadata:", error);
+                                }
+                            }
+                        }
+                    );
+                    setPeopleToFollow(prev => {
+                        if (!prev.some(person => person.npub === npub)) {
+                            return [...prev, { name, npub, loadingFollowing: false }];
+                        }
+                        return prev;
+                    });
+                    setLoading(false);
+                }
+            }
+        );
+    }
+
+    useEffect(() => {
+        setupFollowingList();
+    }, []);
+
+    useEffect(() => {
+        /*if (!props.pool || !props.keyValue) return;
 
         // Fetch the current following list
         const fetchFollowingList = async () => {
@@ -86,8 +136,8 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                     setLoading(false);
                 }
             }
-        );  
-
+        );*/
+        setupFollowingList();
     }, [props.pool, props.keyValue, props.nostrExists]);
 
     const handleFollow = async (person: Person) => {

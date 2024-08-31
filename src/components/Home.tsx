@@ -66,7 +66,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           [{ authors: [pk], kinds: [3] }],
           {
             onevent(event: Event) {
-              followers = event.tags.map((tag) => tag[1]);
+              followers.push(...event.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]));
               resolve(followers);
             },
             oneose() {
@@ -95,6 +95,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             [{ kinds: [1], since: oneDayAgo, authors: followers }],
             {
               onevent(event: Event) {
+                console.log("event", event);
                 if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
                 //  console.log("Original post:", event);
                   const extendedEvent: ExtendedEvent = {
