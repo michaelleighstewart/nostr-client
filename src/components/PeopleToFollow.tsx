@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { SimplePool, finalizeEvent, getPublicKey } from "nostr-tools";
+import { SimplePool, finalizeEvent } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import { bech32Decoder } from "../utils/helperFunctions";
 
