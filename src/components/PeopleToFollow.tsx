@@ -12,14 +12,40 @@ interface PeopleToFollowProps {
 interface Person {
     name: string;
     npub: string;
+    loadingFollowing: boolean;
+    picture?: string;
 }
 
 const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowProps) => {
     const [peopleToFollow, setPeopleToFollow] = useState<Person[]>([]);
     const [loading, setLoading] = useState(true);
+    const [followingList, setFollowingList] = useState<string[]>([]);
 
     useEffect(() => {
-        if (!props.pool) return;
+        if (!props.pool || !props.keyValue) return;
+
+        // Fetch the current following list
+        const fetchFollowingList = async () => {
+            const pubkey = props.nostrExists 
+                ? await (window as any).nostr.getPublicKey() 
+                : bech32Decoder('npub', props.keyValue);
+
+            props.pool?.subscribeMany(
+                RELAYS,
+                [{ kinds: [3], authors: [pubkey] }],
+                {
+                    onevent(event) {
+                        console.log("event", event);
+                        const following = event.tags
+                            .filter(tag => tag[0] === 'p')
+                            .map(tag => tag[1]);
+                        setFollowingList(following);
+                    }
+                }
+            );
+        };
+
+        fetchFollowingList();
 
         const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
         props.pool.subscribeMany(
@@ -28,36 +54,55 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
             {
                 onevent(event) {
                     const name = event.tags.find(tag => tag[0] === 'name')?.[1] || 'Unknown';
-                    //const npub = nip19.npubEncode(event.pubkey);
                     const npub = event.pubkey;
+                    // Fetch metadata for the poster
+                    props.pool?.subscribeMany(
+                        RELAYS,
+                        [{ kinds: [0], authors: [npub] }],
+                        {
+                            onevent(metadataEvent) {
+                                //console.log("metadataEvent", metadataEvent);
+                                try {
+                                    const metadata = JSON.parse(metadataEvent.content);
+                                    const updatedName = metadata.name || name;
+                                    const picture = metadata.picture;
+                                    setPeopleToFollow(prev => prev.map(person => 
+                                        person.npub === npub 
+                                            ? { ...person, name: updatedName, picture } 
+                                            : person
+                                    ));
+                                } catch (error) {
+                                    console.error("Error parsing metadata:", error);
+                                }
+                            }
+                        }
+                    );
                     setPeopleToFollow(prev => {
                         if (!prev.some(person => person.npub === npub)) {
-                            return [...prev, { name, npub }];
+                            return [...prev, { name, npub, loadingFollowing: false }];
                         }
                         return prev;
                     });
-                },
-                oneose() {
                     setLoading(false);
                 }
             }
         );  
 
-    }, [props.pool, props.keyValue]);
+    }, [props.pool, props.keyValue, props.nostrExists]);
 
-    const handleFollow = async (npub: string) => {
-        if (!props.pool || !props.keyValue) return;
+    const handleFollow = async (person: Person) => {
+       if (!props.pool || !props.keyValue) return;
+        person.loadingFollowing = true;
         const event: { kind: number; created_at: number; tags: string[][]; content: string; pubkey?: string; sig?: string } = {
             kind: 3,
             created_at: Math.floor(Date.now() / 1000),
-            tags: [['p', npub]],
+            tags: [...followingList.map(npub => ['p', npub]), ['p', person.npub]],
             content: '',
         };
 
         if (props.nostrExists) {
             await (window as any).nostr.signEvent(event).then(async (eventToSend: any) => {
               await props.pool?.publish(RELAYS, eventToSend);
-              //setPosting(false);
             });
         }
         else {
@@ -65,28 +110,49 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
             let skDecoded = bech32Decoder('nsec', sk);
             let eventFinal = finalizeEvent(event, skDecoded);
             await props.pool?.publish(RELAYS, eventFinal);
-            //setPosting(false);
         }
+        setFollowingList(prev => [...prev, person.npub]);
+        setPeopleToFollow(prev => prev.map(p => p.npub === person.npub ? { ...p, loadingFollowing: false } : p));
     };
+
+    if (peopleToFollow.length === 0) {
+        return <div className="py-64">
+            <p>No people to follow</p>
+        </div>
+    }
 
     return (
         <div className="py-64">
             {loading ? (
                 <p>Loading...</p>
             ) : (
-                <ul>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {peopleToFollow.map((person, index) => (
-                        <li key={index} className="mb-4">
-                            <span>{person.name} ({person.npub})</span>
+                        <div key={index} className="flex flex-col items-center p-4 border rounded-lg shadow-sm">
+                            {person.picture ? (
+                                <img 
+                                    src={person.picture} 
+                                    alt={`${person.name}'s profile`} 
+                                    className="w-24 h-24 rounded-full mb-2"
+                                />
+                            ) : (
+                                <div className="w-40 h-40 rounded-full bg-gray-200 mb-2"></div>
+                            )}
+                            <span className="text-center font-semibold mb-2">{person.name}</span>
                             <button 
-                                onClick={() => handleFollow(person.npub)}
-                                className="ml-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                                onClick={() => handleFollow(person)}
+                                className={`w-full font-bold py-2 px-4 rounded ${
+                                    followingList.includes(person.npub)
+                                        ? 'bg-gray-400 cursor-not-allowed'
+                                        : 'bg-blue-500 hover:bg-blue-700 text-white'
+                                }`}
+                                disabled={followingList.includes(person.npub)}
                             >
-                                Follow
+                                {followingList.includes(person.npub) ? 'Following' : 'Follow'}
                             </button>
-                        </li>
+                        </div>
                     ))}
-                </ul>
+                </div>
             )}
         </div>
     );
