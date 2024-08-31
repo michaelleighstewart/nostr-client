@@ -205,6 +205,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         })),
         {
           onevent(event) {
+            console.log("Reaction event:", event);
             setReactions((cur) => {
               const newReaction: Reaction = {
                 liker_pubkey: event.pubkey,
@@ -212,19 +213,21 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 sig: event.sig
               };
               const updatedReactions = { ...cur };
+              const postId = event.tags[0][1];
 
-              const postReactions = updatedReactions[event.tags[0][1]] || [];
-              const isDuplicate = postReactions.some(
-                (reaction) => reaction.sig === newReaction.sig
-              );
-    
-              if (!isDuplicate) {
-                updatedReactions[event.tags[0][1]] = [
-                  ...postReactions,
-                  newReaction,
-                ];
+              if (updatedReactions[postId]) {
+                const postReactions = updatedReactions[postId];
+                const isDuplicate = postReactions.some(
+                  (reaction) => reaction.sig === newReaction.sig
+                );
+        
+                if (!isDuplicate) {
+                  updatedReactions[postId] = [...postReactions, newReaction];
+                }
+              } else {
+                updatedReactions[postId] = [newReaction];
               }
-    
+      
               return updatedReactions;
             });
             setLoading(false);

@@ -2,7 +2,7 @@ import { bech32 } from 'bech32';
 import { Buffer } from 'buffer';
 import { RELAYS } from "../utils/constants";
 import { LightningAddress } from "@getalby/lightning-tools";
-import { SimplePool } from "nostr-tools";
+import { SimplePool, getPublicKey, finalizeEvent } from "nostr-tools";
 import { Reaction } from "../components/Home";
 
 export interface User {
@@ -86,17 +86,17 @@ export async function sendZap(user: User, id: string) {
 }
 
 //NIP-25: https://github.com/nostr-protocol/nips/blob/master/25.md
-export async function reactToPost(user: User, id: string, pool: SimplePool | null, nostrExists: boolean, reaction: string, publicKey: string | null): Promise<Reaction | null> {
+export async function reactToPost(user: User, id: string, pool: SimplePool | null, nostrExists: boolean, reaction: string, publicKey: string | null, keyValue: string | null): Promise<Reaction | null> {
+  const event = {
+    kind: 7,
+    created_at: Math.floor(Date.now() / 1000),
+    content: reaction,
+    tags: [
+      ['e', id],
+      ['p', user.pubkey],
+    ],
+  };
   if (nostrExists) {
-    const event = {
-      kind: 7,
-      created_at: Math.floor(Date.now() / 1000),
-      content: reaction,
-      tags: [
-        ['e', id],
-        ['p', user.pubkey],
-      ],
-    };
     try {
       const signedEvent = await (window as any).nostr.signEvent(event);
       await pool?.publish(RELAYS, signedEvent);
@@ -109,24 +109,53 @@ export async function reactToPost(user: User, id: string, pool: SimplePool | nul
       console.log("Unable to react to post");
     }
   }
+  else {
+    try {
+      let sk = keyValue ?? "";
+      let skDecoded = bech32Decoder('nsec', sk);
+      let pk = getPublicKey(skDecoded);
+      let eventFinal = finalizeEvent(event, skDecoded);
+      await pool?.publish(RELAYS, eventFinal);
+      return {
+        liker_pubkey: pk,
+        type: reaction,
+        sig: eventFinal.sig,
+      };
+    } catch {
+      console.log("Unable to react to post");
+    }
+  }
   return null;
 }
 
 //NIP-09: https://github.com/nostr-protocol/nips/blob/master/09.md
-export async function deletePost(id: string, pool: SimplePool | null, nostrExists: boolean) {
+export async function deletePost(id: string, pool: SimplePool | null, nostrExists: boolean, keyValue: string | null) {
+  const event = {
+    kind: 5,
+    created_at: Math.floor(Date.now() / 1000),
+    content: "Post deleted",
+    tags: [
+      ['e', id],
+      ['k', '1']
+    ],
+  };
   if (nostrExists) {
-    const event = {
-      kind: 5,
-      created_at: Math.floor(Date.now() / 1000),
-      content: "Post deleted",
-      tags: [
-        ['e', id],
-        ['k', '1']
-      ],
-    };
     try {
       const signedEvent = await (window as any).nostr.signEvent(event);
       await pool?.publish(RELAYS, signedEvent);
+      return {
+        success: true,
+      };
+    } catch {
+      console.log("Unable to delete post");
+    }
+  }
+  else {
+    try {
+      let sk = keyValue ?? "";
+      let skDecoded = bech32Decoder('nsec', sk);
+      let eventFinal = finalizeEvent(event, skDecoded);
+      await pool?.publish(RELAYS, eventFinal);
       return {
         success: true,
       };

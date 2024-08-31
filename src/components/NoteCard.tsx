@@ -84,7 +84,7 @@ interface Props {
     }, [publicKey, localReactions, user.pubkey]);
   
     const handleReaction = (type: string) => {
-      reactToPost(user, id, pool, nostrExists, type, publicKey).then((newReaction) => {
+      reactToPost(user, id, pool, nostrExists, type, publicKey, keyValue).then((newReaction) => {
         if (newReaction) {
           setLocalReactions((prevReactions) => [...prevReactions, newReaction]);
         }
@@ -92,7 +92,7 @@ interface Props {
     };
 
     const handleDelete = (id: string) => {
-      deletePost(id, pool, nostrExists).then((result) => {
+      deletePost(id, pool, nostrExists, keyValue).then((result) => {
         if (result.success) {
           toast.success("Post deleted");
           setLocalDeleted(true);
