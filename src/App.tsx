@@ -26,6 +26,10 @@ function App() {
     }
   }
 
+  function handleSetKey(value: string) {
+    setKey(value);
+  }
+
   useEffect(() => {
     const checkNostrAvailability = () => {
       if ((window as any).nostr) {
@@ -39,7 +43,7 @@ function App() {
     return () => {
       clearInterval(nostrCheckInterval);
     };
-  }, []);
+  }, [key]);
 
   useEffect(() => {
     const initialize = async () => {
@@ -56,7 +60,7 @@ function App() {
     return () => {
       _pool.close(RELAYS);
     };
-  }, [nostrExists]);
+  }, [nostrExists, key]);
 
   return (
     <div className="h-full">
@@ -66,7 +70,7 @@ function App() {
           <Route path="/" element={<Layout />}></Route>
           <Route index element={<Home keyValue={key} pool={pool} nostrExists={nostrExists} />}></Route>
           <Route path="edit-profile" element={<EditProfile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
-          <Route path="generate-key" element={<GenerateKey />} />
+          <Route path="generate-key" element={<GenerateKey setKeyValue={handleSetKey} />} />
           <Route path="people-to-follow" element={<PeopleToFollow keyValue={key} pool={pool} nostrExists={nostrExists} />} />
         </Routes>
       </Router>

@@ -3,26 +3,35 @@ import { useState, useEffect } from "react";
 import { getPublicKey, generateSecretKey } from 'nostr-tools';
 import { bech32 } from 'bech32';
 
-const GenerateKey: React.FC = () => {
+interface GenerateKeyProps {
+    setKeyValue: (value: string) => void;
+}
+
+const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue }) => {
     const [nsec, setNsec] = useState<string>('');
     const [npub, setNpub] = useState<string>('');
 
     const generateKeys = () => {
-
         const privateKey = generateSecretKey();
         const publicKey = getPublicKey(privateKey);
 
         const nsecWords = bech32.toWords(privateKey);
-
         const nsecEncoded = bech32.encode('nsec', nsecWords);
 
+        const npubWords = bech32.toWords(new Uint8Array(publicKey.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
+        const npubEncoded = bech32.encode('npub', npubWords);
+
         setNsec(nsecEncoded);
-        setNpub(publicKey);
+        setNpub(npubEncoded);
     };
 
     useEffect(() => {
         generateKeys();
     }, []);
+
+    const handleLogin = () => {
+        setKeyValue(nsec);
+    };
 
     return (
         <div className="py-64">
@@ -43,6 +52,14 @@ const GenerateKey: React.FC = () => {
                             value={npub}
                             readOnly
                         />
+                    </div>
+                    <div className="pb-24">
+                        <button
+                            onClick={handleLogin}
+                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                        >
+                            Login
+                        </button>
                     </div>
                 </div>
             ) : (
