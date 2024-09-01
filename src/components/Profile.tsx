@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { SimplePool, Event } from "nostr-tools";
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { bech32Decoder } from "../utils/helperFunctions";
 import { getPublicKey } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
@@ -25,6 +25,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     const [profileData, setProfileData] = useState<ProfileData | null>(null);
     const [posts, setPosts] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
+    const [pubkey, setPubkey] = useState<string>('');
     const location = useLocation();
 
     useEffect(() => {
@@ -36,20 +37,21 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             setLoading(true);
             if (!pool) return;
 
-            let pubkey: string;
+            let fetchedPubkey: string;
             if (targetNpub) {
-                pubkey = bech32Decoder("npub", targetNpub).toString('hex');
+                fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
             } else if (nostrExists) {
-                pubkey = await (window as any).nostr.getPublicKey();
+                fetchedPubkey = await (window as any).nostr.getPublicKey();
             } else {
                 const skDecoded = bech32Decoder("nsec", keyValue);
-                pubkey = getPublicKey(skDecoded);
+                fetchedPubkey = getPublicKey(skDecoded);
             }
+            setPubkey(fetchedPubkey);
 
             // Fetch profile metadata
             pool.subscribeMany(
                 RELAYS,
-                [{ kinds: [0], authors: [pubkey] }],
+                [{ kinds: [0], authors: [fetchedPubkey] }],
                 {
                     onevent(event) {
                         console.log("Metadata event", event);
@@ -65,7 +67,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             // Fetch recent posts
             pool.subscribeMany(
                 RELAYS,
-                [{ kinds: [1], authors: [pubkey], limit: 20 }],
+                [{ kinds: [1], authors: [fetchedPubkey], limit: 20 }],
                 {
                     onevent(event) {
                         console.log("Post event", event);
@@ -92,6 +94,10 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                 <div>
                     <p>{profileData.picture && <img src={profileData.picture} alt="Profile" className="w-24 h-24 rounded-full" />} {profileData.name}</p>
                     <p>{profileData.about}</p>
+                    <div className="mt-4">
+                        <Link to={`/followers/${pubkey}`} className="mr-4">Followers</Link>
+                        <Link to={`/following/${pubkey}`}>Following</Link>
+                    </div>
                 </div>
             ) : (
                 <p>No profile data available.</p>
