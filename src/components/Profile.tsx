@@ -88,13 +88,10 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
 
     return (
         <div className="py-64">
-            <h1>Profile</h1>
             {profileData ? (
                 <div>
-                    <p>Name: {profileData.name}</p>
-                    <p>About: {profileData.about}</p>
-                    {profileData.picture && <img src={profileData.picture} alt="Profile" className="w-24 h-24 rounded-full" />}
-                    <p>NIP-05: {profileData.nip05}</p>
+                    <p>{profileData.picture && <img src={profileData.picture} alt="Profile" className="w-24 h-24 rounded-full" />} {profileData.name}</p>
+                    <p>{profileData.about}</p>
                 </div>
             ) : (
                 <p>No profile data available.</p>
