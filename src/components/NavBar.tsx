@@ -49,13 +49,16 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
               <Link to="/">Home</Link>
             </li>
             <li className="inline-block mr-4 text-center pr-24">
-              <Link to="/edit-profile">Edit Profile</Link>
+              <Link to="/profile">Profile</Link>
             </li>
             <li className="inline-block mr-4 text-center pr-24">
-              <Link to="/generate-key">Generate New Private Key</Link>
+              <Link to="/edit-profile">Settings</Link>
             </li>
             <li className="inline-block mr-4 text-center pr-24">
-              <Link to="/people-to-follow">People to Follow</Link>
+              <Link to="/generate-key">Generate Keys</Link>
+            </li>
+            <li className="inline-block mr-4 text-center pr-24">
+              <Link to="/people-to-follow">Who to Follow</Link>
             </li>
           </div>
         </ul>

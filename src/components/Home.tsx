@@ -95,7 +95,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           [{ kinds: [1], since: oneDayAgo, authors: followers }],
           {
             onevent(event: Event) {
-              console.log("event", event);
               if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
                 const extendedEvent: ExtendedEvent = {
                   ...event,
@@ -119,7 +118,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                           const updatedEvents = prevEvents.map(event => 
                             event.id === extendedEvent.id ? {...event, deleted: true} : event
                           );
-                          console.log('Updated events:', updatedEvents);
                           return updatedEvents;
                         });
                       }

@@ -3,6 +3,7 @@ import Layout from "./components/Layout";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./components/Home";
 import EditProfile from "./components/EditProfile";
+import Profile from "./components/Profile";
 import GenerateKey from "./components/GenerateKey";
 import PeopleToFollow from "./components/PeopleToFollow";
 import NavBar from "./components/NavBar";
@@ -70,6 +71,7 @@ function App() {
           <Route path="/" element={<Layout />}></Route>
           <Route index element={<Home keyValue={key} pool={pool} nostrExists={nostrExists} />}></Route>
           <Route path="edit-profile" element={<EditProfile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
+          <Route path="profile" element={<Profile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
           <Route path="generate-key" element={<GenerateKey setKeyValue={handleSetKey} />} />
           <Route path="people-to-follow" element={<PeopleToFollow keyValue={key} pool={pool} nostrExists={nostrExists} />} />
         </Routes>
