@@ -39,14 +39,15 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
 
             let fetchedPubkey: string;
             if (targetNpub) {
-                fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
+                //fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
+                fetchedPubkey = targetNpub;
             } else if (nostrExists) {
                 fetchedPubkey = await (window as any).nostr.getPublicKey();
             } else {
                 const skDecoded = bech32Decoder("nsec", keyValue);
                 fetchedPubkey = getPublicKey(skDecoded);
             }
-            setPubkey(fetchedPubkey);
+            //setPubkey(fetchedPubkey);
 
             // Fetch profile metadata
             pool.subscribeMany(
@@ -56,6 +57,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                     onevent(event) {
                         console.log("Metadata event", event);
                         const metadata = JSON.parse(event.content) as ProfileData;
+                        setPubkey(fetchedPubkey);
                         setProfileData(metadata);
                     },
                     oneose() {
