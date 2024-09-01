@@ -40,6 +40,7 @@ interface Props {
     const [localDeleted, setLocalDeleted] = useState(deleted);
     const [userNpub, setUserNpub] = useState<string>('');
     const [imageUrl, setImageUrl] = useState<string | null>(null);
+    const [processedContent, setProcessedContent] = useState<React.ReactNode[]>([]);
 
     function checkReactions() {
       if (publicKey && localReactions) {
@@ -58,6 +59,17 @@ interface Props {
       if (match) {
         setImageUrl(match[0]);
       }
+
+      // Process content to detect and enable clicking on links
+      const linkRegex = /(https?:\/\/[^\s]+)/g;
+      const parts = content.split(linkRegex);
+      const processed = parts.map((part, index) => {
+        if (part.match(linkRegex)) {
+          return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{part}</a>;
+        }
+        return part;
+      });
+      setProcessedContent(processed);
     }, [content]);
   
     useEffect(() => {
@@ -175,7 +187,7 @@ interface Props {
             </span>
           </div>
         </div>
-        <p>{content}</p>
+        <p>{processedContent}</p>
         {imageUrl && (
           <img src={imageUrl} alt="Post content" className="max-w-full h-auto rounded-lg" />
         )}
