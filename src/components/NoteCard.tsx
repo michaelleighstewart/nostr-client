@@ -65,7 +65,7 @@ interface Props {
       const parts = content.split(linkRegex);
       const processed = parts.map((part, index) => {
         if (part.match(linkRegex)) {
-          return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{part}</a>;
+          return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline"></a>;
         }
         return part;
       });
