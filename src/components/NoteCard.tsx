@@ -39,6 +39,7 @@ interface Props {
     const [canDelete, setCanDelete] = useState(false);
     const [localDeleted, setLocalDeleted] = useState(deleted);
     const [userNpub, setUserNpub] = useState<string>('');
+    const [imageUrl, setImageUrl] = useState<string | null>(null);
 
     function checkReactions() {
       if (publicKey && localReactions) {
@@ -49,6 +50,15 @@ interface Props {
         setAlreadyDisliked(true);
       }
     }
+
+    useEffect(() => {
+      // Check if content contains an image URL
+      const urlRegex = /(https?:\/\/.*\.(?:png|jpg|jpeg|gif))/i;
+      const match = content.match(urlRegex);
+      if (match) {
+        setImageUrl(match[0]);
+      }
+    }, [content]);
   
     useEffect(() => {
       async function fetchPublicKey() {
@@ -166,6 +176,9 @@ interface Props {
           </div>
         </div>
         <p>{content}</p>
+        {imageUrl && (
+          <img src={imageUrl} alt="Post content" className="max-w-full h-auto rounded-lg" />
+        )}
         <ul className="flex flex-wrap gap-12">
           {hashtags
             .filter((t) => hashtags.indexOf(t) === hashtags.lastIndexOf(t))
