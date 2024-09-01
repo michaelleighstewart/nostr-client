@@ -36,7 +36,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
 
             let pubkey: string;
             if (targetNpub) {
-                pubkey = Buffer.from(bech32Decoder("npub", targetNpub)).toString('hex');
+                pubkey = bech32Decoder("npub", targetNpub).toString('hex');
             } else if (nostrExists) {
                 pubkey = await (window as any).nostr.getPublicKey();
             } else {
@@ -49,11 +49,13 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                 [{ kinds: [0], authors: [pubkey] }],
                 {
                     onevent(event) {
+                        console.log("Metadata event", event);
                         const metadata = JSON.parse(event.content) as ProfileData;
                         setProfileData(metadata);
                         setLoading(false);
                     },
                     oneose() {
+                        console.log("Metadata subscription closed");
                         setLoading(false);
                     }
                 }

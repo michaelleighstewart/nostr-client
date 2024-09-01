@@ -1,10 +1,11 @@
 import { BoltIcon, HandThumbUpIcon, HandThumbDownIcon, TrashIcon } from "@heroicons/react/16/solid";
-import { User, sendZap, reactToPost, deletePost } from "../utils/helperFunctions";
-import { SimplePool, getPublicKey} from "nostr-tools";
-import { bech32Decoder } from "../utils/helperFunctions";
+import { User, sendZap, reactToPost, deletePost, bech32Decoder } from "../utils/helperFunctions";
+import { SimplePool, getPublicKey } from "nostr-tools";
 import { Reaction } from "./Home";
 import { useState, useEffect } from "react";
 import { toast } from 'react-toastify';
+import { Link } from 'react-router-dom';
+import { nip19 } from 'nostr-tools';
 
 interface Props {
     id: string;
@@ -37,6 +38,7 @@ interface Props {
     const [localReactions, setLocalReactions] = useState<Reaction[]>(reactions || []);
     const [canDelete, setCanDelete] = useState(false);
     const [localDeleted, setLocalDeleted] = useState(deleted);
+    const [userNpub, setUserNpub] = useState<string>('');
 
     function checkReactions() {
       if (publicKey && localReactions) {
@@ -106,6 +108,13 @@ interface Props {
     useEffect(() => {
       checkReactions();
     }, [publicKey, localReactions, user.pubkey]);
+
+    useEffect(() => {
+      if (user.pubkey) {
+        const npub = nip19.npubEncode(user.pubkey);
+        setUserNpub(npub);
+      }
+    }, [user.pubkey]);
   
     const handleReaction = (type: string) => {
       reactToPost(user, id, pool, nostrExists, type, publicKey, keyValue).then((newReaction) => {
@@ -138,11 +147,13 @@ interface Props {
       <div className="rounded p-16 border border-gray-600 bg-gray-700 flex flex-col gap-16 break-words">
         <div className="flex gap-12 items-center overflow-hidden">
           {user.image ?
-          <img
-            src={user.image}
-            alt="note"
-            className="rounded-full w-40 aspect-square bg-gray-100"
-          /> : <></>}
+          <Link to={`/profile?npub=${userNpub}`}>
+            <img
+              src={user.image}
+              alt="note"
+              className="rounded-full w-40 aspect-square bg-gray-100 cursor-pointer"
+            />
+          </Link> : <></>}
           <div>
             <span
               className="text-body3 text-white overflow-hidden text-ellipsis"
@@ -210,4 +221,3 @@ interface Props {
       </div>
     );
   }
-  
