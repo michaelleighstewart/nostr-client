@@ -1,6 +1,6 @@
 import './App.css';
 import Layout from "./components/Layout";
-import { BrowserRouter as Router, Routes, Route, useParams } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from "./components/Home";
 import EditProfile from "./components/EditProfile";
 import Profile from "./components/Profile";
@@ -79,7 +79,7 @@ function App() {
           <Route path="people-to-follow" element={<PeopleToFollow keyValue={key} pool={pool} nostrExists={nostrExists} />} />
           <Route path="followers/:pubkey" element={<Followers keyValue={key} pool={pool} nostrExists={nostrExists} />} />
           <Route path="following/:pubkey" element={<Following pool={pool} />} />
-          <Route path="post/:id" element={<Post pool={pool} id={useParams().id ?? ""} />} />
+          <Route path="post/:id" element={<Post pool={pool} />} />
         </Routes>
       </Router>
       <ToastContainer />
