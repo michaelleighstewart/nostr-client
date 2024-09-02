@@ -1,6 +1,6 @@
 import './App.css';
 import Layout from "./components/Layout";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useParams } from "react-router-dom";
 import Home from "./components/Home";
 import EditProfile from "./components/EditProfile";
 import Profile from "./components/Profile";
@@ -8,6 +8,7 @@ import GenerateKey from "./components/GenerateKey";
 import PeopleToFollow from "./components/PeopleToFollow";
 import Followers from "./components/Followers";
 import Following from "./components/Following";
+import Post from "./components/Post";
 import NavBar from "./components/NavBar";
 import { SimplePool } from "nostr-tools";
 import { useState, useEffect } from "react";
@@ -78,6 +79,7 @@ function App() {
           <Route path="people-to-follow" element={<PeopleToFollow keyValue={key} pool={pool} nostrExists={nostrExists} />} />
           <Route path="followers/:pubkey" element={<Followers keyValue={key} pool={pool} nostrExists={nostrExists} />} />
           <Route path="following/:pubkey" element={<Following pool={pool} />} />
+          <Route path="post/:id" element={<Post pool={pool} id={useParams().id ?? ""} />} />
         </Routes>
       </Router>
       <ToastContainer />

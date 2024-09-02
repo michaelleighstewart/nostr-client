@@ -4,7 +4,7 @@ import { SimplePool, getPublicKey } from "nostr-tools";
 import { Reaction } from "./Home";
 import { useState, useEffect } from "react";
 import { toast } from 'react-toastify';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 
 interface Props {
@@ -41,6 +41,7 @@ interface Props {
     const [userNpub, setUserNpub] = useState<string>('');
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [processedContent, setProcessedContent] = useState<React.ReactNode[]>([]);
+    const navigate = useNavigate();
 
     function checkReactions() {
       if (publicKey && localReactions) {
@@ -65,7 +66,7 @@ interface Props {
       const parts = content.split(linkRegex);
       const processed = parts.map((part, index) => {
         if (part.match(linkRegex)) {
-          return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline"></a>;
+          return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{part}</a>;
         }
         return part;
       });
@@ -158,6 +159,10 @@ interface Props {
       });
     }
 
+    const handleContentClick = () => {
+      navigate(`/post/${id}`);
+    };
+
     if (localDeleted) {
       return (
         <div className="rounded p-16 border border-gray-600 bg-gray-700 flex flex-col gap-16 break-words">
@@ -187,10 +192,12 @@ interface Props {
             </span>
           </div>
         </div>
-        <p>{processedContent}</p>
-        {imageUrl && (
-          <img src={imageUrl} alt="Post content" className="max-w-full h-auto rounded-lg" />
-        )}
+        <div onClick={handleContentClick} className="cursor-pointer">
+          <p>{processedContent}</p>
+          {imageUrl && (
+            <img src={imageUrl} alt="Post content" className="max-w-full h-auto rounded-lg" />
+          )}
+        </div>
         <ul className="flex flex-wrap gap-12">
           {hashtags
             .filter((t) => hashtags.indexOf(t) === hashtags.lastIndexOf(t))
