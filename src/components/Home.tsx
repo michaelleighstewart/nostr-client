@@ -297,12 +297,17 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     }
 
     return (
-      <div className="py-64">
+      <div className="py-16 relative">
         {isLoggedIn === false && (
           <div className="mb-8 text-center">
-            <Link to="/generate-key" className="bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded">
+            <Link to="/generate-key" className="bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded inline-block z-20 relative">
               Sign Up
             </Link>
+          </div>
+        )}
+        {isLoggedIn === false && (
+          <div className="absolute top-64 left-1/2 transform -translate-x-1/2 z-10 pointer-events-none">
+            <img src="/ostrich.png" alt="Ostrich" className="opacity-50" />
           </div>
         )}
         {isLoggedIn && (
@@ -333,7 +338,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           <div className="text-red-500 text-center mt-4">{error}</div>
         ) 
          : (
-          <div className="pt-32">
+          <div className="pt-32 relative">
             <NotesList metadata={metadata} reactions={reactions} notes={events} pool={props.pool} nostrExists={props.nostrExists} keyValue={props.keyValue} />
           </div>
         )}
