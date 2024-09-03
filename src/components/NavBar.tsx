@@ -1,4 +1,4 @@
-import { Outlet, Link } from "react-router-dom";
+import { Outlet, Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import * as React from 'react';
 import { HomeIcon, UserIcon, CogIcon, KeyIcon, UserGroupIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
@@ -10,6 +10,7 @@ interface NavBarProps {
 
 const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
   const [nostrExists, setNostrExists] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     const checkNostrAvailability = () => {
@@ -25,6 +26,10 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
       clearInterval(nostrCheckInterval);
     };
   }, [props.keyValue]);
+
+  const isActive = (path: string) => {
+    return location.pathname === path ? "text-white" : "";
+  };
 
   return (
     <div className="sticky top-0 w-full h-200">
@@ -47,32 +52,32 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
           </li>
           <div className="flex justify-center py-6">
             <li className="inline-block mx-4 text-center pr-16">
-              <Link to="/" className="flex flex-col items-center">
+              <Link to="/" className={`flex flex-col items-center ${isActive("/")}`}>
                 <HomeIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
             <li className="inline-block mx-4 text-center pr-16">
-              <Link to="/profile" className="flex flex-col items-center">
+              <Link to="/profile" className={`flex flex-col items-center ${isActive("/profile")}`}>
                 <UserIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
             <li className="inline-block mx-4 text-center pr-16">
-              <Link to="/edit-profile" className="flex flex-col items-center">
+              <Link to="/edit-profile" className={`flex flex-col items-center ${isActive("/edit-profile")}`}>
                 <CogIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
             <li className="inline-block mx-4 text-center pr-16">
-              <Link to="/generate-key" className="flex flex-col items-center">
+              <Link to="/generate-key" className={`flex flex-col items-center ${isActive("/generate-key")}`}>
                 <KeyIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
             <li className="inline-block mx-4 text-center pr-16">
-              <Link to="/people-to-follow" className="flex flex-col items-center">
+              <Link to="/people-to-follow" className={`flex flex-col items-center ${isActive("/people-to-follow")}`}>
                 <UserGroupIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
             <li className="inline-block mx-4 text-center pr-16">
-              <Link to="/search" className="flex flex-col items-center">
+              <Link to="/search" className={`flex flex-col items-center ${isActive("/search")}`}>
                 <MagnifyingGlassIcon className="h-6 w-6 my-3" />
               </Link>
             </li>

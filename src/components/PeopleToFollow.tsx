@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { SimplePool, finalizeEvent, getPublicKey, nip19 } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import { bech32Decoder } from "../utils/helperFunctions";
@@ -17,12 +17,20 @@ interface Person {
     npub: string;
     loadingFollowing: boolean;
     picture?: string;
+    content?: string;
 }
 
 const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowProps) => {
     const [peopleToFollow, setPeopleToFollow] = useState<Person[]>([]);
     const [loading, setLoading] = useState(true);
     const [followingList, setFollowingList] = useState<string[]>([]);
+    const [selectedHashtag, setSelectedHashtag] = useState<string>("bitcoin");
+    const [customHashtag, setCustomHashtag] = useState<string>("");
+    const [searchingPeople, setSearchingPeople] = useState(false);
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const hashtags = ["bitcoin", "btc", "nostr", "crypto", "food", "travel"];
+    const carouselRef = useRef<HTMLDivElement>(null);
+    const contentRefs = useRef<(HTMLDivElement | null)[]>([]);
 
     async function getCurrentUserPubkey() {
         if (props.nostrExists) {
@@ -59,14 +67,17 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     function setupFollowingList() {
         if (!props.pool || !props.keyValue) return;
 
+        setPeopleToFollow([]);  // Clear the list before fetching new people
+        setSearchingPeople(true);
         const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
         props.pool.subscribeMany(
             RELAYS, 
-            [{ kinds: [1], since: oneDayAgo, limit: 10, '#t': ['bitcoin', 'btc'] }],
+            [{ kinds: [1], since: oneDayAgo, limit: 10, '#t': [selectedHashtag] }],
             {
                 onevent(event) {
                     const name = event.tags.find(tag => tag[0] === 'name')?.[1] || 'Unknown';
                     const npub = nip19.npubEncode(event.pubkey);
+                    const content = event.content;
                     props.pool?.subscribeMany(
                         RELAYS,
                         [{ kinds: [0], authors: [event.pubkey] }],
@@ -89,10 +100,13 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                     );
                     setPeopleToFollow(prev => {
                         if (!prev.some(person => person.npub === npub)) {
-                            return [...prev, { name, npub, loadingFollowing: false }];
+                            return [...prev, { name, npub, loadingFollowing: false, content }];
                         }
                         return prev;
                     });
+                },
+                oneose() {
+                    setSearchingPeople(false);
                 }
             }
         );
@@ -101,12 +115,33 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     useEffect(() => {
         setupFollowingList();
         fetchFollowingList();
-    }, []);
+    }, [selectedHashtag]);
 
     useEffect(() => {
         setupFollowingList();
         fetchFollowingList();
     }, [props.pool, props.keyValue, props.nostrExists]);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            if (peopleToFollow.length > 0) {
+                setCurrentIndex((prevIndex) => (prevIndex + 1) % peopleToFollow.length);
+            }
+        }, 5000);
+
+        return () => clearInterval(timer);
+    }, [peopleToFollow]);
+
+    useEffect(() => {
+        if (carouselRef.current) {
+            const currentContentRef = contentRefs.current[currentIndex];
+            if (currentContentRef) {
+                currentContentRef.style.height = 'auto';
+                const height = currentContentRef.scrollHeight;
+                currentContentRef.style.height = `${height}px`;
+            }
+        }
+    }, [currentIndex]);
 
     const handleFollow = async (person: Person) => {
        if (!props.pool || !props.keyValue) return;
@@ -133,49 +168,118 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
         setPeopleToFollow(prev => prev.map(p => p.npub === person.npub ? { ...p, loadingFollowing: false } : p));
     };
 
+    const handleCustomHashtagSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (customHashtag.trim()) {
+            setSelectedHashtag(customHashtag.trim());
+            setCustomHashtag("");
+        }
+    };
+
+    const renderContent = (content: string) => {
+        const imgRegex = /(https?:\/\/.*\.(?:png|jpg|jpeg|gif))/i;
+        const linkRegex = /(https?:\/\/[^\s]+)/g;
+
+        const imgMatch = content.match(imgRegex);
+        if (imgMatch) {
+            return <img src={imgMatch[0]} alt="Content" className="max-w-full h-auto" />;
+        }
+
+        return content.split(linkRegex).map((part, i) => {
+            if (i % 2 === 1) {
+                return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{part}</a>;
+            }
+            return part;
+        });
+    };
+
     if (loading) {
         return <Loading vCentered={false} />
     }
 
-    if (peopleToFollow.length === 0) {
-        return <div className="py-64">
-            <p>No people to follow</p>
-        </div>
-    }
-
     return (
         <div className="py-64">
-            {loading ? (
-                <Loading vCentered={true} />
-            ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {peopleToFollow.map((person, index) => (
-                        <div key={index} className="flex flex-col items-center p-4 border rounded-lg shadow-sm">
-                            <Link to={`/profile?npub=${person.npub}`}>
-                                {person.picture ? (
-                                    <img 
-                                        src={person.picture} 
-                                        alt={`${person.name}'s profile`} 
-                                        className="w-48 h-48 rounded-full mb-2"
-                                    />
-                                ) : (
-                                    <UserCircleIcon className="w-48 h-48 text-gray-300 mb-2" />
-                                )}
-                            </Link>
-                            <span className="text-center font-semibold mb-2">{person.name}</span>
-                            <button 
-                                onClick={() => handleFollow(person)}
-                                className={`w-full font-bold py-2 px-4 rounded ${
-                                    followingList.includes(nip19.decode(person.npub).data as string)
-                                        ? 'bg-gray-400 cursor-not-allowed'
-                                        : 'bg-blue-500 hover:bg-blue-700 text-white'
-                                }`}
-                                disabled={followingList.includes(nip19.decode(person.npub).data as string)}
-                            >
-                                {followingList.includes(nip19.decode(person.npub).data as string) ? 'Following' : 'Follow'}
-                            </button>
-                        </div>
+            <div className="flex flex-col items-center mb-8">
+                <div className="flex justify-center space-x-4 mb-4">
+                    {hashtags.map((hashtag) => (
+                        <button
+                            key={hashtag}
+                            onClick={() => setSelectedHashtag(hashtag)}
+                            className={`px-4 py-2 rounded ${
+                                selectedHashtag === hashtag
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                        >
+                            #{hashtag}
+                        </button>
                     ))}
+                </div>
+                <form onSubmit={handleCustomHashtagSubmit} className="flex">
+                    <input
+                        type="text"
+                        value={customHashtag}
+                        onChange={(e) => setCustomHashtag(e.target.value)}
+                        placeholder="Enter custom hashtag"
+                        className="px-4 py-2 border rounded-l focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                    />
+                    <button
+                        type="submit"
+                        className="px-4 py-2 bg-blue-500 text-white rounded-r hover:bg-blue-600"
+                    >
+                        Search
+                    </button>
+                </form>
+            </div>
+            {searchingPeople ? (
+                <Loading vCentered={false} />
+            ) : peopleToFollow.length === 0 ? (
+                <p className="text-center">No people to follow for #{selectedHashtag}</p>
+            ) : (
+                <div ref={carouselRef} className="relative w-full max-w-3xl mx-auto overflow-hidden">
+                    <div className="flex transition-transform duration-300 ease-in-out" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
+                        {peopleToFollow.map((person, index) => (
+                            <div key={index} className="w-full flex-shrink-0 p-4">
+                                <div className="flex items-center mb-4 pb-16">
+                                    <Link to={`/profile?npub=${person.npub}`}>
+                                        {person.picture ? (
+                                            <img 
+                                                src={person.picture} 
+                                                alt={`${person.name}'s profile`} 
+                                                className="w-16 h-16 rounded-full mr-4"
+                                                onError={(e) => {
+                                                    const target = e.target as HTMLImageElement;
+                                                    target.onerror = null;
+                                                }}
+                                            />
+                                        ) : (
+                                            <UserCircleIcon className="w-16 h-16 text-gray-300 mr-4" />
+                                        )}
+                                    </Link>
+                                    <div>
+                                        <span className="font-semibold pr-16">{person.name}</span>
+                                        <button 
+                                            onClick={() => handleFollow(person)}
+                                            className={`ml-4 px-16 py-4 rounded ${
+                                                followingList.includes(nip19.decode(person.npub).data as string)
+                                                    ? 'bg-gray-400 cursor-not-allowed'
+                                                    : 'bg-blue-500 hover:bg-blue-700 text-white'
+                                            }`}
+                                            disabled={followingList.includes(nip19.decode(person.npub).data as string)}
+                                        >
+                                            {followingList.includes(nip19.decode(person.npub).data as string) ? 'Following' : 'Follow'}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div 
+                                    ref={el => contentRefs.current[index] = el} 
+                                    className="overflow-y-auto transition-height duration-300 ease-in-out"
+                                >
+                                    <p className="text-gray-500">{renderContent(person.content || '')}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
         </div>
