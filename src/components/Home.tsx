@@ -9,6 +9,8 @@ import { getPublicKey, finalizeEvent } from 'nostr-tools';
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import { toast } from 'react-toastify';
+import { Link } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface HomeProps {
   keyValue: string;
@@ -44,6 +46,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(props.nostrExists || !!props.keyValue);
     const [lastFetchedTimestamp, setLastFetchedTimestamp] = useState<number>(Math.floor(Date.now() / 1000));
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+    const [showOstrich, setShowOstrich] = useState(false);
+    const [userPublicKey, setUserPublicKey] = useState<string | null>(null);
 
     useEffect(() => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);
@@ -71,6 +75,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         pk = getPublicKey(skDecoded);
       }
       if (pk && !followers.includes(pk)) followers.push(pk);
+      setUserPublicKey(pk);
       return new Promise((resolve) => {
         
         pool.subscribeMany(
@@ -176,11 +181,42 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn]);
  
     useEffect(() => {
-      if (!props.pool) return;
+      if (!props.pool || !userPublicKey) return;
   
+      // Fetch current user's metadata
+      const fetchUserMetadata = () => {
+        const subUserMeta = props.pool?.subscribeMany(RELAYS, [
+          {
+            kinds: [0],
+            authors: [userPublicKey],
+          },
+        ],
+        {
+          onevent(event) {
+            const metadata = JSON.parse(event.content) as Metadata;
+            setMetadata((cur) => ({
+              ...cur,
+              [userPublicKey]: metadata,
+            }));
+            if (!metadata.name) {
+              setShowOstrich(true);
+            }
+          },
+          oneose() {
+            subUserMeta?.close();
+            // If no metadata event was received, show the ostrich
+            if (!metadata[userPublicKey]) {
+              setShowOstrich(true);
+            }
+          }
+        });
+      };
+
+      fetchUserMetadata();
+
       //get authors
       const pubkeysToFetch = events
-        .filter((event) => metadataFetched.current[event.pubkey] !== true)
+        .filter((event) => metadataFetched.current[event.pubkey] !== true && event.pubkey !== userPublicKey)
         .map((event) => event.pubkey);
 
       let noAuthors = pubkeysToFetch.length === 0;
@@ -259,7 +295,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         }
       );
       return () => {};
-    }, [events, props.pool]);
+    }, [events, props.pool, userPublicKey]);
     
     async function sendMessage() {
       if (!props.pool) return;
@@ -360,6 +396,43 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             )}
           </div>
         )}
+        <AnimatePresence>
+          {showOstrich && (
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+              onClick={() => setShowOstrich(false)}
+            >
+              <div className="relative">
+                <img src="/ostrich.png" alt="Ostrich" className="max-w-full max-h-full" />
+                <div className="absolute top-0 left-full ml-4 p-32 bg-white rounded-lg shadow-lg speech-bubble" style={{ width: '400px' }}>
+                  <p className="text-black">
+                    Hey! Please{' '}
+                    <Link to="/edit-profile" className="text-blue-500 hover:underline">
+                      set up your profile
+                    </Link>
+                    {' '}so that users on the network can know who you are
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <style>{`
+                .speech-bubble::before {
+                    content: '';
+                    position: absolute;
+                    left: -20px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    border-width: 10px;
+                    border-style: solid;
+                    border-color: transparent white transparent transparent;
+                }
+            `}</style>
       </div>
     )
   }
