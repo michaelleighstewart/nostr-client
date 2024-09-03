@@ -2,14 +2,18 @@
 import { useState, useEffect } from "react";
 import { getPublicKey, generateSecretKey } from 'nostr-tools';
 import { bech32 } from 'bech32';
+import { Link } from 'react-router-dom';
+import Loading from './Loading';
 
 interface GenerateKeyProps {
     setKeyValue: (value: string) => void;
+    keyValue: string;
 }
 
-const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue }) => {
+const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, keyValue }) => {
     const [nsec, setNsec] = useState<string>('');
     const [npub, setNpub] = useState<string>('');
+    const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
 
     const generateKeys = () => {
         const privateKey = generateSecretKey();
@@ -31,6 +35,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue }) => {
 
     const handleLogin = () => {
         setKeyValue(nsec);
+        setIsLoggedIn(true);
     };
 
     return (
@@ -52,18 +57,28 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue }) => {
                         readOnly
                     />
                 </div>
-                <div className="pb-24">
-                    <button
-                        onClick={handleLogin}
-                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded"
-                    >
-                        Login
-                    </button>
-                </div>
+                {!isLoggedIn && (
+                    <div className="pb-24">
+                        <button
+                            onClick={handleLogin}
+                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded"
+                        >
+                            Login
+                        </button>
+                    </div>
+                )}
             </div>
+            {keyValue && (
+                <div className="mt-8 text-center">
+                    <p className="text-white mb-4 pb-32">You are now on the Nostr network! Go and find some people to follow!</p>
+                    <Link to="/people-to-follow" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded">
+                        Find People to Follow
+                    </Link>
+                </div>
+            )}
             {!nsec && !npub && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
-                    <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-white"></div>
+                    <Loading vCentered={false} />
                 </div>
             )}
         </div>

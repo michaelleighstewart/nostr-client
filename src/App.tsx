@@ -87,7 +87,7 @@ function App() {
             <Route index element={<Home keyValue={key} pool={pool} nostrExists={nostrExists} />}></Route>
             <Route path="edit-profile" element={<EditProfile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="profile" element={<Profile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
-            <Route path="generate-key" element={<GenerateKey setKeyValue={handleSetKey} />} />
+            <Route path="generate-key" element={<GenerateKey setKeyValue={handleSetKey} keyValue={key} />} />
             <Route path="people-to-follow" element={<PeopleToFollow keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="followers/:pubkey" element={<Followers keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="following/:pubkey" element={<Following pool={pool} />} />
