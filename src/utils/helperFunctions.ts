@@ -167,3 +167,19 @@ export async function deletePost(id: string, pool: SimplePool | null, nostrExist
     success: false,
   }
 }
+
+export function validatePrivateKey(key: string): boolean {
+  try {
+    if (!key.startsWith('nsec1')) {
+      return false;
+    }
+    const { prefix, words } = bech32.decode(key);
+    if (prefix !== 'nsec') {
+      return false;
+    }
+    const data = Buffer.from(bech32.fromWords(words));
+    return data.length === 32;
+  } catch (error) {
+    return false;
+  }
+}
