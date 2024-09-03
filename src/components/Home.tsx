@@ -42,8 +42,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [posting, setPosting] = useState(false);
     const [message, setMessage] = useState('');
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(props.nostrExists || !!props.keyValue);
-    const [noResults, setNoResults] = useState(false);
-    //const [dataFetched, setDataFetched] = useState(false);
 
     useEffect(() => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);
@@ -94,8 +92,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         setLoading(true);
         setError(null);
         setEvents([]);
-        //setDataFetched(false);
-        
         const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
         let filter;
 
@@ -113,7 +109,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           {
             onevent(event: Event) {
               if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
-                setNoResults(false);
                 const extendedEvent: ExtendedEvent = {
                   ...event,
                   id: event.id,
@@ -150,10 +145,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               }
             },
             oneose() {
-              //setDataFetched(true);
-              if (events.length === 0) {
-                setNoResults(true);
-              }
               setLoading(false);
             }
           }
