@@ -14,7 +14,7 @@ interface Props {
     created_at: number;
     hashtags: string[];
     pool: SimplePool | null;
-    nostrExists: boolean;
+    nostrExists: boolean | null;
     reactions: Reaction[];
     keyValue: string;
     deleted: boolean | undefined;

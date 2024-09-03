@@ -86,7 +86,7 @@ export async function sendZap(user: User, id: string) {
 }
 
 //NIP-25: https://github.com/nostr-protocol/nips/blob/master/25.md
-export async function reactToPost(user: User, id: string, pool: SimplePool | null, nostrExists: boolean, reaction: string, publicKey: string | null, keyValue: string | null): Promise<Reaction | null> {
+export async function reactToPost(user: User, id: string, pool: SimplePool | null, nostrExists: boolean | null, reaction: string, publicKey: string | null, keyValue: string | null): Promise<Reaction | null> {
   const event = {
     kind: 7,
     created_at: Math.floor(Date.now() / 1000),
@@ -129,7 +129,7 @@ export async function reactToPost(user: User, id: string, pool: SimplePool | nul
 }
 
 //NIP-09: https://github.com/nostr-protocol/nips/blob/master/09.md
-export async function deletePost(id: string, pool: SimplePool | null, nostrExists: boolean, keyValue: string | null) {
+export async function deletePost(id: string, pool: SimplePool | null, nostrExists: boolean | null, keyValue: string | null) {
   const event = {
     kind: 5,
     created_at: Math.floor(Date.now() / 1000),

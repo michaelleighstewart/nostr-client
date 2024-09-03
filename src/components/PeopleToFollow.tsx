@@ -9,7 +9,7 @@ import { UserCircleIcon } from '@heroicons/react/24/solid';
 interface PeopleToFollowProps {
     keyValue: string;
     pool: SimplePool | null;
-    nostrExists: boolean;
+    nostrExists: boolean | null;
 }
 
 interface Person {

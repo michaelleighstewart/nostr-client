@@ -12,7 +12,7 @@ interface ProfileProps {
     npub?: string;
     keyValue: string;
     pool: SimplePool | null;
-    nostrExists: boolean;
+    nostrExists: boolean | null;
 }
 
 interface ProfileData {

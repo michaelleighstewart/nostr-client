@@ -9,7 +9,7 @@ import Loading from "./Loading";
 interface EditProfileProps {
     keyValue: string;
     pool: SimplePool | null;
-    nostrExists: boolean;
+    nostrExists: boolean | null;
 }
 export interface Metadata {
     name?: string;

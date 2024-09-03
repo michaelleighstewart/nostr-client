@@ -8,7 +8,7 @@ interface Props {
     notes: ExtendedEvent[];
     metadata: Record<string, Metadata>;
     pool: SimplePool | null;
-    nostrExists: boolean;
+    nostrExists: boolean | null;
     reactions: Record<string, Reaction[]>;
     keyValue: string;
 }

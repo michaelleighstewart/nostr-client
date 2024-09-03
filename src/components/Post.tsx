@@ -8,7 +8,7 @@ import { User, bech32Decoder } from '../utils/helperFunctions';
 
 interface PostProps {
   pool: SimplePool | null;
-  nostrExists: boolean;
+  nostrExists: boolean | null;
   keyValue: string;
 }
 

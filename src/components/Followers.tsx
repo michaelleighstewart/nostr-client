@@ -7,7 +7,7 @@ import Loading from "./Loading";
 interface FollowersProps {
     keyValue: string;
     pool: SimplePool | null;
-    nostrExists: boolean;
+    nostrExists: boolean | null;
 }
 
 interface FollowerData {

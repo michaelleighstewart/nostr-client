@@ -6,38 +6,36 @@ import { HomeIcon, UserIcon, CogIcon, KeyIcon, UserGroupIcon, MagnifyingGlassIco
 interface NavBarProps {
   keyValue: string;
   setKey: (val: string) => void;
+  nostrExists: boolean | null;
 }
 
 const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
-  const [nostrExists, setNostrExists] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(true);
   const location = useLocation();
 
   useEffect(() => {
-    const checkNostrAvailability = () => {
-      if ((window as any).nostr) {
-        setNostrExists(true);
-        clearInterval(nostrCheckInterval);
+    if (props.nostrExists !== null) {
+      setIsLoggedIn(props.nostrExists || !!props.keyValue);
+    }
+    else {
+      if (props.nostrExists === false) {
+        setIsLoggedIn(props.keyValue !== "");
       }
-    };
-
-    const nostrCheckInterval = setInterval(checkNostrAvailability, 100);
-
-    return () => {
-      clearInterval(nostrCheckInterval);
-    };
-  }, [props.keyValue]);
+    }
+  }, [props.nostrExists, props.keyValue]);
 
   const isActive = (path: string) => {
     return location.pathname === path ? "text-white" : "";
   };
 
-  const isDisabled = !nostrExists && !props.keyValue;
+  const isDisabled = !props.nostrExists && !props.keyValue;
+  const isHomePage = location.pathname === '/';
 
   return (
-    <div className="sticky top-0 w-full h-200">
-      <nav>
-        <ul>
-          <li>
+    <div className="inset-0 flex flex-col items-center">
+      <nav className="w-full max-w-4xl">
+        <ul className="flex flex-col items-center">
+          <li className="w-full px-4">
             <div>
               <label htmlFor="private_key" 
                 className="block mb-2 text-sm font-medium text-white">Private Key: </label>
@@ -45,9 +43,9 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
                 value={props.keyValue}
                 type="password" 
                 id="private_key" 
-                className={nostrExists ? "text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 disabled" : "text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"} 
-                placeholder={nostrExists ? "Key detected" : "nsec..."}
-                disabled={nostrExists}
+                className="text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                placeholder={props.nostrExists ? "Key detected" : "nsec..."}
+                disabled={props.nostrExists ?? false}
                 onChange={(e) => props.setKey(e.target.value)} 
               />
             </div>
@@ -85,6 +83,19 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
             </li>
           </div>
         </ul>
+        {!isLoggedIn && isHomePage && (
+          <div className="fixed inset-0 flex items-center justify-center pt-[150px]">
+            <div className="fixed inset-0 bg-black opacity-50 pointer-events-none"></div>
+            <div className="z-10 flex flex-col items-center justify-center">
+              <div className="mb-8">
+                <Link to="/generate-key" className="bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded inline-block">
+                  Sign Up / Sign In
+                </Link>
+              </div>
+              <img src="/ostrich.png" alt="Ostrich" className="max-w-full max-h-full" />
+            </div>
+          </div>
+        )}
       </nav>
 
       <Outlet />
