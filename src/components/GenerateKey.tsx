@@ -56,7 +56,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue }) => {
                     <div className="pb-24">
                         <button
                             onClick={handleLogin}
-                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded"
                         >
                             Login
                         </button>

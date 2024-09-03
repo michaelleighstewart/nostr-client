@@ -35,39 +35,40 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
 
         const fetchProfileDataAndPosts = async () => {
             setLoading(true);
+            setPosts([]); // Clear previous posts
+            setProfileData(null); // Clear previous profile data
             if (!pool) return;
 
             let fetchedPubkey: string;
             if (targetNpub) {
-                //fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
-                fetchedPubkey = targetNpub;
+                fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
             } else if (nostrExists) {
                 fetchedPubkey = await (window as any).nostr.getPublicKey();
             } else {
                 const skDecoded = bech32Decoder("nsec", keyValue);
                 fetchedPubkey = getPublicKey(skDecoded);
             }
-            //setPubkey(fetchedPubkey);
+            setPubkey(fetchedPubkey);
 
             // Fetch profile metadata
-            pool.subscribeMany(
+            const metadataSub = pool.subscribeMany(
                 RELAYS,
                 [{ kinds: [0], authors: [fetchedPubkey] }],
                 {
                     onevent(event) {
                         console.log("Metadata event", event);
                         const metadata = JSON.parse(event.content) as ProfileData;
-                        setPubkey(fetchedPubkey);
                         setProfileData(metadata);
                     },
                     oneose() {
                         console.log("Metadata subscription closed");
+                        metadataSub.close();
                     }
                 }
             );
 
             // Fetch recent posts
-            pool.subscribeMany(
+            const postsSub = pool.subscribeMany(
                 RELAYS,
                 [{ kinds: [1], authors: [fetchedPubkey], limit: 20 }],
                 {
@@ -78,6 +79,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                     oneose() {
                         console.log("Posts subscription closed");
                         setLoading(false);
+                        postsSub.close();
                     }
                 }
             );

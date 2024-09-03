@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SimplePool, Event } from 'nostr-tools';
 import { useParams } from 'react-router-dom';
 import NoteCard from './NoteCard';
-import { Reaction } from './Home'; // Assuming Reaction type is defined in Home.tsx
+import { Reaction } from './Home';
 import { RELAYS } from '../utils/constants';
 import { User } from '../utils/helperFunctions';
 
