@@ -118,13 +118,13 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     const handleFollow = async () => {
         if (!pool) return;
 
-        let currentUserPubkey: string;
+        /*let currentUserPubkey: string;
         if (nostrExists) {
             currentUserPubkey = await (window as any).nostr.getPublicKey();
         } else {
             const skDecoded = bech32Decoder("nsec", keyValue);
             currentUserPubkey = getPublicKey(skDecoded);
-        }
+        }*/
 
         const event = {
             kind: 3,
