@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { SimplePool, Event } from "nostr-tools";
 import { useLocation, Link } from "react-router-dom";
 import { bech32Decoder } from "../utils/helperFunctions";
-import { getPublicKey } from "nostr-tools";
+import { getPublicKey, finalizeEvent } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import NoteCard from "./NoteCard";
@@ -26,6 +26,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     const [posts, setPosts] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
     const [pubkey, setPubkey] = useState<string>('');
+    const [isFollowing, setIsFollowing] = useState(false);
     const location = useLocation();
 
     useEffect(() => {
@@ -40,6 +41,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             if (!pool) return;
 
             let fetchedPubkey: string;
+            let currentUserPubkey: string;
             if (targetNpub) {
                 fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
             } else if (nostrExists) {
@@ -49,6 +51,31 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                 fetchedPubkey = getPublicKey(skDecoded);
             }
             setPubkey(fetchedPubkey);
+
+            // Get current user's pubkey
+            if (nostrExists) {
+                currentUserPubkey = await (window as any).nostr.getPublicKey();
+            } else {
+                const skDecoded = bech32Decoder("nsec", keyValue);
+                currentUserPubkey = getPublicKey(skDecoded);
+            }
+
+            // Check if current user is following the profile
+            const followingSub = pool.subscribeMany(
+                RELAYS,
+                [{ kinds: [3], authors: [currentUserPubkey] }],
+                {
+                    onevent(event) {
+                        const followedPubkeys = event.tags
+                            .filter(tag => tag[0] === 'p')
+                            .map(tag => tag[1]);
+                        setIsFollowing(followedPubkeys.includes(fetchedPubkey));
+                    },
+                    oneose() {
+                        followingSub.close();
+                    }
+                }
+            );
 
             // Fetch profile metadata
             const metadataSub = pool.subscribeMany(
@@ -88,6 +115,36 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
         fetchProfileDataAndPosts();
     }, [npub, keyValue, pool, nostrExists, location]);
 
+    const handleFollow = async () => {
+        if (!pool) return;
+
+        let currentUserPubkey: string;
+        if (nostrExists) {
+            currentUserPubkey = await (window as any).nostr.getPublicKey();
+        } else {
+            const skDecoded = bech32Decoder("nsec", keyValue);
+            currentUserPubkey = getPublicKey(skDecoded);
+        }
+
+        const event = {
+            kind: 3,
+            created_at: Math.floor(Date.now() / 1000),
+            tags: [['p', pubkey]],
+            content: '',
+        };
+
+        if (nostrExists) {
+            const signedEvent = await (window as any).nostr.signEvent(event);
+            await pool.publish(RELAYS, signedEvent);
+        } else {
+            const skDecoded = bech32Decoder("nsec", keyValue);
+            const signedEvent = finalizeEvent(event, skDecoded);
+            await pool.publish(RELAYS, signedEvent);
+        }
+
+        setIsFollowing(true);
+    };
+
     if (loading) {
         return <Loading vCentered={false} />;
     }
@@ -101,6 +158,14 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                     <div className="mt-4">
                         <Link to={`/followers/${pubkey}`} className="mr-4">Followers</Link>
                         <Link to={`/following/${pubkey}`}>Following</Link>
+                        {!isFollowing && (
+                            <button
+                                onClick={handleFollow}
+                                className="ml-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                            >
+                                Follow
+                            </button>
+                        )}
                     </div>
                 </div>
             ) : (

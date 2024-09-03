@@ -60,6 +60,9 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
             <li className="inline-block mr-4 text-center pr-24 text-base">
               <Link to="/people-to-follow">Follow</Link>
             </li>
+            <li className="inline-block mr-4 text-center pr-24 text-base">
+              <Link to="/search">Search</Link>
+            </li>
           </div>
         </ul>
       </nav>

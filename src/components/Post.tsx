@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { SimplePool, Event } from 'nostr-tools';
+import { SimplePool, Event, getPublicKey } from 'nostr-tools';
 import { useParams } from 'react-router-dom';
 import NoteCard from './NoteCard';
 import { Reaction } from './Home';
 import { RELAYS } from '../utils/constants';
-import { User } from '../utils/helperFunctions';
+import { User, bech32Decoder } from '../utils/helperFunctions';
 
 interface PostProps {
   pool: SimplePool | null;
+  nostrExists: boolean;
+  keyValue: string;
 }
 
 interface Reply {
@@ -19,11 +21,12 @@ interface Reply {
   reactions: Reaction[];
 }
 
-const Post: React.FC<PostProps> = ({ pool }) => {
+const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   const { id } = useParams<{ id: string }>();
   const [post, setPost] = useState<Reply | null>(null);
   const [replies, setReplies] = useState<Reply[]>([]);
   const [loading, setLoading] = useState(true);
+  const [replyContent, setReplyContent] = useState('');
 
   useEffect(() => {
     if (!pool || !id) return;
@@ -67,6 +70,39 @@ const Post: React.FC<PostProps> = ({ pool }) => {
     };
   }, [id, pool]);
 
+  const handleReply = async () => {
+    if (!pool || !id || !replyContent.trim()) return;
+
+    const replyEvent = {
+      kind: 1,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [['e', id]],
+      content: replyContent,
+    };
+
+    try {
+      let signedEvent;
+      if (nostrExists) {
+        signedEvent = await (window as any).nostr.signEvent(replyEvent);
+      } else {
+        const skDecoded = bech32Decoder('nsec', keyValue);
+        const publicKey = getPublicKey(skDecoded);
+        signedEvent = {
+          ...replyEvent,
+          pubkey: publicKey,
+          id: '',
+          sig: '',
+        };
+      }
+
+      await pool.publish(RELAYS, signedEvent);
+      setReplyContent('');
+      // Optionally, you can add the new reply to the replies state here
+    } catch (error) {
+      console.error('Failed to post reply:', error);
+    }
+  };
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -84,11 +120,25 @@ const Post: React.FC<PostProps> = ({ pool }) => {
         created_at={post.created_at}
         hashtags={post.hashtags}
         pool={pool}
-        nostrExists={true}
+        nostrExists={nostrExists}
         reactions={post.reactions}
-        keyValue=""
+        keyValue={keyValue}
         deleted={false}
       />
+      <div className="mt-4">
+        <textarea
+          value={replyContent}
+          onChange={(e) => setReplyContent(e.target.value)}
+          placeholder="Write your reply..."
+          className="w-full p-2 border rounded text-black"
+        />
+        <button
+          onClick={handleReply}
+          className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Reply
+        </button>
+      </div>
       <h2 className="text-xl font-bold mt-6 mb-4">Replies</h2>
       {replies.map(reply => (
         <NoteCard
@@ -99,9 +149,9 @@ const Post: React.FC<PostProps> = ({ pool }) => {
           created_at={reply.created_at}
           hashtags={reply.hashtags}
           pool={pool}
-          nostrExists={true}
+          nostrExists={nostrExists}
           reactions={reply.reactions}
-          keyValue=""
+          keyValue={keyValue}
           deleted={false}
         />
       ))}
