@@ -37,10 +37,13 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const metadataFetched = useRef<Record<string, boolean>>({});
     const reactionsFetched = useRef<Record<string, boolean>>({});
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [posting, setPosting] = useState(false);
     const [message, setMessage] = useState('');
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(props.nostrExists || !!props.keyValue);
+    const [lastFetchedTimestamp, setLastFetchedTimestamp] = useState<number>(Math.floor(Date.now() / 1000));
+    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
     useEffect(() => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);
@@ -86,20 +89,22 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       });
     }
 
-    const fetchData = async (pool: SimplePool) => {
+    const fetchData = async (pool: SimplePool, since: number, append: boolean = false) => {
       try {
-        setLoading(true);
+        if (!append) {
+          setLoading(true);
+        } else {
+          setLoadingMore(true);
+        }
         setError(null);
-        setEvents([]);
-        const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
         let filter;
 
         // Always get the followers if logged in
         if (isLoggedIn) {
           const followers = await getFollowers(pool);
-          filter = { kinds: [1], since: oneDayAgo, authors: followers };
+          filter = { kinds: [1], since: since, until: lastFetchedTimestamp, authors: followers };
         } else {
-          filter = { kinds: [1], since: oneDayAgo, limit: 100 }; // Limit to 100 posts for non-logged in users
+          filter = { kinds: [1], since: since, until: lastFetchedTimestamp, limit: 100 }; // Limit to 100 posts for non-logged in users
         }
   
         const subPosts = pool.subscribeMany(
@@ -145,6 +150,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             },
             oneose() {
               setLoading(false);
+              setLoadingMore(false);
+              setLastFetchedTimestamp(since);
+              setInitialLoadComplete(true);
             }
           }
         );
@@ -157,13 +165,14 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         console.error("Error fetching data: ", error);
         setError("An error occurred while fetching posts. Please try again later.");
         setLoading(false);
-        //setDataFetched(true);
+        setLoadingMore(false);
       }
     };
 
     useEffect(() => {
       if (!props.pool) return;
-      fetchData(props.pool);
+      const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
+      fetchData(props.pool, oneDayAgo);
     }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn]);
  
     useEffect(() => {
@@ -285,7 +294,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         toast.success("Post sent successfully!");
         // Refresh the list of posts
         if (props.pool) {
-          await fetchData(props.pool);
+          const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
+          await fetchData(props.pool, oneDayAgo);
         }
       } catch (error) {
         console.error("Error sending message: ", error);
@@ -294,6 +304,13 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         setPosting(false);
       }
     }
+
+    const loadMore = async () => {
+      if (!props.pool) return;
+      setLoadingMore(true);
+      const oneDayBefore = lastFetchedTimestamp - 24 * 60 * 60;
+      await fetchData(props.pool, oneDayBefore, true);
+    };
 
     return (
       <div className="py-16 pt-150">
@@ -327,6 +344,20 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
          : (
           <div className={`pt-32 relative ${!isLoggedIn ? 'pointer-events-none opacity-50' : ''}`}>
             <NotesList metadata={metadata} reactions={reactions} notes={events} pool={props.pool} nostrExists={props.nostrExists} keyValue={props.keyValue} />
+            {initialLoadComplete && events.length > 0 && isLoggedIn && (
+              <div className="mt-8 mb-8 text-center">
+                {loadingMore ? (
+                  <Loading vCentered={false} />
+                ) : (
+                  <button 
+                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded"
+                    onClick={loadMore}
+                  >
+                    Load More
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
