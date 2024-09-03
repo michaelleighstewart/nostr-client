@@ -3,6 +3,8 @@ import NoteCard from "./NoteCard";
 import { Metadata, Reaction } from "./Home";
 import { SimplePool } from "nostr-tools";
 import { ExtendedEvent } from "../utils/helperFunctions";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
     notes: ExtendedEvent[];
@@ -14,6 +16,27 @@ interface Props {
 }
 
 export default function NotesList({ notes, metadata, pool, nostrExists, reactions, keyValue } : Props) {
+    const [visibleNotes, setVisibleNotes] = useState<ExtendedEvent[]>([]);
+    const isLoggedIn = nostrExists || !!keyValue;
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (isLoggedIn) {
+                setVisibleNotes(notes);
+            } else {
+                // When not logged in, only show the most recent 10 notes
+                setVisibleNotes(prevNotes => {
+                    const newNotes = notes.slice(0, 10);
+                    // Find new notes that are not in the previous visible notes
+                    const addedNotes = newNotes.filter(note => !prevNotes.some(prevNote => prevNote.id === note.id));
+                    // Combine new notes with previous notes, keeping only the most recent 10
+                    return [...addedNotes, ...prevNotes].slice(0, 10);
+                });
+            }
+        }, 100);
+        return () => clearTimeout(timer);
+    }, [notes, isLoggedIn, keyValue, nostrExists]);
+
     if (notes.length === 0) {
         return (
             <div className="flex flex-col gap-16">
@@ -23,29 +46,38 @@ export default function NotesList({ notes, metadata, pool, nostrExists, reaction
     }
     return (
         <div className="flex flex-col gap-16">
-            {notes.map((note) => (
-                <NoteCard
-                key={`${note.id}-${note.deleted}`}
-                id={note.id}
-                created_at={note.created_at}
-                user={{
-                    name:
-                      metadata[note.pubkey]?.name ??
-                      `${nip19.npubEncode(note.pubkey).slice(0, 12)}...`,
-                    image:
-                      metadata[note.pubkey]?.picture,
-                    pubkey: note.pubkey,
-                    nip05: metadata[note.pubkey]?.nip05
-                  }}
-                content={note.content}
-                hashtags={note.tags.filter((t) => t[0] === "t").map((t) => t[1])}
-                pool={pool}
-                nostrExists={nostrExists}
-                reactions={reactions[note.id]}
-                keyValue={keyValue}
-                deleted={note.deleted}
-                />
-            ))}
+            <AnimatePresence>
+                {visibleNotes.map((note, index) => (
+                    <motion.div
+                        key={`${note.id}-${note.deleted}`}
+                        initial={{ opacity: 0, y: 50 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -50 }}
+                        transition={{ duration: 0.5, delay: index * 0.1 }}
+                    >
+                        <NoteCard
+                            id={note.id}
+                            created_at={note.created_at}
+                            user={{
+                                name:
+                                    metadata[note.pubkey]?.name ??
+                                    `${nip19.npubEncode(note.pubkey).slice(0, 12)}...`,
+                                image:
+                                    metadata[note.pubkey]?.picture,
+                                pubkey: note.pubkey,
+                                nip05: metadata[note.pubkey]?.nip05
+                            }}
+                            content={note.content}
+                            hashtags={note.tags.filter((t) => t[0] === "t").map((t) => t[1])}
+                            pool={pool}
+                            nostrExists={nostrExists}
+                            reactions={reactions[note.id]}
+                            keyValue={keyValue}
+                            deleted={note.deleted}
+                        />
+                    </motion.div>
+                ))}
+            </AnimatePresence>
         </div>
     )
 }

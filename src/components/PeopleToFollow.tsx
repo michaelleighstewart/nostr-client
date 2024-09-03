@@ -5,6 +5,7 @@ import { bech32Decoder } from "../utils/helperFunctions";
 import Loading from "./Loading";
 import { Link } from "react-router-dom";
 import { UserCircleIcon } from '@heroicons/react/24/solid';
+import { motion, AnimatePresence } from "framer-motion";
 
 interface PeopleToFollowProps {
     keyValue: string;
@@ -31,6 +32,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     const hashtags = ["bitcoin", "btc", "nostr", "crypto", "food", "travel"];
     const carouselRef = useRef<HTMLDivElement>(null);
     const contentRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const [showOstrich, setShowOstrich] = useState(false);
 
     async function getCurrentUserPubkey() {
         if (props.nostrExists) {
@@ -164,7 +166,13 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
             let eventFinal = finalizeEvent(event, skDecoded);
             await props.pool?.publish(RELAYS, eventFinal);
         }
-        setFollowingList(prev => [...prev, nip19.decode(person.npub).data as string]);
+        setFollowingList(prev => {
+            const newFollowingList = [...prev, nip19.decode(person.npub).data as string];
+            if (prev.length === 0 && newFollowingList.length === 1) {
+                setShowOstrich(true);
+            }
+            return newFollowingList;
+        });
         setPeopleToFollow(prev => prev.map(p => p.npub === person.npub ? { ...p, loadingFollowing: false } : p));
     };
 
@@ -282,6 +290,42 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                     </div>
                 </div>
             )}
+            <AnimatePresence>
+                {showOstrich && (
+                    <motion.div
+                        initial={{ y: "100%" }}
+                        animate={{ y: 0 }}
+                        exit={{ y: "100%" }}
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                        className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+                        onClick={() => setShowOstrich(false)}
+                    >
+                        <div className="relative">
+                            <img src="/ostrich.png" alt="Ostrich" className="max-w-full max-h-full" />
+                            <div className="absolute top-0 left-full ml-4 p-32 bg-white rounded-lg shadow-lg speech-bubble">
+                                <p className="text-black">
+                                    Congratulations on following your first user! Now, go{' '}
+                                    <Link to="/" className="text-blue-500 hover:underline">
+                                        publish your first note!
+                                    </Link>
+                                </p>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            <style>{`
+                .speech-bubble::before {
+                    content: '';
+                    position: absolute;
+                    left: -20px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    border-width: 10px;
+                    border-style: solid;
+                    border-color: transparent white transparent transparent;
+                }
+            `}</style>
         </div>
     );
 }
