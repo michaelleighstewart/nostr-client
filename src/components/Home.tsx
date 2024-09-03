@@ -9,6 +9,7 @@ import { getPublicKey, finalizeEvent } from 'nostr-tools';
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import { toast } from 'react-toastify';
+import { Link } from 'react-router-dom';
 
 interface HomeProps {
   keyValue: string;
@@ -40,8 +41,15 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [error, setError] = useState<string | null>(null);
     const [posting, setPosting] = useState(false);
     const [message, setMessage] = useState('');
+    const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+
+    useEffect(() => {
+      setIsLoggedIn(props.nostrExists || !!props.keyValue);
+    }, [props.nostrExists, props.keyValue]);
 
     async function getFollowers(pool: SimplePool): Promise<string[]> {
+      if (!isLoggedIn) return [];
+      
       let pk: string = "";
       let followers: string[] = [];
       if (props.nostrExists) { 
@@ -85,14 +93,20 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         setError(null);
         setEvents([]);
         
-        // First, get the followers
-        const followers = await getFollowers(pool);
-  
-        // Then subscribe to posts
         const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
+        let filter;
+
+        if (isLoggedIn) {
+          // First, get the followers
+          const followers = await getFollowers(pool);
+          filter = { kinds: [1], since: oneDayAgo, authors: followers };
+        } else {
+          filter = { kinds: [1], since: oneDayAgo };
+        }
+  
         const subPosts = pool.subscribeMany(
           RELAYS, 
-          [{ kinds: [1], since: oneDayAgo, authors: followers }],
+          [filter],
           {
             onevent(event: Event) {
               if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
@@ -151,7 +165,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     useEffect(() => {
       if (!props.pool) return;
       fetchData(props.pool);
-    }, [props.pool, props.keyValue]);
+    }, [props.pool, props.keyValue, props.nostrExists]);
  
     useEffect(() => {
       if (!props.pool) return;
@@ -284,26 +298,35 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
 
     return (
       <div className="py-64">
-        <div>
-          <div className="pb-2">
-            <input type="text" id="message" 
-              className="w-full text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-              placeholder="What is happening?!" required
-              value={message}
-              onChange={(e) => setMessage(e.target.value)} />
+        {isLoggedIn === false && (
+          <div className="mb-8 text-center">
+            <Link to="/generate-key" className="bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded">
+              Sign Up
+            </Link>
           </div>
-          <div className="h-64">
-            <div className="float-right">
-              <button 
-                className={posting ? "bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded opacity-50 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded"}
-                onClick={sendMessage}
-                disabled={posting}
-              >
-                {posting ? 'Posting...' : 'Post'}
-              </button>
+        )}
+        {isLoggedIn && (
+          <div>
+            <div className="pb-2">
+              <input type="text" id="message" 
+                className="w-full text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                placeholder="What is happening?!" required
+                value={message}
+                onChange={(e) => setMessage(e.target.value)} />
+            </div>
+            <div className="h-64">
+              <div className="float-right">
+                <button 
+                  className={posting ? "bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded opacity-50 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded"}
+                  onClick={sendMessage}
+                  disabled={posting}
+                >
+                  {posting ? 'Posting...' : 'Post'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
         {events.length === 0 && !loading && !error && (
           <div className="text-gray-500 text-center mt-4">No posts yet.</div>
         )}
