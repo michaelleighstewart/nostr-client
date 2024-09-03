@@ -5,6 +5,7 @@ import NoteCard from './NoteCard';
 import { Reaction } from './Home';
 import { RELAYS } from '../utils/constants';
 import { User, bech32Decoder } from '../utils/helperFunctions';
+import Loading from './Loading';
 
 interface PostProps {
   pool: SimplePool | null;
@@ -104,7 +105,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <Loading vCentered={false} />;
   }
 
   if (!post) {
