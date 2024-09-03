@@ -41,7 +41,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [error, setError] = useState<string | null>(null);
     const [posting, setPosting] = useState(false);
     const [message, setMessage] = useState('');
-    const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+    const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(props.nostrExists || !!props.keyValue);
 
     useEffect(() => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);
@@ -96,12 +96,12 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
         let filter;
 
+        // Always get the followers if logged in
         if (isLoggedIn) {
-          // First, get the followers
           const followers = await getFollowers(pool);
           filter = { kinds: [1], since: oneDayAgo, authors: followers };
         } else {
-          filter = { kinds: [1], since: oneDayAgo };
+          filter = { kinds: [1], since: oneDayAgo, limit: 100 }; // Limit to 100 posts for non-logged in users
         }
   
         const subPosts = pool.subscribeMany(
@@ -165,7 +165,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     useEffect(() => {
       if (!props.pool) return;
       fetchData(props.pool);
-    }, [props.pool, props.keyValue, props.nostrExists]);
+    }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn]);
  
     useEffect(() => {
       if (!props.pool) return;
