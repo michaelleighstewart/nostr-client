@@ -74,7 +74,7 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
                   className="block mb-2 text-sm font-medium text-white">Private Key: </label>
                 <input 
                   value={props.keyValue}
-                  type="text" 
+                  type="password" 
                   id="private_key" 
                   className="text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                   placeholder={props.nostrExists ? "Key detected" : "nsec..."}
