@@ -42,6 +42,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [posting, setPosting] = useState(false);
     const [message, setMessage] = useState('');
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(props.nostrExists || !!props.keyValue);
+    const [noResults, setNoResults] = useState(false);
+    //const [dataFetched, setDataFetched] = useState(false);
 
     useEffect(() => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);
@@ -92,6 +94,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         setLoading(true);
         setError(null);
         setEvents([]);
+        //setDataFetched(false);
         
         const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
         let filter;
@@ -110,6 +113,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           {
             onevent(event: Event) {
               if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
+                setNoResults(false);
                 const extendedEvent: ExtendedEvent = {
                   ...event,
                   id: event.id,
@@ -146,6 +150,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               }
             },
             oneose() {
+              //setDataFetched(true);
+              if (events.length === 0) {
+                setNoResults(true);
+              }
               setLoading(false);
             }
           }
@@ -159,6 +167,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         console.error("Error fetching data: ", error);
         setError("An error occurred while fetching posts. Please try again later.");
         setLoading(false);
+        //setDataFetched(true);
       }
     };
 
@@ -327,18 +336,15 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             </div>
           </div>
         )}
-        {events.length === 0 && !loading && !error && (
-          <div className="text-gray-500 text-center mt-4">No posts yet.</div>
-        )}
         {loading ? (
           <Loading vCentered={false} />
         ) : error ? (
           <div className="text-red-500 text-center mt-4">{error}</div>
-        ) : (
-          events.length > 0 && (
+        ) 
+         : (
           <div className="pt-32">
             <NotesList metadata={metadata} reactions={reactions} notes={events} pool={props.pool} nostrExists={props.nostrExists} keyValue={props.keyValue} />
-          </div>)
+          </div>
         )}
       </div>
     )
