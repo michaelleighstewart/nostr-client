@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SimplePool, nip19 } from 'nostr-tools';
 import { Link } from 'react-router-dom';
 import { RELAYS } from '../utils/constants';
+import { UserCircleIcon } from '@heroicons/react/24/solid';
 
 interface SearchProps {
   pool: SimplePool | null;
@@ -61,7 +62,7 @@ const Search: React.FC<SearchProps> = ({ pool }) => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Enter npub"
-          className="flex-grow p-2 border rounded-l"
+          className="flex-grow p-2 border rounded-l text-black"
         />
         <button
           onClick={handleSearch}
@@ -77,11 +78,15 @@ const Search: React.FC<SearchProps> = ({ pool }) => {
             to={`/profile?npub=${result.npub}`}
             className="block p-4 border rounded hover:shadow-md transition-shadow"
           >
-            <img
-              src={result.picture || 'default-avatar.png'}
-              alt={result.name || 'Profile'}
-              className="w-20 h-20 rounded-full mx-auto mb-2"
-            />
+            {result.picture ? (
+              <img
+                src={result.picture}
+                alt={result.name || 'Profile'}
+                className="w-20 h-20 rounded-full mx-auto mb-2"
+              />
+            ) : (
+              <UserCircleIcon className="w-20 h-20 text-gray-400 mx-auto mb-2" />
+            )}
             <p className="text-center font-semibold">{result.name || 'Unknown'}</p>
           </Link>
         ))}

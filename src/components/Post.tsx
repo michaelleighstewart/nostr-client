@@ -125,7 +125,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         keyValue={keyValue}
         deleted={false}
       />
-      <div className="mt-4">
+      <div className="mt-8 p-16 rounded-lg">
         <textarea
           value={replyContent}
           onChange={(e) => setReplyContent(e.target.value)}
@@ -134,7 +134,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         />
         <button
           onClick={handleReply}
-          className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="mt-2 p-12 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
           Reply
         </button>
