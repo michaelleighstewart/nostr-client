@@ -31,6 +31,8 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
     return location.pathname === path ? "text-white" : "";
   };
 
+  const isDisabled = !nostrExists && !props.keyValue;
+
   return (
     <div className="sticky top-0 w-full h-200">
       <nav>
@@ -57,12 +59,12 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
               </Link>
             </li>
             <li className="inline-block mx-4 text-center pr-16">
-              <Link to="/profile" className={`flex flex-col items-center ${isActive("/profile")}`}>
+              <Link to="/profile" className={`flex flex-col items-center ${isActive("/profile")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
                 <UserIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
             <li className="inline-block mx-4 text-center pr-16">
-              <Link to="/edit-profile" className={`flex flex-col items-center ${isActive("/edit-profile")}`}>
+              <Link to="/edit-profile" className={`flex flex-col items-center ${isActive("/edit-profile")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
                 <CogIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
@@ -72,12 +74,12 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
               </Link>
             </li>
             <li className="inline-block mx-4 text-center pr-16">
-              <Link to="/people-to-follow" className={`flex flex-col items-center ${isActive("/people-to-follow")}`}>
+              <Link to="/people-to-follow" className={`flex flex-col items-center ${isActive("/people-to-follow")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
                 <UserGroupIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
             <li className="inline-block mx-4 text-center pr-16">
-              <Link to="/search" className={`flex flex-col items-center ${isActive("/search")}`}>
+              <Link to="/search" className={`flex flex-col items-center ${isActive("/search")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
                 <MagnifyingGlassIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
