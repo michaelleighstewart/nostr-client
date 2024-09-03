@@ -185,6 +185,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
   
       // Fetch current user's metadata
       const fetchUserMetadata = () => {
+        let ogUserFound = false;
         const subUserMeta = props.pool?.subscribeMany(RELAYS, [
           {
             kinds: [0],
@@ -200,12 +201,15 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             }));
             if (!metadata.name) {
               setShowOstrich(true);
+              ogUserFound = false;
+            }
+            else {
+              ogUserFound = true;
             }
           },
           oneose() {
             subUserMeta?.close();
-            // If no metadata event was received, show the ostrich
-            if (!metadata[userPublicKey]) {
+            if (!ogUserFound) {
               setShowOstrich(true);
             }
           }
