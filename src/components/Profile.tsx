@@ -6,6 +6,7 @@ import { getPublicKey, finalizeEvent } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import NoteCard from "./NoteCard";
+import { UserGroupIcon, UsersIcon, UserPlusIcon } from '@heroicons/react/24/outline';
 
 interface ProfileProps {
     npub?: string;
@@ -83,12 +84,10 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                 [{ kinds: [0], authors: [fetchedPubkey] }],
                 {
                     onevent(event) {
-                        console.log("Metadata event", event);
                         const metadata = JSON.parse(event.content) as ProfileData;
                         setProfileData(metadata);
                     },
                     oneose() {
-                        console.log("Metadata subscription closed");
                         metadataSub.close();
                     }
                 }
@@ -100,11 +99,9 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                 [{ kinds: [1], authors: [fetchedPubkey], limit: 20 }],
                 {
                     onevent(event) {
-                        console.log("Post event", event);
                         setPosts(prevPosts => [...prevPosts, event]);
                     },
                     oneose() {
-                        console.log("Posts subscription closed");
                         setLoading(false);
                         postsSub.close();
                     }
@@ -117,14 +114,6 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
 
     const handleFollow = async () => {
         if (!pool) return;
-
-        /*let currentUserPubkey: string;
-        if (nostrExists) {
-            currentUserPubkey = await (window as any).nostr.getPublicKey();
-        } else {
-            const skDecoded = bech32Decoder("nsec", keyValue);
-            currentUserPubkey = getPublicKey(skDecoded);
-        }*/
 
         const event = {
             kind: 3,
@@ -152,27 +141,39 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     return (
         <div className="py-64">
             {profileData ? (
-                <div>
-                    <p>{profileData.picture && <img src={profileData.picture} alt="Profile" className="w-24 h-24 rounded-full" />} {profileData.name}</p>
-                    <p>{profileData.about}</p>
-                    <div className="mt-4">
-                        <Link to={`/followers/${pubkey}`} className="mr-4">Followers</Link>
-                        <Link to={`/following/${pubkey}`}>Following</Link>
-                        {!isFollowing && (
-                            <button
-                                onClick={handleFollow}
-                                className="ml-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                            >
-                                Follow
-                            </button>
-                        )}
+                <div className="flex flex-col items-center">
+                    <div className="flex items-center mb-4">
+                        {profileData.picture && <img src={profileData.picture} alt="Profile" className="w-32 h-32 rounded-full mr-4" />}
+                        <div className="flex items-center">
+                            <h1 className="text-3xl font-bold mr-4 pr-12">{profileData.name}</h1>
+                            {!isFollowing && (
+                                <button
+                                    onClick={handleFollow}
+                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-4 px-12 rounded flex items-center"
+                                >
+                                    <UserPlusIcon className="h-5 w-5 mr-2" />
+                                    Follow
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                    <p className="text-gray-600 mb-4">{profileData.about}</p>
+                    <div className="flex items-center space-x-8 mb-4">
+                        <Link to={`/followers/${pubkey}`} className="flex items-center">
+                            <UserGroupIcon className="h-6 w-6 mr-2" />
+                            <span>Followers</span>
+                        </Link>
+                        <Link to={`/following/${pubkey}`} className="flex items-center">
+                            <UsersIcon className="h-6 w-6 mr-2" />
+                            <span>Following</span>
+                        </Link>
                     </div>
                 </div>
             ) : (
                 <p>No profile data available.</p>
             )}
 
-            <h2 className="mt-8">Recent Posts</h2>
+            <h2 className="text-2xl font-bold mt-8 mb-4">Recent Posts</h2>
             {posts.length > 0 ? (
                 <div className="space-y-4">
                     {posts.map(post => (

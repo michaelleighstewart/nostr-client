@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { SimplePool, finalizeEvent, getPublicKey } from "nostr-tools";
+import { SimplePool, finalizeEvent, getPublicKey, nip19 } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import { bech32Decoder } from "../utils/helperFunctions";
 import Loading from "./Loading";
+import { Link } from "react-router-dom";
+import { UserCircleIcon } from '@heroicons/react/24/solid';
 
 interface PeopleToFollowProps {
     keyValue: string;
@@ -64,10 +66,10 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
             {
                 onevent(event) {
                     const name = event.tags.find(tag => tag[0] === 'name')?.[1] || 'Unknown';
-                    const npub = event.pubkey;
+                    const npub = nip19.npubEncode(event.pubkey);
                     props.pool?.subscribeMany(
                         RELAYS,
-                        [{ kinds: [0], authors: [npub] }],
+                        [{ kinds: [0], authors: [event.pubkey] }],
                         {
                             onevent(metadataEvent) {
                                 try {
@@ -112,7 +114,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
         const event: { kind: number; created_at: number; tags: string[][]; content: string; pubkey?: string; sig?: string } = {
             kind: 3,
             created_at: Math.floor(Date.now() / 1000),
-            tags: [...followingList.map(npub => ['p', npub]), ['p', person.npub]],
+            tags: [...followingList.map(npub => ['p', npub]), ['p', nip19.decode(person.npub).data as string]],
             content: '',
         };
 
@@ -127,7 +129,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
             let eventFinal = finalizeEvent(event, skDecoded);
             await props.pool?.publish(RELAYS, eventFinal);
         }
-        setFollowingList(prev => [...prev, person.npub]);
+        setFollowingList(prev => [...prev, nip19.decode(person.npub).data as string]);
         setPeopleToFollow(prev => prev.map(p => p.npub === person.npub ? { ...p, loadingFollowing: false } : p));
     };
 
@@ -149,26 +151,28 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                     {peopleToFollow.map((person, index) => (
                         <div key={index} className="flex flex-col items-center p-4 border rounded-lg shadow-sm">
-                            {person.picture ? (
-                                <img 
-                                    src={person.picture} 
-                                    alt={`${person.name}'s profile`} 
-                                    className="w-24 h-24 rounded-full mb-2"
-                                />
-                            ) : (
-                                <div className="w-40 h-40 rounded-full bg-gray-200 mb-2"></div>
-                            )}
+                            <Link to={`/profile?npub=${person.npub}`}>
+                                {person.picture ? (
+                                    <img 
+                                        src={person.picture} 
+                                        alt={`${person.name}'s profile`} 
+                                        className="w-48 h-48 rounded-full mb-2"
+                                    />
+                                ) : (
+                                    <UserCircleIcon className="w-48 h-48 text-gray-300 mb-2" />
+                                )}
+                            </Link>
                             <span className="text-center font-semibold mb-2">{person.name}</span>
                             <button 
                                 onClick={() => handleFollow(person)}
                                 className={`w-full font-bold py-2 px-4 rounded ${
-                                    followingList.includes(person.npub)
+                                    followingList.includes(nip19.decode(person.npub).data as string)
                                         ? 'bg-gray-400 cursor-not-allowed'
                                         : 'bg-blue-500 hover:bg-blue-700 text-white'
                                 }`}
-                                disabled={followingList.includes(person.npub)}
+                                disabled={followingList.includes(nip19.decode(person.npub).data as string)}
                             >
-                                {followingList.includes(person.npub) ? 'Following' : 'Follow'}
+                                {followingList.includes(nip19.decode(person.npub).data as string) ? 'Following' : 'Follow'}
                             </button>
                         </div>
                     ))}
