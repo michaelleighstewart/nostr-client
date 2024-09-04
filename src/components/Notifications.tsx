@@ -20,9 +20,15 @@ interface Notification {
   kind: number;
 }
 
+interface UserMetadata {
+  name?: string;
+  picture?: string;
+}
+
 const Notifications: React.FC<NotificationsProps> = ({ pool, nostrExists, keyValue }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userMetadata, setUserMetadata] = useState<Record<string, UserMetadata>>({});
 
   useEffect(() => {
     if (!pool) return;
@@ -48,16 +54,22 @@ const Notifications: React.FC<NotificationsProps> = ({ pool, nostrExists, keyVal
         ],
         {
           onevent(event: Event) {
-            setNotifications(prev => [
-              ...prev,
-              {
-                id: event.id,
-                pubkey: event.pubkey,
-                content: event.content,
-                created_at: event.created_at,
-                kind: event.kind
+            setNotifications(prev => {
+              const existingNotification = prev.find(n => n.id === event.id);
+              if (existingNotification) {
+                return prev; // Skip duplicate
               }
-            ]);
+              return [
+                ...prev,
+                {
+                  id: event.id,
+                  pubkey: event.pubkey,
+                  content: event.content,
+                  created_at: event.created_at,
+                  kind: event.kind
+                }
+              ];
+            });
           },
           oneose() {
             setLoading(false);
@@ -73,6 +85,45 @@ const Notifications: React.FC<NotificationsProps> = ({ pool, nostrExists, keyVal
     fetchNotifications();
   }, [pool, nostrExists, keyValue]);
 
+  useEffect(() => {
+    if (!pool || notifications.length === 0) return;
+
+    const fetchUserMetadata = () => {
+      const uniquePubkeys = [...new Set(notifications.map(n => n.pubkey))];
+
+      const sub = pool.subscribeMany(
+        RELAYS,
+        [
+          {
+            kinds: [0],
+            authors: uniquePubkeys
+          }
+        ],
+        {
+          onevent(event: Event) {
+            const metadata = JSON.parse(event.content);
+            setUserMetadata(prev => ({
+              ...prev,
+              [event.pubkey]: {
+                name: metadata.name,
+                picture: metadata.picture
+              }
+            }));
+          },
+          oneose() {
+            sub.close();
+          }
+        }
+      );
+
+      return () => {
+        sub.close();
+      };
+    };
+
+    fetchUserMetadata();
+  }, [pool, notifications]);
+
   if (loading) return <Loading vCentered={false} />;
 
   return (
@@ -82,22 +133,27 @@ const Notifications: React.FC<NotificationsProps> = ({ pool, nostrExists, keyVal
         <p>No new notifications.</p>
       ) : (
         <ul>
-          {notifications.map((notification) => (
-            <li key={notification.id} className="mb-4 p-4 bg-gray-800 rounded-lg">
-              <Link to={`/profile/${nip19.npubEncode(notification.pubkey)}`} className="font-bold text-blue-500">
-                {notification.pubkey.slice(0, 8)}...
-              </Link>
-              {notification.kind === 1 ? (
-                <span> mentioned you in a post: </span>
-              ) : (
-                <span> reacted to your post </span>
-              )}
-              <p className="mt-2">{notification.content}</p>
-              <span className="text-sm text-gray-400">
-                {new Date(notification.created_at * 1000).toLocaleString()}
-              </span>
-            </li>
-          ))}
+          {notifications.map((notification) => {
+            const userData = userMetadata[notification.pubkey] || {};
+            return (
+              <li key={notification.id} className="mb-4 p-4 bg-gray-800 rounded-lg flex items-center">
+                <div>
+                  <Link to={`/profile/${nip19.npubEncode(notification.pubkey)}`} className="font-bold text-blue-500">
+                    {userData.name || notification.pubkey.slice(0, 8) + '...'}
+                  </Link>
+                  {notification.kind === 1 ? (
+                    <span> mentioned you in a post: </span>
+                  ) : (
+                    <span> reacted to your post </span>
+                  )}
+                  <p className="mt-2">{notification.content}</p>
+                  <span className="text-sm text-gray-400">
+                    {new Date(notification.created_at * 1000).toLocaleString()}
+                  </span>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
