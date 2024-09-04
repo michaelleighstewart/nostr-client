@@ -55,26 +55,28 @@ export default function NotesList({ notes, metadata, pool, nostrExists, reaction
                         exit={{ opacity: 0, y: -50 }}
                         transition={{ duration: 0.5, delay: index * 0.1 }}
                     >
-                        <NoteCard
-                            id={note.id}
-                            created_at={note.created_at}
-                            user={{
-                                name:
-                                    metadata[note.pubkey]?.name ??
-                                    `${nip19.npubEncode(note.pubkey).slice(0, 12)}...`,
-                                image:
-                                    metadata[note.pubkey]?.picture,
-                                pubkey: note.pubkey,
-                                nip05: metadata[note.pubkey]?.nip05
-                            }}
-                            content={note.content}
-                            hashtags={note.tags.filter((t) => t[0] === "t").map((t) => t[1])}
-                            pool={pool}
-                            nostrExists={nostrExists}
-                            reactions={reactions[note.id]}
-                            keyValue={keyValue}
-                            deleted={note.deleted}
-                        />
+                        <div className="pb-32">
+                            <NoteCard
+                                id={note.id}
+                                created_at={note.created_at}
+                                user={{
+                                    name:
+                                        metadata[note.pubkey]?.name ??
+                                        `${nip19.npubEncode(note.pubkey).slice(0, 12)}...`,
+                                    image:
+                                        metadata[note.pubkey]?.picture,
+                                    pubkey: note.pubkey,
+                                    nip05: metadata[note.pubkey]?.nip05
+                                }}
+                                content={note.content}
+                                hashtags={note.tags.filter((t) => t[0] === "t").map((t) => t[1])}
+                                pool={pool}
+                                nostrExists={nostrExists}
+                                reactions={reactions[note.id]}
+                                keyValue={keyValue}
+                                deleted={note.deleted}
+                            />
+                        </div>
                     </motion.div>
                 ))}
             </AnimatePresence>

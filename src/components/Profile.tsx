@@ -22,12 +22,19 @@ interface ProfileData {
     nip05?: string;
 }
 
+interface Reaction {
+    liker_pubkey: string;
+    type: string;
+    sig: string;
+}
+
 const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) => {
     const [profileData, setProfileData] = useState<ProfileData | null>(null);
     const [posts, setPosts] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
     const [pubkey, setPubkey] = useState<string>('');
     const [isFollowing, setIsFollowing] = useState(false);
+    const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
     const location = useLocation();
 
     useEffect(() => {
@@ -39,6 +46,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             setLoading(true);
             setPosts([]); // Clear previous posts
             setProfileData(null); // Clear previous profile data
+            setReactions({}); // Clear previous reactions
             if (!pool) return;
 
             let fetchedPubkey: string;
@@ -93,13 +101,22 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                 }
             );
 
-            // Fetch recent posts
+            // Fetch recent posts (excluding replies)
             const postsSub = pool.subscribeMany(
                 RELAYS,
                 [{ kinds: [1], authors: [fetchedPubkey], limit: 20 }],
                 {
                     onevent(event) {
-                        setPosts(prevPosts => [...prevPosts, event]);
+                        // Check if the post is not a reply
+                        if (!event.tags.some(tag => tag[0] === 'e')) {
+                            setPosts(prevPosts => {
+                                // Check if the post is already in the array
+                                if (!prevPosts.some(p => p.id === event.id)) {
+                                    return [...prevPosts, event];
+                                }
+                                return prevPosts;
+                            });
+                        }
                     },
                     oneose() {
                         setLoading(false);
@@ -111,6 +128,55 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
 
         fetchProfileDataAndPosts();
     }, [npub, keyValue, pool, nostrExists, location]);
+
+    useEffect(() => {
+        if (!pool || posts.length === 0) return;
+
+        const fetchReactions = () => {
+            const postsToFetch = posts.map(post => post.id);
+
+            const subReactions = pool.subscribeMany(
+                RELAYS,
+                postsToFetch.map((postId) => ({
+                    kinds: [7],
+                    '#e': [postId],
+                })),
+                {
+                    onevent(event) {
+                        setReactions((cur) => {
+                            const newReaction: Reaction = {
+                                liker_pubkey: event.pubkey,
+                                type: event.content,
+                                sig: event.sig
+                            };
+                            const updatedReactions = { ...cur };
+                            const postId = event.tags[0][1];
+
+                            if (updatedReactions[postId]) {
+                                const postReactions = updatedReactions[postId];
+                                const isDuplicate = postReactions.some(
+                                    (reaction) => reaction.sig === newReaction.sig
+                                );
+                    
+                                if (!isDuplicate) {
+                                    updatedReactions[postId] = [...postReactions, newReaction];
+                                }
+                            } else {
+                                updatedReactions[postId] = [newReaction];
+                            }
+                
+                            return updatedReactions;
+                        });
+                    },
+                    oneose() {
+                        subReactions.close();
+                    }
+                }
+            );
+        };
+
+        fetchReactions();
+    }, [pool, posts]);
 
     const handleFollow = async () => {
         if (!pool) return;
@@ -173,28 +239,29 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                 <p>No profile data available.</p>
             )}
 
-            <h2 className="text-2xl font-bold mt-8 mb-4">Recent Posts</h2>
+            <h2 className="text-2xl font-bold mt-8 mb-4 pb-16">Recent Posts</h2>
             {posts.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-8">
                     {posts.map(post => (
-                        <NoteCard
-                            key={post.id}
-                            id={post.id}
-                            content={post.content}
-                            user={{
-                                name: profileData?.name || 'Unknown',
-                                image: profileData?.picture,
-                                pubkey: post.pubkey,
-                                nip05: profileData?.nip05
-                            }}
-                            created_at={post.created_at}
-                            hashtags={post.tags.filter(tag => tag[0] === 't').map(tag => tag[1])}
-                            pool={pool}
-                            nostrExists={nostrExists}
-                            reactions={[]}
-                            keyValue={keyValue}
-                            deleted={false}
-                        />
+                        <div key={post.id} className="mb-8 pb-32">
+                            <NoteCard
+                                id={post.id}
+                                content={post.content}
+                                user={{
+                                    name: profileData?.name || 'Unknown',
+                                    image: profileData?.picture,
+                                    pubkey: post.pubkey,
+                                    nip05: profileData?.nip05
+                                }}
+                                created_at={post.created_at}
+                                hashtags={post.tags.filter(tag => tag[0] === 't').map(tag => tag[1])}
+                                pool={pool}
+                                nostrExists={nostrExists}
+                                reactions={reactions[post.id] || []}
+                                keyValue={keyValue}
+                                deleted={false}
+                            />
+                        </div>
                     ))}
                 </div>
             ) : (
