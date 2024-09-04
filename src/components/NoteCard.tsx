@@ -43,6 +43,7 @@ interface Props {
     const [imageUrls, setImageUrls] = useState<string[]>([]);
     const [processedContent, setProcessedContent] = useState<React.ReactNode[]>([]);
     const [linkPreviewUrl, setLinkPreviewUrl] = useState<string | null>(null);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const navigate = useNavigate();
 
     function checkReactions() {
@@ -170,6 +171,10 @@ interface Props {
       navigate(`/post/${id}`);
     };
 
+    const handleImageClick = (url: string) => {
+      setSelectedImage(url);
+    };
+
     if (localDeleted) {
       return (
         <div className="rounded p-16 border border-gray-600 bg-gray-700 flex flex-col gap-16 break-words">
@@ -202,7 +207,17 @@ interface Props {
         <div onClick={handleContentClick} className="cursor-pointer">
           <p>{processedContent}</p>
           {imageUrls.map((url, index) => (
-            <img key={index} src={url} alt="Post content" className="max-w-full h-auto rounded-lg mt-2" />
+            <img 
+              key={index} 
+              src={url} 
+              alt="Post content" 
+              className="max-w-full h-auto rounded-lg mt-2 cursor-pointer" 
+              style={{ maxHeight: '1200px', objectFit: 'cover' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleImageClick(url);
+              }}
+            />
           ))}
           {linkPreviewUrl && <LinkPreview url={linkPreviewUrl} />}
         </div>
@@ -258,6 +273,19 @@ interface Props {
               />
           </div>
         </div>
+        {selectedImage && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            onClick={() => setSelectedImage(null)}
+          >
+            <img 
+              src={selectedImage} 
+              alt="Full size" 
+              className="max-w-full max-h-full object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
       </div>
     );
   }
