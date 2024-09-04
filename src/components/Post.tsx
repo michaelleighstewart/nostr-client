@@ -125,6 +125,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         reactions={post.reactions}
         keyValue={keyValue}
         deleted={false}
+        replies={replies.length}
       />
       <div className="mt-8 p-16 rounded-lg">
         <textarea
@@ -154,6 +155,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
           reactions={reply.reactions}
           keyValue={keyValue}
           deleted={false}
+          replies={replies.length}
         />
       ))}
     </div>
