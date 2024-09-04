@@ -301,7 +301,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                         onClick={() => setShowOstrich(false)}
                     >
                         <div className="relative">
-                            <img src="/ostrich.png" alt="Ostrich" className="max-w-full max-h-full" />
+                            <img src="/ostrich.png" alt="Ostrich" className="ostrichmax-w-full max-h-full" />
                             <div className="absolute top-0 left-full ml-4 p-32 bg-white rounded-lg shadow-lg speech-bubble">
                                 <p className="text-black">
                                     Congratulations on following your first user! Now, go{' '}
@@ -324,6 +324,23 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                     border-width: 10px;
                     border-style: solid;
                     border-color: transparent white transparent transparent;
+                }
+                .ostrich {
+                    max-width: 100%;
+                    max-height: 100%;
+                }
+                @media (max-width: 768px) {
+                    .ostrich {
+                        display: none;
+                    }
+                    .speech-bubble {
+                        position: static;
+                        width: 90% !important;
+                        margin: 0 auto;
+                    }
+                    .speech-bubble::before {
+                        display: none;
+                    }
                 }
             `}</style>
         </div>

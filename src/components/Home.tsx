@@ -411,7 +411,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               onClick={() => setShowOstrich(false)}
             >
               <div className="relative">
-                <img src="/ostrich.png" alt="Ostrich" className="max-w-full max-h-full" />
+                <img src="/ostrich.png" alt="Ostrich" className="ostrich max-w-full max-h-full" />
                 <div className="absolute top-0 left-full ml-4 p-32 bg-white rounded-lg shadow-lg speech-bubble" style={{ width: '400px' }}>
                   <p className="text-black">
                     Hey! Please{' '}
@@ -435,6 +435,23 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                     border-width: 10px;
                     border-style: solid;
                     border-color: transparent white transparent transparent;
+                }
+                .ostrich {
+                    max-width: 100%;
+                    max-height: 100%;
+                }
+                @media (max-width: 768px) {
+                    .ostrich {
+                        display: none;
+                    }
+                    .speech-bubble {
+                        position: static;
+                        width: 90% !important;
+                        margin: 0 auto;
+                    }
+                    .speech-bubble::before {
+                        display: none;
+                    }
                 }
             `}</style>
       </div>
