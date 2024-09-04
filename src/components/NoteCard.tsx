@@ -282,7 +282,7 @@ interface Props {
               src={selectedImage} 
               alt="Full size" 
               className="max-w-full max-h-full object-contain"
-              onClick={(e) => e.stopPropagation()}
+              onClick={() => setSelectedImage(null)}
             />
           </div>
         )}
