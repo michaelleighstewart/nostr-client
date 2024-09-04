@@ -1,4 +1,4 @@
-import { BoltIcon, HandThumbUpIcon, HandThumbDownIcon, TrashIcon } from "@heroicons/react/16/solid";
+import { BoltIcon, HandThumbUpIcon, HandThumbDownIcon, TrashIcon, ChatBubbleLeftIcon } from "@heroicons/react/16/solid";
 import { User, sendZap, reactToPost, deletePost, bech32Decoder } from "../utils/helperFunctions";
 import { SimplePool, getPublicKey } from "nostr-tools";
 import { Reaction } from "./Home";
@@ -17,6 +17,7 @@ interface Props {
     nostrExists: boolean | null;
     reactions: Reaction[];
     keyValue: string;
+    replies: number;
     deleted: boolean | undefined;
   }
   
@@ -30,7 +31,8 @@ interface Props {
     nostrExists,
     reactions,
     keyValue,
-    deleted
+    deleted,
+    replies
   }: Props) {
     const [alreadyLiked, setAlreadyLiked] = useState(false);
     const [alreadyDisliked, setAlreadyDisliked] = useState(false);
@@ -256,6 +258,18 @@ interface Props {
           <div className="p-4">
             <span className="text-body5 text-gray-400">
               {localReactions.filter((r) => r.type === "-").length}
+            </span>
+          </div>
+          <div className="p-4 pl-32">
+            <ChatBubbleLeftIcon
+              className="h-6 w-6 text-blue-500 cursor-pointer"
+              title="View replies"
+              onClick={() => navigate(`/post/${id}`)}
+            />
+          </div>
+          <div className="p-4">
+            <span className="text-body5 text-gray-400">
+              {replies}
             </span>
           </div>
           <div className="p-4 pl-32">

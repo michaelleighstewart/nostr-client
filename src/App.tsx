@@ -69,7 +69,7 @@ function App() {
     initialize();
 
     return () => {
-      _pool.close(RELAYS);
+        _pool.close(RELAYS);
     };
   }, [nostrExists, key]);
 

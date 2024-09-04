@@ -36,8 +36,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [events] = useDebounce(eventsImmediate, 1500);
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
+    const [replies, setReplies] = useState<Record<string, number>>({});
     const metadataFetched = useRef<Record<string, boolean>>({});
     const reactionsFetched = useRef<Record<string, boolean>>({});
+    const repliesFetched = useRef<Record<string, boolean>>({});
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -223,8 +225,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         .filter((event) => metadataFetched.current[event.pubkey] !== true && event.pubkey !== userPublicKey)
         .map((event) => event.pubkey);
 
-      let noAuthors = pubkeysToFetch.length === 0;
-  
       pubkeysToFetch.forEach(
         (pubkey) => (metadataFetched.current[pubkey] = true)
       );
@@ -249,23 +249,27 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         }
       });
 
-      //get likes
+      return () => {};
+    }, [events, props.pool, userPublicKey]);
+    
+    // Updated useEffect for fetching likes
+    useEffect(() => {
+      if (!props.pool) return;
       const postsToFetch = events
-        .filter((event) => reactionsFetched.current[event.id] !== true)
+        .filter((event) => !reactionsFetched.current[event.id])
         .map((event) => event.id);
-      if (noAuthors && postsToFetch.length === 0) {
+
+      if (postsToFetch.length === 0) {
         return;
       }
-      postsToFetch.forEach(
-        (id) => (reactionsFetched.current[id] = true)
-      );
-      
       const subReactions = props.pool.subscribeMany(
         RELAYS,
-        postsToFetch.map((postId) => ({
-          kinds: [7],
-          '#e': [postId],
-        })),
+        [
+          {
+            kinds: [7],
+            '#e': postsToFetch,
+          },
+        ],
         {
           onevent(event) {
             setReactions((cur) => {
@@ -275,32 +279,87 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 sig: event.sig
               };
               const updatedReactions = { ...cur };
-              const postId = event.tags[0][1];
+              const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
 
-              if (updatedReactions[postId]) {
-                const postReactions = updatedReactions[postId];
-                const isDuplicate = postReactions.some(
-                  (reaction) => reaction.sig === newReaction.sig
-                );
-        
-                if (!isDuplicate) {
-                  updatedReactions[postId] = [...postReactions, newReaction];
+              if (postId) {
+                if (updatedReactions[postId]) {
+                  const postReactions = updatedReactions[postId];
+                  const isDuplicate = postReactions.some(
+                    (reaction) => reaction.sig === newReaction.sig
+                  );
+          
+                  if (!isDuplicate) {
+                    updatedReactions[postId] = [...postReactions, newReaction];
+                  }
+                } else {
+                  updatedReactions[postId] = [newReaction];
                 }
-              } else {
-                updatedReactions[postId] = [newReaction];
               }
-      
+        
               return updatedReactions;
             });
           },
           oneose() {
-            subReactions.close();
+            postsToFetch.forEach(postId => {
+              reactionsFetched.current[postId] = true;
+            });
           }
         }
       );
-      return () => {};
-    }, [events, props.pool, userPublicKey]);
-    
+
+      return () => {
+        subReactions.close();
+      };
+    }, [events, props.pool]);
+
+    // New useEffect for fetching replies
+    useEffect(() => {
+      if (!props.pool) return;
+      const postsToFetch = events
+        .filter((event) => !repliesFetched.current[event.id])
+        .map((event) => event.id);
+
+      if (postsToFetch.length === 0) {
+        return;
+      }
+      const subReplies = props.pool.subscribeMany(
+        RELAYS,
+        [
+          {
+            kinds: [1],
+            '#e': postsToFetch,
+          },
+        ],
+        {
+          onevent(event) {
+            setReplies((cur) => {
+              const updatedReplies = { ...cur };
+              const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+
+              if (postId) {
+                if (updatedReplies[postId]) {
+                  updatedReplies[postId] += 1;
+                } else {
+                  updatedReplies[postId] = 1;
+                }
+              }
+        
+              return updatedReplies;
+            });
+          },
+          oneose() {
+            postsToFetch.forEach(postId => {
+              repliesFetched.current[postId] = true;
+            });
+          }
+        }
+      );
+
+      return () => {
+        subReplies.close();
+      };
+    }, [events, props.pool]);
+
     async function sendMessage() {
       if (!props.pool) return;
       setPosting(true);
@@ -383,7 +442,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         ) 
          : (
           <div className={`pt-32 relative ${!isLoggedIn ? 'pointer-events-none opacity-50' : ''}`}>
-            <NotesList metadata={metadata} reactions={reactions} notes={events} pool={props.pool} nostrExists={props.nostrExists} keyValue={props.keyValue} />
+            <NotesList metadata={metadata} reactions={reactions} notes={events} pool={props.pool} 
+              nostrExists={props.nostrExists} keyValue={props.keyValue}
+              replies={replies} />
             {initialLoadComplete && events.length > 0 && isLoggedIn && (
               <div className="mt-8 mb-8 text-center">
                 {loadingMore ? (

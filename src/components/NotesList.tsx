@@ -13,9 +13,10 @@ interface Props {
     nostrExists: boolean | null;
     reactions: Record<string, Reaction[]>;
     keyValue: string;
+    replies: Record<string, number>;
 }
 
-export default function NotesList({ notes, metadata, pool, nostrExists, reactions, keyValue } : Props) {
+export default function NotesList({ notes, metadata, pool, nostrExists, reactions, keyValue, replies } : Props) {
     const [visibleNotes, setVisibleNotes] = useState<ExtendedEvent[]>([]);
     const isLoggedIn = nostrExists || !!keyValue;
 
@@ -74,6 +75,7 @@ export default function NotesList({ notes, metadata, pool, nostrExists, reaction
                                 nostrExists={nostrExists}
                                 reactions={reactions[note.id]}
                                 keyValue={keyValue}
+                                replies={replies[note.id]}
                                 deleted={note.deleted}
                             />
                         </div>
