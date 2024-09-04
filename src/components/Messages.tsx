@@ -86,48 +86,7 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
     fetchMessages();
   }, [keyValue, pool, nostrExists]);
 
-  useEffect(() => {
-    const fetchUserInfo = async () => {
-      if (!pool) return;
-
-      const userInfoSub = pool.subscribeMany(
-        RELAYS,
-        messageGroups.map(group => ({
-          kinds: [0],
-          authors: [group.pubkey],
-        })),
-        {
-          onevent(event: Event) {
-            setMessageGroups(prevGroups => {
-              const groupIndex = prevGroups.findIndex(group => group.pubkey === event.pubkey);
-              if (groupIndex > -1) {
-                const userInfo = JSON.parse(event.content);
-                const updatedGroup = {
-                  ...prevGroups[groupIndex],
-                  userInfo: {
-                    name: userInfo.name || 'Unknown',
-                    picture: userInfo.picture || '',
-                  },
-                };
-                return [
-                  ...prevGroups.slice(0, groupIndex),
-                  updatedGroup,
-                  ...prevGroups.slice(groupIndex + 1),
-                ];
-              }
-              return prevGroups;
-            });
-          },
-        }
-      );
-
-      return () => {
-        userInfoSub.close();
-      };
-    };
-
-    fetchUserInfo();
-  }, [messageGroups, pool]);
+  // Removed the useEffect hook for fetching user info to reduce the number of requests
 
   if (loading) return <Loading vCentered={false} />;
 
@@ -141,12 +100,9 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
           className="block border-b border-gray-200 py-4 hover:bg-gray-50"
         >
           <div className="flex items-center">
-            {group.userInfo && group.userInfo.picture && (
-              <img src={group.userInfo.picture} alt={group.userInfo.name} className="w-10 h-10 rounded-full mr-4" />
-            )}
             <div className="flex-grow">
               <div className="flex justify-between items-center">
-                <span className="font-semibold">{group.userInfo ? group.userInfo.name : group.pubkey.slice(0, 8)}</span>
+                <span className="font-semibold">{group.pubkey.slice(0, 8)}</span>
                 <span className="text-sm text-gray-500">
                   {new Date(group.messages[group.messages.length - 1].created_at * 1000).toLocaleString()}
                 </span>

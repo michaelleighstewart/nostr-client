@@ -109,9 +109,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         // Always get the followers if logged in
         if (isLoggedIn) {
           const followers = await getFollowers(pool);
-          filter = { kinds: [1], since: since, until: lastFetchedTimestamp, authors: followers };
+          filter = { kinds: [1], since: since, until: lastFetchedTimestamp, authors: followers, limit: 10 };
         } else {
-          filter = { kinds: [1], since: since, until: lastFetchedTimestamp, limit: 100 }; // Limit to 100 posts for non-logged in users
+          filter = { kinds: [1], since: since, until: lastFetchedTimestamp, limit: 10 };
         }
   
         const subPosts = pool.subscribeMany(
