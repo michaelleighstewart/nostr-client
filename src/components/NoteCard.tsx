@@ -40,7 +40,7 @@ interface Props {
     const [canDelete, setCanDelete] = useState(false);
     const [localDeleted, setLocalDeleted] = useState(deleted);
     const [userNpub, setUserNpub] = useState<string>('');
-    const [imageUrl, setImageUrl] = useState<string | null>(null);
+    const [imageUrls, setImageUrls] = useState<string[]>([]);
     const [processedContent, setProcessedContent] = useState<React.ReactNode[]>([]);
     const [linkPreviewUrl, setLinkPreviewUrl] = useState<string | null>(null);
     const navigate = useNavigate();
@@ -56,27 +56,28 @@ interface Props {
     }
 
     useEffect(() => {
-      // Check if content contains an image URL
-      const urlRegex = /(https?:\/\/.*\.(?:png|jpg|jpeg|gif))/i;
-      const match = content.match(urlRegex);
-      if (match) {
-        setImageUrl(match[0]);
-      }
+      // Check if content contains image URLs
+      const imageRegex = /(https?:\/\/.*\.(?:png|jpg|jpeg|gif))/gi;
+      const imageMatches: string[] = content.match(imageRegex) || [];
+      setImageUrls(imageMatches);
 
       // Process content to detect and enable clicking on links
       const linkRegex = /(https?:\/\/[^\s]+)/g;
-      const parts = content.split(linkRegex);
+      const parts: string[] = content.split(linkRegex);
       const processed = parts.map((part, index) => {
         if (part.match(linkRegex)) {
-          // Set the first non-image link found as the preview URL
-          if (!linkPreviewUrl && !part.match(urlRegex)) {
-            setLinkPreviewUrl(part);
+          if (!imageMatches.includes(part as string)) {
+            // Set the first non-image link found as the preview URL
+            if (!linkPreviewUrl) {
+              setLinkPreviewUrl(part);
+            }
+            return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{part}</a>;
           }
-          return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{part}</a>;
+          return null; // Skip image links in the text
         }
         return part;
       });
-      setProcessedContent(processed);
+      setProcessedContent(processed.filter(Boolean)); // Remove null values
     }, [content]);
   
     useEffect(() => {
@@ -200,9 +201,9 @@ interface Props {
         </div>
         <div onClick={handleContentClick} className="cursor-pointer">
           <p>{processedContent}</p>
-          {imageUrl && (
-            <img src={imageUrl} alt="Post content" className="max-w-full h-auto rounded-lg" />
-          )}
+          {imageUrls.map((url, index) => (
+            <img key={index} src={url} alt="Post content" className="max-w-full h-auto rounded-lg mt-2" />
+          ))}
           {linkPreviewUrl && <LinkPreview url={linkPreviewUrl} />}
         </div>
         <ul className="flex flex-wrap gap-12">
