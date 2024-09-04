@@ -6,7 +6,6 @@ import { useState, useEffect } from "react";
 import { toast } from 'react-toastify';
 import { Link, useNavigate } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
-import LinkPreview from '../components/LinkPreview';
 
 interface Props {
     id: string;
@@ -42,7 +41,6 @@ interface Props {
     const [userNpub, setUserNpub] = useState<string>('');
     const [imageUrls, setImageUrls] = useState<string[]>([]);
     const [processedContent, setProcessedContent] = useState<React.ReactNode[]>([]);
-    const [linkPreviewUrl, setLinkPreviewUrl] = useState<string | null>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const navigate = useNavigate();
 
@@ -68,10 +66,6 @@ interface Props {
       const processed = parts.map((part, index) => {
         if (part.match(linkRegex)) {
           if (!imageMatches.includes(part as string)) {
-            // Set the first non-image link found as the preview URL
-            if (!linkPreviewUrl) {
-              setLinkPreviewUrl(part);
-            }
             return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{part}</a>;
           }
           return null; // Skip image links in the text
@@ -219,7 +213,6 @@ interface Props {
               }}
             />
           ))}
-          {linkPreviewUrl && <LinkPreview url={linkPreviewUrl} />}
         </div>
         <ul className="flex flex-wrap gap-12">
           {hashtags
