@@ -5,6 +5,7 @@ import { getPublicKey, finalizeEvent } from 'nostr-tools';
 import { RELAYS } from "../utils/constants";
 import { useState, useEffect } from "react";
 import Loading from "./Loading";
+import { toast } from 'react-toastify';
 
 interface EditProfileProps {
     keyValue: string;
@@ -24,6 +25,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
     const [picture, setPicture] = useState<string|undefined>('');
     const [lightningAddress, setLightningAddress] = useState<string|undefined>('');
     const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         setLoading(true);
@@ -61,48 +63,57 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
             });
         }
         fetchData();
-      }, [props.nostrExists]);
+      }, [props.nostrExists, props.keyValue, props.pool, saving]);
 
 
     async function saveProfile() {
-        setLoading(true);
-        if (!props.pool) return;
+        setSaving(true);
+        if (!props.pool) {
+            toast.error("Pool is not initialized");
+            setSaving(false);
+            return;
+        }
         const profile = {
             name: name,
             about: about,
             picture: picture,
             nip05: lightningAddress
         }
-        if (props.nostrExists) {
-            let event = {
-              kind: 0,
-              created_at: Math.floor(Date.now() / 1000),
-              tags: [],
-              content: JSON.stringify(profile),
-            }
-            await (window as any).nostr.signEvent(event).then(async (eventToSend: any) => {
-              await props.pool?.publish(RELAYS, eventToSend);
-              setLoading(false);
-            });
-          }
-          else {
-            let sk = props.keyValue;
-            let skDecoded = bech32Decoder('nsec', sk);
-            let pk = getPublicKey(skDecoded);
-            let event = {
-              kind: 0,
-              pubkey: pk,
-              created_at: Math.floor(Date.now() / 1000),
-              tags: [],
-              content: JSON.stringify(profile),
-            }
-            let eventFinal = finalizeEvent(event, skDecoded);
-            await props.pool?.publish(RELAYS, eventFinal);
-            setLoading(false);
-          }
+        try {
+            if (props.nostrExists) {
+                let event = {
+                  kind: 0,
+                  created_at: Math.floor(Date.now() / 1000),
+                  tags: [],
+                  content: JSON.stringify(profile),
+                }
+                const eventToSend = await (window as any).nostr.signEvent(event);
+                await props.pool.publish(RELAYS, eventToSend);
+              }
+              else {
+                let sk = props.keyValue;
+                let skDecoded = bech32Decoder('nsec', sk);
+                let pk = getPublicKey(skDecoded);
+                let event = {
+                  kind: 0,
+                  pubkey: pk,
+                  created_at: Math.floor(Date.now() / 1000),
+                  tags: [],
+                  content: JSON.stringify(profile),
+                }
+                let eventFinal = finalizeEvent(event, skDecoded);
+                await props.pool.publish(RELAYS, eventFinal);
+              }
+            toast.success("Profile updated successfully!");
+        } catch (error) {
+            console.error("Error saving profile:", error);
+            toast.error("Failed to update profile. Please try again.");
+        } finally {
+            setSaving(false);
+        }
     }
 
-    if (loading) return <Loading vCentered={false}></Loading>
+    if (loading || saving) return <Loading vCentered={false}></Loading>
 
     return (
         <div className="py-64">
@@ -114,7 +125,8 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                         className={"text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"} 
                         placeholder={"John Smith"}
                         value={name}
-                        onChange={(e) => setName(e.target.value)} />
+                        onChange={(e) => setName(e.target.value)}
+                        />
                 </div>
                 <div className="pb-24">
                     <label htmlFor="about" 
@@ -123,7 +135,8 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                         className={"text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"} 
                         placeholder={"Something about you..."}
                         value={about}
-                        onChange={(e) => setAbout(e.target.value)} />
+                        onChange={(e) => setAbout(e.target.value)}
+                        />
                 </div>
                 <div className="pb-24">
                     <label htmlFor="picture" 
@@ -132,7 +145,8 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                         className={"text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"} 
                         placeholder={"Location of avatar picture"}
                         value={picture}
-                        onChange={(e) => setPicture(e.target.value)} />
+                        onChange={(e) => setPicture(e.target.value)}
+                        />
                 </div>
                 <div className="pb-24">
                     <label htmlFor="lightning-address"
@@ -141,14 +155,18 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                         className={"text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"} 
                         placeholder={"Lightning Wallet Address - eg. john@getalby.com"}
                         value={lightningAddress}
-                        onChange={(e) => setLightningAddress(e.target.value)} /> 
+                        onChange={(e) => setLightningAddress(e.target.value)}
+                        /> 
                 </div>
                 <div className="h-64">
                     <div className="float-right">
                     <button 
-                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded"
+                        className={`bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
                         onClick={saveProfile}
-                    >Save</button>
+                        disabled={saving}
+                    >
+                        {'Save'}
+                    </button>
                     </div>
                 </div>
             </div>
