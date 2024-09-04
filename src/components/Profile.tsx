@@ -35,7 +35,8 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     const [pubkey, setPubkey] = useState<string>('');
     const [isFollowing, setIsFollowing] = useState(false);
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
-    const [replies, setReplies] = useState<Record<string, number>>({});
+    //const [replies, setReplies] = useState<Record<string, number>>({});
+    const [replies, setReplies] = useState<Record<string, Set<string>>>({});
     const location = useLocation();
 
     useEffect(() => {
@@ -126,26 +127,6 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                     }
                 }
             );
-
-            // Fetch replies for each post
-            const repliesSub = pool.subscribeMany(
-                RELAYS,
-                [{ kinds: [1], '#e': posts.map(post => post.id) }],
-                {
-                    onevent(event) {
-                        const replyToId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                        if (replyToId) {
-                            setReplies(prevReplies => ({
-                                ...prevReplies,
-                                [replyToId]: (prevReplies[replyToId] || 0) + 1
-                            }));
-                        }
-                    },
-                    oneose() {
-                        repliesSub.close();
-                    }
-                }
-            );
         };
 
         fetchProfileDataAndPosts();
@@ -198,6 +179,34 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
         };
 
         fetchReactions();
+
+        // Fetch replies for each post
+        const repliesSub = pool.subscribeMany(
+            RELAYS,
+            [{ kinds: [1], '#e': posts.map(post => post.id) }],
+            {
+                onevent(event) {
+                    const replyToId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                    if (replyToId) {
+                        setReplies(prevReplies => {
+                            const updatedReplies = { ...prevReplies };
+                            if (!updatedReplies[replyToId]) {
+                                updatedReplies[replyToId] = new Set();
+                            }
+                            updatedReplies[replyToId].add(event.id);
+                            return updatedReplies;
+                        });
+                    }
+                },
+                oneose() {
+                    repliesSub.close();
+                }
+            }
+        );
+
+        return () => {
+            repliesSub.close();
+        };
     }, [pool, posts]);
 
     const handleFollow = async () => {
@@ -282,7 +291,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                                 reactions={reactions[post.id] || []}
                                 keyValue={keyValue}
                                 deleted={false}
-                                replies={replies[post.id] || 0}
+                                replies={replies[post.id] ? replies[post.id].size : 0}
                             />
                         </div>
                     ))}
