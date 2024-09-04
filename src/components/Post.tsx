@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import NoteCard from './NoteCard';
 import { Reaction, Metadata } from './Home';
 import { RELAYS } from '../utils/constants';
-import { User, bech32Decoder } from '../utils/helperFunctions';
+import { bech32Decoder } from '../utils/helperFunctions';
 import Loading from './Loading';
 
 interface PostProps {

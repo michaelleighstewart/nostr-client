@@ -44,8 +44,7 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
       try {
         const pubKey = getPublicKey(Buffer.from(props.keyValue, 'hex'));
         setPublicKey(pubKey);
-      } catch (error) {
-        console.error('Error generating public key:', error);
+      } catch {
       }
     }
   }, [props.nostrExists, props.keyValue]);
