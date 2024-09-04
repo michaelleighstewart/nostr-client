@@ -131,7 +131,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 };
     
                 // Subscribe to delete events
-                props?.pool?.subscribeMany(
+                const subDelete = props?.pool?.subscribeMany(
                   RELAYS,
                   [{ kinds: [5], '#e': [extendedEvent.id ?? ""] }],
                   {
@@ -150,6 +150,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                       if (!extendedEvent.deleted) {
                         setEvents((events) => insertEventIntoDescendingList(events, extendedEvent));
                       }
+                      subDelete?.close();
                     }
                   }
                 );
