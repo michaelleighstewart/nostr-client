@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import * as React from 'react';
-import { HomeIcon, UserIcon, CogIcon, KeyIcon, UserGroupIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
+import { HomeIcon, UserIcon, CogIcon, KeyIcon, UserGroupIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon, BellIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
 import { validatePrivateKey } from '../utils/helperFunctions';
 import { getPublicKey } from 'nostr-tools';
 
@@ -110,6 +110,16 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
             <li className="inline-block mx-4 text-center pr-16">
               <Link to="/profile" className={`flex flex-col items-center ${isActive("/profile")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
                 <UserIcon className="h-6 w-6 my-3" />
+              </Link>
+            </li>
+            <li className="inline-block mx-4 text-center pr-16">
+              <Link to="/notifications" className={`flex flex-col items-center ${isActive("/notifications")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
+                <BellIcon className="h-6 w-6 my-3" />
+              </Link>
+            </li>
+            <li className="inline-block mx-4 text-center pr-16">
+              <Link to="/messages" className={`flex flex-col items-center ${isActive("/messages")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
+                <EnvelopeIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
             <li className="inline-block mx-4 text-center pr-16">
