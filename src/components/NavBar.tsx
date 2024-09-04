@@ -102,42 +102,42 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
             </li>
           )}
           <div className="flex justify-center py-6">
-            <li className="inline-block mx-4 text-center pr-16">
+            <li className="inline-block mx-4 text-center pr-2">
               <Link to="/" className={`flex flex-col items-center ${isActive("/")}`}>
                 <HomeIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
-            <li className="inline-block mx-4 text-center pr-16">
+            <li className="inline-block mx-4 text-center pr-2">
               <Link to="/profile" className={`flex flex-col items-center ${isActive("/profile")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
                 <UserIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
-            <li className="inline-block mx-4 text-center pr-16">
+            <li className="inline-block mx-4 text-center pr-2">
               <Link to="/notifications" className={`flex flex-col items-center ${isActive("/notifications")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
                 <BellIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
-            <li className="inline-block mx-4 text-center pr-16">
+            <li className="inline-block mx-4 text-center pr-2">
               <Link to="/messages" className={`flex flex-col items-center ${isActive("/messages")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
                 <EnvelopeIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
-            <li className="inline-block mx-4 text-center pr-16">
+            <li className="inline-block mx-4 text-center pr-2">
               <Link to="/edit-profile" className={`flex flex-col items-center ${isActive("/edit-profile")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
                 <CogIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
-            <li className="inline-block mx-4 text-center pr-16">
+            <li className="inline-block mx-4 text-center pr-2">
               <Link to="/generate-key" className={`flex flex-col items-center ${isActive("/generate-key")}`}>
                 <KeyIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
-            <li className="inline-block mx-4 text-center pr-16">
+            <li className="inline-block mx-4 text-center pr-2">
               <Link to="/people-to-follow" className={`flex flex-col items-center ${isActive("/people-to-follow")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
                 <UserGroupIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
-            <li className="inline-block mx-4 text-center pr-16">
+            <li className="inline-block mx-4 text-center pr-2">
               <Link to="/search" className={`flex flex-col items-center ${isActive("/search")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
                 <MagnifyingGlassIcon className="h-6 w-6 my-3" />
               </Link>
