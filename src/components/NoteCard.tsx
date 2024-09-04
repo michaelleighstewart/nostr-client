@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { toast } from 'react-toastify';
 import { Link, useNavigate } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
+import LinkPreview from '../components/LinkPreview';
 
 interface Props {
     id: string;
@@ -41,6 +42,7 @@ interface Props {
     const [userNpub, setUserNpub] = useState<string>('');
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [processedContent, setProcessedContent] = useState<React.ReactNode[]>([]);
+    const [linkPreviewUrl, setLinkPreviewUrl] = useState<string | null>(null);
     const navigate = useNavigate();
 
     function checkReactions() {
@@ -66,6 +68,10 @@ interface Props {
       const parts = content.split(linkRegex);
       const processed = parts.map((part, index) => {
         if (part.match(linkRegex)) {
+          // Set the first non-image link found as the preview URL
+          if (!linkPreviewUrl && !part.match(urlRegex)) {
+            setLinkPreviewUrl(part);
+          }
           return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{part}</a>;
         }
         return part;
@@ -197,6 +203,7 @@ interface Props {
           {imageUrl && (
             <img src={imageUrl} alt="Post content" className="max-w-full h-auto rounded-lg" />
           )}
+          {linkPreviewUrl && <LinkPreview url={linkPreviewUrl} />}
         </div>
         <ul className="flex flex-wrap gap-12">
           {hashtags
