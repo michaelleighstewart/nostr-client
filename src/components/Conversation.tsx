@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { SimplePool, Event, getPublicKey, nip04 } from 'nostr-tools';
+import { SimplePool, Event, getPublicKey, nip04, finalizeEvent } from 'nostr-tools';
 import { RELAYS } from '../utils/constants';
 import { bech32Decoder } from '../utils/helperFunctions';
 import Loading from './Loading';
+import { toast } from 'react-toastify';
 
 interface ConversationProps {
   keyValue: string;
@@ -24,6 +25,7 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
   const [loading, setLoading] = useState(true);
   const [userPubkey, setUserPubkey] = useState<string>('');
   const [privateKey, setPrivateKey] = useState<string>('');
+  const [newMessage, setNewMessage] = useState<string>('');
 
   useEffect(() => {
     const fetchUserPubkey = async () => {
@@ -102,12 +104,59 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
     fetchMessages();
   }, [pool, id, userPubkey, nostrExists, privateKey]);
 
+  const handleSendMessage = async () => {
+    if (!pool || !id || !userPubkey || !newMessage.trim()) return;
+
+    let encryptedContent: string;
+    if (nostrExists) {
+      encryptedContent = await (window as any).nostr.nip04.encrypt(id, newMessage);
+    } else {
+      encryptedContent = await nip04.encrypt(privateKey, id, newMessage);
+    }
+
+    let event = {
+      kind: 4,
+      pubkey: userPubkey,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [['p', id]],
+      content: encryptedContent,
+    };
+
+    if (nostrExists) {
+        await (window as any).nostr.signEvent(event).then(async (eventToSend: any) => {
+            await pool?.publish(RELAYS, eventToSend);
+        });
+    }
+    else {
+        let sk = keyValue;
+        let skDecoded = bech32Decoder('nsec', sk);
+        let eventFinal = finalizeEvent(event, skDecoded);
+        await pool?.publish(RELAYS, eventFinal);
+    }
+    toast.success("Message sent successfully!");
+  };
+
   if (loading) return <Loading vCentered={false} />;
 
   return (
     <div className="container mx-auto px-4">
       <h1 className="text-2xl font-bold mb-4">Conversation</h1>
-      <div className="space-y-4">
+      <div className="flex mb-4">
+        <input
+          type="text"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          className="flex-grow border rounded-l px-4 py-2 text-black"
+          placeholder="Type your message..."
+        />
+        <button
+          onClick={handleSendMessage}
+          className="bg-blue-500 text-white px-4 py-2 rounded-r"
+        >
+          Send
+        </button>
+      </div>
+      <div className="space-y-4 mb-4">
         {messages.map((message) => (
           <div
             key={message.id}
