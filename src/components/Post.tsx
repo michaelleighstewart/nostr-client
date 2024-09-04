@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SimplePool, Event, getPublicKey } from 'nostr-tools';
 import { useParams } from 'react-router-dom';
 import NoteCard from './NoteCard';
-import { Reaction } from './Home';
+import { Reaction, Metadata } from './Home';
 import { RELAYS } from '../utils/constants';
 import { User, bech32Decoder } from '../utils/helperFunctions';
 import Loading from './Loading';
@@ -16,7 +16,7 @@ interface PostProps {
 interface Reply {
   id: string;
   content: string;
-  user: User;
+  pubkey: string;
   created_at: number;
   hashtags: string[];
   reactions: Reaction[];
@@ -28,6 +28,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   const [replies, setReplies] = useState<Reply[]>([]);
   const [loading, setLoading] = useState(true);
   const [replyContent, setReplyContent] = useState('');
+  const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
 
   useEffect(() => {
     if (!pool || !id) return;
@@ -43,12 +44,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
           const newReply: Reply = {
             id: event.id,
             content: event.content,
-            user: { 
-              pubkey: event.pubkey,
-              name: event.tags.find(tag => tag[0] === 'name')?.[1] || '',
-              image: event.tags.find(tag => tag[0] === 'picture')?.[1] || '',
-              nip05: event.tags.find(tag => tag[0] === 'nip05')?.[1] || '',
-            },
+            pubkey: event.pubkey,
             created_at: event.created_at,
             hashtags: event.tags.filter((tag: string[]) => tag[0] === 't').map((tag: string[]) => tag[1]),
             reactions: [],
@@ -57,7 +53,14 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
           if (event.id === id) {
             setPost(newReply);
           } else {
-            setReplies((prevReplies) => [...prevReplies, newReply]);
+            setReplies((prevReplies) => {
+              // Check if the reply already exists
+              const replyExists = prevReplies.some(reply => reply.id === newReply.id);
+              if (!replyExists) {
+                return [...prevReplies, newReply];
+              }
+              return prevReplies;
+            });
           }
         },
         oneose: () => {
@@ -70,6 +73,36 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
       sub.close();
     };
   }, [id, pool]);
+
+  useEffect(() => {
+    if (!pool || !post || replies.length === 0) return;
+
+    const authors = [post.pubkey, ...replies.map(reply => reply.pubkey)];
+    const uniqueAuthors = [...new Set(authors)];
+
+    const subMetadata = pool.subscribeMany(
+      RELAYS,
+      [
+        { kinds: [0], authors: uniqueAuthors }
+      ],
+      {
+        onevent: (event: Event) => {
+          const userMetadata = JSON.parse(event.content) as Metadata;
+          setMetadata(prevMetadata => ({
+            ...prevMetadata,
+            [event.pubkey]: userMetadata
+          }));
+        },
+        oneose: () => {
+          // Metadata fetch complete
+        },
+      }
+    );
+
+    return () => {
+      subMetadata.close();
+    };
+  }, [pool, post, replies]);
 
   const handleReply = async () => {
     if (!pool || !id || !replyContent.trim()) return;
@@ -117,7 +150,12 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
       <NoteCard
         id={post.id}
         content={post.content}
-        user={post.user}
+        user={{
+          pubkey: post.pubkey,
+          name: metadata[post.pubkey]?.name || '',
+          image: metadata[post.pubkey]?.picture || '',
+          nip05: metadata[post.pubkey]?.nip05 || '',
+        }}
         created_at={post.created_at}
         hashtags={post.hashtags}
         pool={pool}
@@ -147,7 +185,12 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
           key={reply.id}
           id={reply.id}
           content={reply.content}
-          user={reply.user}
+          user={{
+            pubkey: reply.pubkey,
+            name: metadata[reply.pubkey]?.name || '',
+            image: metadata[reply.pubkey]?.picture || '',
+            nip05: metadata[reply.pubkey]?.nip05 || '',
+          }}
           created_at={reply.created_at}
           hashtags={reply.hashtags}
           pool={pool}
@@ -155,7 +198,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
           reactions={reply.reactions}
           keyValue={keyValue}
           deleted={false}
-          replies={replies.length}
+          replies={0}
         />
       ))}
     </div>
