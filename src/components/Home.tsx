@@ -37,8 +37,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
     const [replies, setReplies] = useState<Record<string, number>>({});
-    const metadataFetched = useRef<Record<string, boolean>>({});
-    const reactionsFetched = useRef<Record<string, boolean>>({});
     const repliesFetched = useRef<Record<string, boolean>>({});
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -49,7 +47,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [lastFetchedTimestamp, setLastFetchedTimestamp] = useState<number>(Math.floor(Date.now() / 1000));
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
     const [showOstrich, setShowOstrich] = useState(false);
-    const [userPublicKey, setUserPublicKey] = useState<string | null>(null);
     const [deletedNoteIds, setDeletedNoteIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
@@ -78,7 +75,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         pk = getPublicKey(skDecoded);
       }
       if (pk && !followers.includes(pk)) followers.push(pk);
-      setUserPublicKey(pk);
       return new Promise((resolve) => {
         
         pool.subscribeMany(
