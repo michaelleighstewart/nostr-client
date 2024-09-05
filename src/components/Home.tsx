@@ -11,6 +11,7 @@ import Loading from "./Loading";
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getFollowers } from "../utils/profileUtils";
 
 interface HomeProps {
   keyValue: string;
@@ -52,46 +53,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);
     }, [props.nostrExists, props.keyValue]);
 
-    async function getFollowers(pool: SimplePool): Promise<string[]> {
-      if (!isLoggedIn) return [];
-      
-      let pk: string = "";
-      let followers: string[] = [];
-      if (props.nostrExists) { 
-        try {
-          pk = await (window as any).nostr.getPublicKey();
-        }
-        catch (error) {
-          console.log("Error getting public key: ", error);
-        }
-      }
-      else {
-        const sk = props.keyValue;
-        if (!sk) {
-          return [];
-        }
-        let skDecoded = bech32Decoder('nsec', sk);
-        pk = getPublicKey(skDecoded);
-      }
-      if (pk && !followers.includes(pk)) followers.push(pk);
-      return new Promise((resolve) => {
-        
-        pool.subscribeManyEose(
-          RELAYS,
-          [{ authors: [pk], kinds: [3] }],
-          {
-            onevent(event: Event) {
-              followers.push(...event.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]));
-              resolve(followers);
-            },
-            onclose() {
-              resolve(followers);
-            }
-          }
-        );
-      });
-    }
-
     const fetchData = async (pool: SimplePool, since: number, append: boolean = false) => {
       try {
         if (!append) {
@@ -103,7 +64,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         let filter;
 
         // Always get the followers if logged in
-        const followers = isLoggedIn ? await getFollowers(pool) : [];
+        const followers = isLoggedIn ? await getFollowers(pool, isLoggedIn, props.nostrExists, props.keyValue) : [];
         filter = isLoggedIn
         ? { kinds: [1, 5, 6], since: since, until: lastFetchedTimestamp, authors: followers, limit: 10 }
         : { kinds: [1, 5, 6], since: since, until: lastFetchedTimestamp, limit: 10 };
