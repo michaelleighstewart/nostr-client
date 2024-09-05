@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import * as React from 'react';
-import { HomeIcon, UserIcon, CogIcon, KeyIcon, UserGroupIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon, BellIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
+import { HomeIcon, UserIcon, CogIcon, KeyIcon, UserGroupIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon, BellIcon } from '@heroicons/react/24/outline';
 import { validatePrivateKey } from '../utils/helperFunctions';
 import { getPublicKey } from 'nostr-tools';
 
