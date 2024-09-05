@@ -21,8 +21,8 @@ interface Props {
     deleted: boolean | undefined;
     repostedEvent: ExtendedEvent | null;
     metadata: Record<string, Metadata> | null;
-    allReactions: Record<string, Reaction[]>;
-    allReplies: Record<string, number>;
+    allReactions: Record<string, Reaction[]> | null;
+    allReplies: Record<string, number> | null;
   }
   
   export default function NoteCard({
@@ -227,9 +227,9 @@ interface Props {
               hashtags={[]}
               pool={pool}
               nostrExists={nostrExists}
-              reactions={allReactions[repostedEvent.id] ?? []}
+              reactions={allReactions?.[repostedEvent.id] ?? []}
               keyValue={keyValue}
-              replies={allReplies[repostedEvent.id] ?? 0}
+              replies={allReplies?.[repostedEvent.id] ?? 0}
               deleted={repostedEvent.deleted}
               repostedEvent={null}
               metadata={metadata}
