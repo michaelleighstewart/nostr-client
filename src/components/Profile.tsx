@@ -43,7 +43,6 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     const [isFollowing, setIsFollowing] = useState(false);
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
     const [replies, setReplies] = useState<Record<string, Set<string>>>({});
-    const [reposts, setReposts] = useState<Record<string, ExtendedEvent>>({});
     const location = useLocation();
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
 
@@ -54,11 +53,10 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
 
         const fetchProfileDataAndPosts = async () => {
             setLoading(true);
-            setPosts([]); // Clear previous posts
-            setProfileData(null); // Clear previous profile data
-            setReactions({}); // Clear previous reactions
-            setReplies({}); // Clear previous replies
-            setReposts({}); // Clear previous reposts
+            setPosts([]);
+            setProfileData(null);
+            setReactions({});
+            setReplies({});
             if (!pool) return;
 
             let fetchedPubkey: string;
