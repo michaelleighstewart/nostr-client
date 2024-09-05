@@ -56,9 +56,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       if (!props.pool || !userPublicKey) return;
   
       // Fetch current user's metadata
+      let subUserMeta: any;
       const fetchUserMetadata = () => {
         let ogUserFound = false;
-        const subUserMeta = props.pool?.subscribeMany(RELAYS, [
+        subUserMeta = props.pool?.subscribeMany(RELAYS, [
           {
             kinds: [0],
             authors: [userPublicKey],
@@ -119,7 +120,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         }
       });
 
-      return () => {};
+      return () => {
+        subUserMeta?.close();
+        subMeta.close();
+      };
     }, [events, props.pool, userPublicKey]);
 
     useEffect(() => {
@@ -141,6 +145,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         filter = isLoggedIn
         ? { kinds: [1, 5, 6], since: since, authors: followers, limit: 10, ...(until !== 0 && { until }) }
         : { kinds: [1, 5, 6], since: since, limit: 10, ...(until !== 0 && { until }) };
+        let subRepostedMeta: any;
+        let subReactionsReplies: any;
   
             const sub = pool.subscribeMany(
               RELAYS,
@@ -203,7 +209,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                               repostedEvent: repostedEvent
                             };
                             // Fetch metadata for the reposted event's author
-                            props.pool?.subscribeManyEose(
+                            subRepostedMeta = props.pool?.subscribeManyEose(
                               RELAYS,
                               [
                                 {
@@ -233,7 +239,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                               }
                             );
                             // Fetch reactions and replies for the reposted event
-                            props.pool?.subscribeManyEose(
+                            subReactionsReplies = props.pool?.subscribeManyEose(
                               RELAYS,
                               [
                                 {
@@ -298,6 +304,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
 
           return () => {
               sub.close();
+              subRepostedMeta?.close();
+              subReactionsReplies?.close();
           };
       } catch (error) {
         console.error("Error fetching data: ", error);
@@ -310,13 +318,16 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     useEffect(() => {
       if (!props.pool) return;
       const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-      fetchData(props.pool, oneDayAgo);
+      const fetchDataCleanup = fetchData(props.pool, oneDayAgo);
+      return () => {
+        fetchDataCleanup.then(cleanup => cleanup && cleanup());
+      };
     }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn]);
 
     useEffect(() => {
       if (!props.pool) return;
       fetchMetadataReactionsAndReplies(props.pool, events, setMetadata, setReactions, setReplies);
-  }, [events, props.pool]);
+    }, [events, props.pool]);
 
     async function sendMessage() {
       if (!props.pool) return;
