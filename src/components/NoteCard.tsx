@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { toast } from 'react-toastify';
 import { Link, useNavigate } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
+import React from "react";
 
 interface Props {
     id: string;
@@ -66,34 +67,41 @@ interface Props {
     }
 
     useEffect(() => {
-      // Replace \n with HTML line breaks
-      const contentWithLineBreaks = content.replace(/\n/g, '<br />');
-
       // Check if content contains image URLs
       const imageRegex = /(https?:\/\/.*\.(?:png|jpg|jpeg|gif))/gi;
-      const imageMatches: string[] = contentWithLineBreaks.match(imageRegex) || [];
+      const imageMatches: string[] = content.match(imageRegex) || [];
       setImageUrls(imageMatches);
 
       // Check for YouTube video
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?(.+)/g;
-      const youtubeMatch = youtubeRegex.exec(contentWithLineBreaks);
+      const youtubeMatch = youtubeRegex.exec(content);
       if (youtubeMatch && youtubeMatch[1]) {
         setYoutubeVideoId(youtubeMatch[1]);
       }
 
-      // Process content to detect and enable clicking on links
       const linkRegex = /(https?:\/\/[^\s]+)/g;
-      const parts: string[] = contentWithLineBreaks.split(linkRegex);
+      const parts: string[] = content.split(linkRegex);
       const processed = parts.map((part, index) => {
         if (part.match(linkRegex)) {
           if (!imageMatches.includes(part as string) && !youtubeMatch) {
             return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{part}</a>;
           }
-          return null; // Skip image and YouTube links in the text
+          return null;
         }
-        return <span key={index} dangerouslySetInnerHTML={{ __html: part }} />;
+
+        const lines = part.split('\n');
+        return (
+          <span key={index}>
+            {lines.map((line, lineIndex) => (
+              <React.Fragment key={lineIndex}>
+                {lineIndex > 0 && !imageMatches.includes(lines[lineIndex - 1]) && !imageMatches.includes(line) && <br />}
+                {line}
+              </React.Fragment>
+            ))}
+          </span>
+        );
       });
-      setProcessedContent(processed.filter(Boolean)); // Remove null values
+      setProcessedContent(processed.filter(Boolean));
     }, [content]);
   
     useEffect(() => {
