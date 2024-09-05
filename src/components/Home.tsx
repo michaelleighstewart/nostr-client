@@ -105,8 +105,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         // Always get the followers if logged in
         const followers = isLoggedIn ? await getFollowers(pool) : [];
         filter = isLoggedIn
-        ? { kinds: [1, 5, 6], since: since, until: lastFetchedTimestamp, authors: followers, limit: 20 }
-        : { kinds: [1, 5, 6], since: since, until: lastFetchedTimestamp, limit: 20 };
+        ? { kinds: [1, 5, 6], since: since, until: lastFetchedTimestamp, authors: followers, limit: 10 }
+        : { kinds: [1, 5, 6], since: since, until: lastFetchedTimestamp, limit: 10 };
   
             const sub = pool.subscribeMany(
               RELAYS,
@@ -141,7 +141,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                           ));
                       }
                       else if (event.kind === 6) {
-                        console.log("reposted event: ", event);
                         const repostedId = event.tags.find(tag => tag[0] === 'e')?.[1];
                         if (repostedId) {
                           try {
