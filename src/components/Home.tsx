@@ -77,7 +77,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       if (pk && !followers.includes(pk)) followers.push(pk);
       return new Promise((resolve) => {
         
-        pool.subscribeMany(
+        pool.subscribeManyEose(
           RELAYS,
           [{ authors: [pk], kinds: [3] }],
           {
@@ -85,7 +85,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               followers.push(...event.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]));
               resolve(followers);
             },
-            oneose() {
+            onclose() {
               resolve(followers);
             }
           }
@@ -117,13 +117,14 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                       //console.log("event with id: ", event.id, " and kind: ", event.kind);
                       if (event.kind === 1 && !event.tags.some((tag: string[]) => tag[0] === 'e')) {
                           const extendedEvent: ExtendedEvent = {
-                              ...event,
-                              id: event.id,
-                              pubkey: event.pubkey,
-                              created_at: event.created_at,
-                              content: event.content,
-                              tags: event.tags,
-                              deleted: false
+                            ...event,
+                            id: event.id,
+                            pubkey: event.pubkey,
+                            created_at: event.created_at,
+                            content: event.content,
+                            tags: event.tags,
+                            deleted: false,
+                            repostedId: null
                           };
                           setEvents((events) => insertEventIntoDescendingList(events, extendedEvent));
                       } else if (event.kind === 5) {
@@ -170,7 +171,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           const pubkeysToFetch = new Set(events.map(event => event.pubkey));
           const postsToFetch = events.map(event => event.id);
 
-          const sub = props.pool?.subscribeMany(
+          props.pool?.subscribeManyEose(
               RELAYS,
               [
                   { kinds: [0], authors: Array.from(pubkeysToFetch) },
@@ -217,15 +218,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                           });
                       }
                   },
-                  oneose() {
-                      sub?.close();
+                  onclose() {
                   }
               }
           );
-
-          return () => {
-              sub?.close();
-          };
       };
 
       fetchMetadataAndReactions();
@@ -241,7 +237,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       if (postsToFetch.length === 0) {
         return;
       }
-      const subReplies = props.pool.subscribeMany(
+      props.pool.subscribeManyEose(
         RELAYS,
         [
           {
@@ -266,17 +262,13 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               return updatedReplies;
             });
           },
-          oneose() {
+          onclose() {
             postsToFetch.forEach(postId => {
               repliesFetched.current[postId] = true;
             });
           }
         }
       );
-
-      return () => {
-        subReplies.close();
-      };
     }, [events, props.pool]);
 
     async function sendMessage() {

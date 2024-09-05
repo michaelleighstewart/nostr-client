@@ -35,7 +35,6 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     const [pubkey, setPubkey] = useState<string>('');
     const [isFollowing, setIsFollowing] = useState(false);
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
-    //const [replies, setReplies] = useState<Record<string, number>>({});
     const [replies, setReplies] = useState<Record<string, Set<string>>>({});
     const location = useLocation();
 
@@ -73,7 +72,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             }
 
             // Check if current user is following the profile
-            const followingSub = pool.subscribeMany(
+            pool.subscribeManyEose(
                 RELAYS,
                 [{ kinds: [3], authors: [currentUserPubkey] }],
                 {
@@ -82,30 +81,24 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                             .filter(tag => tag[0] === 'p')
                             .map(tag => tag[1]);
                         setIsFollowing(followedPubkeys.includes(fetchedPubkey));
-                    },
-                    oneose() {
-                        followingSub.close();
                     }
                 }
             );
 
             // Fetch profile metadata
-            const metadataSub = pool.subscribeMany(
+            pool.subscribeManyEose(
                 RELAYS,
                 [{ kinds: [0], authors: [fetchedPubkey] }],
                 {
                     onevent(event) {
                         const metadata = JSON.parse(event.content) as ProfileData;
                         setProfileData(metadata);
-                    },
-                    oneose() {
-                        metadataSub.close();
                     }
                 }
             );
 
             // Fetch recent posts (excluding replies)
-            const postsSub = pool.subscribeMany(
+            pool.subscribeManyEose(
                 RELAYS,
                 [{ kinds: [1], authors: [fetchedPubkey], limit: 20 }],
                 {
@@ -121,9 +114,8 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                             });
                         }
                     },
-                    oneose() {
+                    onclose() {
                         setLoading(false);
-                        postsSub.close();
                     }
                 }
             );
@@ -138,7 +130,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
         const fetchReactions = () => {
             const postsToFetch = posts.map(post => post.id);
 
-            const subReactions = pool.subscribeMany(
+            pool.subscribeManyEose(
                 RELAYS,
                 postsToFetch.map((postId) => ({
                     kinds: [7],
@@ -170,9 +162,6 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                 
                             return updatedReactions;
                         });
-                    },
-                    oneose() {
-                        subReactions.close();
                     }
                 }
             );
@@ -181,7 +170,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
         fetchReactions();
 
         // Fetch replies for each post
-        const repliesSub = pool.subscribeMany(
+        pool.subscribeManyEose(
             RELAYS,
             [{ kinds: [1], '#e': posts.map(post => post.id) }],
             {
@@ -197,16 +186,9 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                             return updatedReplies;
                         });
                     }
-                },
-                oneose() {
-                    repliesSub.close();
                 }
             }
         );
-
-        return () => {
-            repliesSub.close();
-        };
     }, [pool, posts]);
 
     const handleFollow = async () => {

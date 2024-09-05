@@ -80,7 +80,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
     const authors = [post.pubkey, ...replies.map(reply => reply.pubkey)];
     const uniqueAuthors = [...new Set(authors)];
 
-    const subMetadata = pool.subscribeMany(
+    pool.subscribeManyEose(
       RELAYS,
       [
         { kinds: [0], authors: uniqueAuthors }
@@ -93,15 +93,11 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
             [event.pubkey]: userMetadata
           }));
         },
-        oneose: () => {
+        onclose: () => {
           // Metadata fetch complete
         },
       }
     );
-
-    return () => {
-      subMetadata.close();
-    };
   }, [pool, post, replies]);
 
   const handleReply = async () => {
