@@ -273,8 +273,11 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                                 reactions={reactions[post.id] || []}
                                 keyValue={keyValue}
                                 deleted={false}
-                                replies={replies[post.id] ? replies[post.id].size : 0}
-                            />
+                                replies={replies[post.id] ? replies[post.id].size : 0} repostedEvent={null}      
+                                metadata={null}
+                                allReactions={reactions}
+                                allReplies={{}}
+                                />
                         </div>
                     ))}
                 </div>

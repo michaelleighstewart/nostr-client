@@ -1,7 +1,7 @@
 import { BoltIcon, HandThumbUpIcon, HandThumbDownIcon, TrashIcon, ChatBubbleLeftIcon } from "@heroicons/react/16/solid";
-import { User, sendZap, reactToPost, deletePost, bech32Decoder } from "../utils/helperFunctions";
+import { User, sendZap, reactToPost, deletePost, bech32Decoder, ExtendedEvent } from "../utils/helperFunctions";
 import { SimplePool, getPublicKey } from "nostr-tools";
-import { Reaction } from "./Home";
+import { Metadata, Reaction } from "./Home";
 import { useState, useEffect } from "react";
 import { toast } from 'react-toastify';
 import { Link, useNavigate } from 'react-router-dom';
@@ -19,6 +19,10 @@ interface Props {
     keyValue: string;
     replies: number;
     deleted: boolean | undefined;
+    repostedEvent: ExtendedEvent | null;
+    metadata: Record<string, Metadata> | null;
+    allReactions: Record<string, Reaction[]>;
+    allReplies: Record<string, number>;
   }
   
   export default function NoteCard({
@@ -32,7 +36,11 @@ interface Props {
     reactions,
     keyValue,
     deleted,
-    replies
+    replies,
+    repostedEvent,
+    metadata,
+    allReactions,
+    allReplies
   }: Props) {
     const [alreadyLiked, setAlreadyLiked] = useState(false);
     const [alreadyDisliked, setAlreadyDisliked] = useState(false);
@@ -200,6 +208,36 @@ interface Props {
             </span>
           </div>
         </div>
+        {repostedEvent && (
+          <div className="mt-2 border-l-2 border-gray-500">
+            <p className="text-gray-400 text-sm mb-2 pl-4">Reposted</p>
+            <NoteCard
+              id={repostedEvent.id}
+              content={repostedEvent.content}
+              user={{
+                name:
+                    metadata?.[repostedEvent.pubkey]?.name ??
+                    `${nip19.npubEncode(repostedEvent.pubkey).slice(0, 12)}...`,
+                image:
+                    metadata?.[repostedEvent.pubkey]?.picture,
+                pubkey: repostedEvent.pubkey,
+                nip05: metadata?.[repostedEvent.pubkey]?.nip05
+            }}
+              created_at={repostedEvent.created_at}
+              hashtags={[]}
+              pool={pool}
+              nostrExists={nostrExists}
+              reactions={allReactions[repostedEvent.id] ?? []}
+              keyValue={keyValue}
+              replies={allReplies[repostedEvent.id] ?? 0}
+              deleted={repostedEvent.deleted}
+              repostedEvent={null}
+              metadata={metadata}
+              allReactions={allReactions}
+              allReplies={allReplies}
+            />
+          </div>
+        )}
         <div onClick={handleContentClick} className="cursor-pointer">
           <p>{processedContent}</p>
           {imageUrls.map((url, index) => (
@@ -229,56 +267,62 @@ interface Props {
             ))}
         </ul>
         <div className="inline-flex">
-          <div className="p-4">
-            <BoltIcon
-              className={user.nip05 ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
-              title={user.nip05 ? "Zap " + user.name + " for this post" : user.name + " does not have zaps enabled"}
-              onClick={() => sendZap(user, id)}>
-            </BoltIcon>
-          </div>
-          <div className="p-4 pl-32">
-            <HandThumbUpIcon
-              className={!alreadyLiked ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
-              title={!alreadyLiked ? "Like this post" : "You have already liked this post"}
-              onClick={!alreadyLiked ? () => handleReaction("+") : undefined}
-            />
-          </div>
-          <div className="p-4">
-            <span className="text-body5 text-gray-400">
-              {localReactions.filter((r) => r.type === "+").length}
-            </span>
-          </div>
-          <div className="p-4 pl-32">
-            <HandThumbDownIcon
-              className={!alreadyDisliked ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
-              title={!alreadyDisliked ? "Dislike this post" : "You have already disliked this post"}
-              onClick={!alreadyDisliked ? () => handleReaction("-") : undefined}
-            />
-          </div>
-          <div className="p-4">
-            <span className="text-body5 text-gray-400">
-              {localReactions.filter((r) => r.type === "-").length}
-            </span>
-          </div>
-          <div className="p-4 pl-32">
-            <ChatBubbleLeftIcon
-              className="h-6 w-6 text-blue-500 cursor-pointer"
-              title="View replies"
-              onClick={() => navigate(`/post/${id}`)}
-            />
-          </div>
-          <div className="p-4">
-            <span className="text-body5 text-gray-400">
-              {replies}
-            </span>
-          </div>
-          <div className="p-4 pl-32">
+        {!repostedEvent && (
+          <>
+            <div className="p-4">
+              <BoltIcon
+                className={user.nip05 ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
+                title={user.nip05 ? "Zap " + user.name + " for this post" : user.name + " does not have zaps enabled"}
+                onClick={() => sendZap(user, id)}>
+              </BoltIcon>
+            </div>
+            <div className="p-4 pl-32">
+              <HandThumbUpIcon
+                className={!alreadyLiked ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
+                title={!alreadyLiked ? "Like this post" : "You have already liked this post"}
+                onClick={!alreadyLiked ? () => handleReaction("+") : undefined}
+              />
+            </div>
+            <div className="p-4">
+              <span className="text-body5 text-gray-400">
+                {localReactions.filter((r) => r.type === "+").length}
+              </span>
+            </div>
+            <div className="p-4 pl-32">
+              <HandThumbDownIcon
+                className={!alreadyDisliked ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
+                title={!alreadyDisliked ? "Dislike this post" : "You have already disliked this post"}
+                onClick={!alreadyDisliked ? () => handleReaction("-") : undefined}
+              />
+            </div>
+            <div className="p-4">
+              <span className="text-body5 text-gray-400">
+                {localReactions.filter((r) => r.type === "-").length}
+              </span>
+            </div>
+            <div className="p-4 pl-32">
+              <ChatBubbleLeftIcon
+                className="h-6 w-6 text-blue-500 cursor-pointer"
+                title="View replies"
+                onClick={() => navigate(`/post/${id}`)}
+              />
+            </div>
+            <div className="p-4">
+              <span className="text-body5 text-gray-400">
+                {replies}
+              </span>
+            </div>
+          </>
+        )}
+        {canDelete &&
+          <div className={`p-4 ${!repostedEvent ? 'pl-32' : ''}`}>
             <TrashIcon
               className={canDelete ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
-              title={canDelete ? "Delete this post" : "You cannot delete this post"}
-              onClick={canDelete ?() => handleDelete(id) : undefined}
+                title={canDelete ? "Delete this post" : "You cannot delete this post"}
+                onClick={canDelete ? () => handleDelete(id) : undefined}
               />
           </div>
+        }
         </div>
         {selectedImage && (
           <div 

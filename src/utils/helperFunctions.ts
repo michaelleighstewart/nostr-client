@@ -19,7 +19,7 @@ export type ExtendedEvent = {
   deleted: boolean;
   content: string;
   tags: string[][];
-  repostedId: string | null;
+  repostedEvent: ExtendedEvent | null;
 }
 
 export function insertEventIntoDescendingList<T extends ExtendedEvent>(

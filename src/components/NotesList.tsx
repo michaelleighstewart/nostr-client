@@ -74,9 +74,13 @@ export default function NotesList({ notes, metadata, pool, nostrExists, reaction
                                 pool={pool}
                                 nostrExists={nostrExists}
                                 reactions={reactions[note.id]}
+                                allReactions={reactions}
                                 keyValue={keyValue}
                                 replies={replies[note.id] ?? 0}
+                                allReplies={replies}
                                 deleted={note.deleted}
+                                repostedEvent={note.repostedEvent}
+                                metadata={metadata}
                             />
                         </div>
                     </motion.div>
