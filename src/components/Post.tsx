@@ -29,11 +29,12 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   const [loading, setLoading] = useState(true);
   const [replyContent, setReplyContent] = useState('');
   const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
+  const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
 
   useEffect(() => {
     if (!pool || !id) return;
 
-    const sub = pool.subscribeMany(
+    const sub = pool.subscribeManyEose(
       RELAYS,
       [
         { kinds: [1], ids: [id] },
@@ -63,7 +64,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
             });
           }
         },
-        oneose: () => {
+        onclose: () => {
           setLoading(false);
         },
       }
@@ -75,29 +76,78 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   }, [id, pool]);
 
   useEffect(() => {
-    if (!pool || !post || replies.length === 0) return;
+    if (!pool || !post) return;
 
-    const authors = [post.pubkey, ...replies.map(reply => reply.pubkey)];
-    const uniqueAuthors = [...new Set(authors)];
+    const authors = new Set<string>([post.pubkey]);
+    replies.forEach(reply => authors.add(reply.pubkey));
 
-    pool.subscribeManyEose(
+    const uniqueAuthors = Array.from(authors);
+
+    if (uniqueAuthors.length === 0) return;
+
+    const sub = pool.subscribeManyEose(
       RELAYS,
       [
         { kinds: [0], authors: uniqueAuthors }
       ],
       {
         onevent: (event: Event) => {
-          const userMetadata = JSON.parse(event.content) as Metadata;
-          setMetadata(prevMetadata => ({
-            ...prevMetadata,
-            [event.pubkey]: userMetadata
-          }));
-        },
-        onclose: () => {
-          // Metadata fetch complete
+          try {
+            const userMetadata = JSON.parse(event.content) as Metadata;
+            setMetadata(prevMetadata => ({
+              ...prevMetadata,
+              [event.pubkey]: userMetadata
+            }));
+          } catch (error) {
+            console.error('Error parsing metadata:', error);
+          }
         },
       }
     );
+
+    return () => {
+      sub.close();
+    };
+  }, [pool, post, replies]);
+
+  useEffect(() => {
+    if (!pool || !post) return;
+
+    const postIds = [post.id, ...replies.map(reply => reply.id)];
+
+    const sub = pool.subscribeManyEose(
+      RELAYS,
+      postIds.map(postId => ({ kinds: [7], '#e': [postId] })),
+      {
+        onevent: (event: Event) => {
+          const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+          if (postId) {
+            const newReaction: Reaction = {
+              liker_pubkey: event.pubkey,
+              type: event.content,
+              sig: event.sig
+            };
+            setReactions(prevReactions => {
+              const existingReactions = prevReactions[postId] || [];
+              const reactionExists = existingReactions.some(
+                r => r.liker_pubkey === newReaction.liker_pubkey && r.type === newReaction.type
+              );
+              if (!reactionExists) {
+                return {
+                  ...prevReactions,
+                  [postId]: [...existingReactions, newReaction]
+                };
+              }
+              return prevReactions;
+            });
+          }
+        },
+      }
+    );
+
+    return () => {
+      sub.close();
+    };
   }, [pool, post, replies]);
 
   const handleReply = async () => {
@@ -156,13 +206,13 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         hashtags={post.hashtags}
         pool={pool}
         nostrExists={nostrExists}
-        reactions={post.reactions}
+        reactions={reactions[post.id] || []}
         keyValue={keyValue}
         deleted={false}
         replies={replies.length}
         repostedEvent={null}
         metadata={metadata}
-        allReactions={null}
+        allReactions={reactions}
         allReplies={null}
       />
       <div className="mt-8 p-16 rounded-lg">
@@ -195,13 +245,13 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
           hashtags={reply.hashtags}
           pool={pool}
           nostrExists={nostrExists}
-          reactions={reply.reactions}
+          reactions={reactions[reply.id] || []}
           keyValue={keyValue}
           deleted={false}
           replies={0}
           repostedEvent={null}
           metadata={metadata}
-          allReactions={null}
+          allReactions={reactions}
           allReplies={null}
         />
       ))}

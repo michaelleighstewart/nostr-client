@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { SimplePool, Event } from "nostr-tools";
+import { SimplePool } from "nostr-tools";
 import { useLocation, Link } from "react-router-dom";
-import { bech32Decoder } from "../utils/helperFunctions";
+import { bech32Decoder, ExtendedEvent, insertEventIntoDescendingList } from "../utils/helperFunctions";
 import { getPublicKey, finalizeEvent } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
@@ -28,15 +28,24 @@ interface Reaction {
     sig: string;
 }
 
+export interface Metadata {
+    name?: string;
+    about?: string;
+    picture?: string;
+    nip05?: string;
+  }
+
 const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) => {
     const [profileData, setProfileData] = useState<ProfileData | null>(null);
-    const [posts, setPosts] = useState<Event[]>([]);
+    const [posts, setPosts] = useState<ExtendedEvent[]>([]);
     const [loading, setLoading] = useState(true);
     const [pubkey, setPubkey] = useState<string>('');
     const [isFollowing, setIsFollowing] = useState(false);
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
     const [replies, setReplies] = useState<Record<string, Set<string>>>({});
+    const [reposts, setReposts] = useState<Record<string, ExtendedEvent>>({});
     const location = useLocation();
+    const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
 
     useEffect(() => {
         const queryParams = new URLSearchParams(location.search);
@@ -49,6 +58,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             setProfileData(null); // Clear previous profile data
             setReactions({}); // Clear previous reactions
             setReplies({}); // Clear previous replies
+            setReposts({}); // Clear previous reposts
             if (!pool) return;
 
             let fetchedPubkey: string;
@@ -97,21 +107,127 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                 }
             );
 
-            // Fetch recent posts (excluding replies)
+            // Fetch recent posts (including reposts)
             pool.subscribeManyEose(
                 RELAYS,
-                [{ kinds: [1], authors: [fetchedPubkey], limit: 20 }],
+                [{ kinds: [1, 6], authors: [fetchedPubkey], limit: 20 }],
                 {
                     onevent(event) {
-                        // Check if the post is not a reply
-                        if (!event.tags.some(tag => tag[0] === 'e')) {
-                            setPosts(prevPosts => {
-                                // Check if the post is already in the array
-                                if (!prevPosts.some(p => p.id === event.id)) {
-                                    return [...prevPosts, event];
-                                }
-                                return prevPosts;
-                            });
+                        if (event.kind === 1) {
+                            // Regular post
+                            if (!event.tags.some(tag => tag[0] === 'e')) {
+                                setPosts(prevPosts => {
+                                    if (!prevPosts.some(p => p.id === event.id)) {
+                                        return [...prevPosts, { ...event, deleted: false, repostedEvent: null }];
+                                    }
+                                    return prevPosts;
+                                });
+                            }
+                        } else if (event.kind === 6) {
+                            // Repost
+                            const repostedId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                            if (repostedId) {
+                              try {
+                                const repostedContent = JSON.parse(event.content);
+                                const repostedEvent: ExtendedEvent = {
+                                  ...event,
+                                  id: repostedContent.id,
+                                  pubkey: repostedContent.pubkey,
+                                  created_at: repostedContent.created_at,
+                                  content: repostedContent.content,
+                                  tags: repostedContent.tags,
+                                  deleted: false,
+                                  repostedEvent: null
+                                };
+                                const extendedEvent: ExtendedEvent = {
+                                  id: event.id,
+                                  pubkey: event.pubkey,
+                                  created_at: event.created_at,
+                                  content: "",
+                                  tags: event.tags,
+                                  deleted: false,
+                                  repostedEvent: repostedEvent
+                                };
+                                // Fetch metadata for the reposted event's author
+                                pool?.subscribeManyEose(
+                                  RELAYS,
+                                  [
+                                    {
+                                      kinds: [0],
+                                      authors: [repostedEvent.pubkey],
+                                    },
+                                  ],
+                                  {
+                                    onevent: (event) => {
+                                      if (event.kind === 0) {
+                                        try {
+                                          const profileContent = JSON.parse(event.content);
+                                          setMetadata((prevMetadata) => ({
+                                            ...prevMetadata,
+                                            [event.pubkey]: {
+                                              name: profileContent.name,
+                                              about: profileContent.about,
+                                              picture: profileContent.picture,
+                                              nip05: profileContent.nip05,
+                                            },
+                                          }));
+                                        } catch (error) {
+                                          console.error("Error parsing profile metadata:", error);
+                                        }
+                                      }
+                                    },
+                                  }
+                                );
+                                // Fetch reactions and replies for the reposted event
+                                pool?.subscribeManyEose(
+                                  RELAYS,
+                                  [
+                                    {
+                                      kinds: [1, 7],
+                                      "#e": [repostedEvent.id],
+                                    },
+                                  ],
+                                  {
+                                    onevent: (event) => {
+                                      if (event.kind === 7) {
+                                        // This is a reaction
+                                        setReactions((prevReactions) => ({
+                                          ...prevReactions,
+                                          [repostedEvent.id]: [
+                                            ...(prevReactions[repostedEvent.id] || []),
+                                            {
+                                              id: event.id,
+                                              liker_pubkey: event.pubkey,
+                                              type: event.tags.find((t) => t[0] === "p")?.[1] || "+",
+                                              sig: event.sig, // Add the 'sig' property
+                                            },
+                                          ],
+                                        }));
+                                      } else if (event.kind === 1) {
+                                        // This is a reply
+                                        setReplies(cur => {
+                                          const updatedReplies = { ...cur };
+                                          const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                                          if (postId) {
+                                              updatedReplies[postId] = (updatedReplies[postId] || new Set()).add(event.id);
+                                          }
+                                          return updatedReplies;
+                                      });
+                                      }
+                                    },
+                                  }
+                                );
+                                setPosts((events) => {
+                                  // Check if the event already exists
+                                  if (!events.some(e => e.id === extendedEvent.id)) {
+                                      return insertEventIntoDescendingList(events, extendedEvent);
+                                  }
+                                  return events;
+                              });
+                              } catch (error) {
+                                console.error("Error parsing reposted content:", error);
+                              }
+                            }
                         }
                     },
                     onclose() {
@@ -217,6 +333,13 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
         return <Loading vCentered={false} />;
     }
 
+    // Sort posts and reposts by date
+    const sortedPosts = [...posts].sort((a, b) => {
+        const dateA = a.repostedEvent ? a.repostedEvent.created_at : a.created_at;
+        const dateB = b.repostedEvent ? b.repostedEvent.created_at : b.created_at;
+        return dateB - dateA;
+    });
+
     return (
         <div className="py-64">
             {profileData ? (
@@ -253,9 +376,9 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             )}
 
             <h2 className="text-2xl font-bold mt-8 mb-4 pb-16">Recent Posts</h2>
-            {posts.length > 0 ? (
+            {sortedPosts.length > 0 ? (
                 <div className="space-y-8">
-                    {posts.map(post => (
+                    {sortedPosts.map(post => (
                         <div key={post.id} className="mb-8 pb-32">
                             <NoteCard
                                 id={post.id}
@@ -272,12 +395,13 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                                 nostrExists={nostrExists}
                                 reactions={reactions[post.id] || []}
                                 keyValue={keyValue}
-                                deleted={false}
-                                replies={replies[post.id] ? replies[post.id].size : 0} repostedEvent={null}      
-                                metadata={null}
+                                deleted={post.deleted === true}
+                                replies={replies[post.id] ? replies[post.id].size : 0}
+                                repostedEvent={post.repostedEvent || null}
+                                metadata={metadata}
                                 allReactions={reactions}
-                                allReplies={{}}
-                                />
+                                allReplies={Object.fromEntries(Object.entries(replies).map(([key, value]) => [key, value.size]))}
+                            />
                         </div>
                     ))}
                 </div>

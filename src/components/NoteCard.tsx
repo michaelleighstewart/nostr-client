@@ -66,21 +66,24 @@ interface Props {
     }
 
     useEffect(() => {
+      // Replace \n with HTML line breaks
+      const contentWithLineBreaks = content.replace(/\n/g, '<br />');
+
       // Check if content contains image URLs
       const imageRegex = /(https?:\/\/.*\.(?:png|jpg|jpeg|gif))/gi;
-      const imageMatches: string[] = content.match(imageRegex) || [];
+      const imageMatches: string[] = contentWithLineBreaks.match(imageRegex) || [];
       setImageUrls(imageMatches);
 
       // Check for YouTube video
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?(.+)/g;
-      const youtubeMatch = youtubeRegex.exec(content);
+      const youtubeMatch = youtubeRegex.exec(contentWithLineBreaks);
       if (youtubeMatch && youtubeMatch[1]) {
         setYoutubeVideoId(youtubeMatch[1]);
       }
 
       // Process content to detect and enable clicking on links
       const linkRegex = /(https?:\/\/[^\s]+)/g;
-      const parts: string[] = content.split(linkRegex);
+      const parts: string[] = contentWithLineBreaks.split(linkRegex);
       const processed = parts.map((part, index) => {
         if (part.match(linkRegex)) {
           if (!imageMatches.includes(part as string) && !youtubeMatch) {
@@ -88,7 +91,7 @@ interface Props {
           }
           return null; // Skip image and YouTube links in the text
         }
-        return part;
+        return <span key={index} dangerouslySetInnerHTML={{ __html: part }} />;
       });
       setProcessedContent(processed.filter(Boolean)); // Remove null values
     }, [content]);
