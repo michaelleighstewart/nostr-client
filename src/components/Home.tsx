@@ -69,7 +69,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         filter = isLoggedIn
         ? { kinds: [1, 5, 6], since: since, authors: followers, limit: 10, ...(until !== 0 && { until }) }
         : { kinds: [1, 5, 6], since: since, limit: 10, ...(until !== 0 && { until }) };
-        console.log(filter);
   
             const sub = pool.subscribeMany(
               RELAYS,
