@@ -28,34 +28,45 @@ const Search: React.FC<SearchProps> = ({ pool }) => {
     setHasSearched(true);
 
     try {
-      let pubkeys: string[] = [];
+      let pubkey: string | null = null;
 
       // Check if the search term is an npub
       try {
         const { type, data } = nip19.decode(searchTerm);
         if (type === 'npub') {
-          pubkeys.push(data);
+          pubkey = data;
         }
       } catch (error) {
-        // If it's not an npub, we'll search by username
-        console.log('Not an npub, searching by username');
+        console.log('Not a valid npub');
+        setIsLoading(false);
+        setSearchResults([]);
+        return;
+      }
+
+      if (!pubkey) {
+        setIsLoading(false);
+        setSearchResults([]);
+        return;
       }
 
       const results: ProfileResult[] = [];
 
       const sub = pool.subscribeMany(
         RELAYS,
-        [{ kinds: [0], ...(pubkeys.length ? { authors: pubkeys } : {}) }],
+        [
+          {
+            kinds: [0],
+            authors: [pubkey],
+          },
+        ],
         {
           onevent(event) {
             const profile = JSON.parse(event.content);
-            if (pubkeys.length || profile.name?.toLowerCase().includes(searchTerm.toLowerCase())) {
-              results.push({
-                npub: nip19.npubEncode(event.pubkey),
-                name: profile.name,
-                picture: profile.picture,
-              });
-            }
+            results.push({
+              npub: nip19.npubEncode(event.pubkey),
+              name: profile.display_name || profile.name,
+              picture: profile.picture,
+            });
           },
           oneose() {
             setSearchResults(results);
@@ -84,7 +95,7 @@ const Search: React.FC<SearchProps> = ({ pool }) => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Enter npub or username"
+          placeholder="Enter npub"
           className="flex-grow p-2 border rounded-l text-black"
         />
         <button
