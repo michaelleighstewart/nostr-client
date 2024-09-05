@@ -117,11 +117,6 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
               </Link>
             </li>
             <li className="inline-block mx-4 text-center pr-2">
-              <Link to="/messages" className={`flex flex-col items-center ${isActive("/messages")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
-                <EnvelopeIcon className="h-6 w-6 my-3" />
-              </Link>
-            </li>
-            <li className="inline-block mx-4 text-center pr-2">
               <Link to="/edit-profile" className={`flex flex-col items-center ${isActive("/edit-profile")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
                 <CogIcon className="h-6 w-6 my-3" />
               </Link>

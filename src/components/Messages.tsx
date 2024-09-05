@@ -1,3 +1,4 @@
+//Michael - needs to be updated to use NIP-17: https://github.com/nostr-protocol/nips/blob/master/17.md
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { RELAYS } from '../utils/constants';
