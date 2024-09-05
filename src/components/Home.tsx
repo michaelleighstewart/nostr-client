@@ -37,7 +37,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
     const [replies, setReplies] = useState<Record<string, number>>({});
-    const repliesFetched = useRef<Record<string, boolean>>({});
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -167,7 +166,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     useEffect(() => {
       if (!props.pool) return;
 
-      const fetchMetadataAndReactions = () => {
+      const fetchMetadataReactionsAndReplies = () => {
           const pubkeysToFetch = new Set(events.map(event => event.pubkey));
           const postsToFetch = events.map(event => event.id);
 
@@ -176,7 +175,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               [
                   { kinds: [0], authors: Array.from(pubkeysToFetch) },
                   { kinds: [7], '#e': postsToFetch },
-                  { kinds: [1], '#e': postsToFetch }  // For replies
+                  { kinds: [1], '#e': postsToFetch }
               ],
               {
                   onevent(event: Event) {
@@ -224,52 +223,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           );
       };
 
-      fetchMetadataAndReactions();
+      fetchMetadataReactionsAndReplies();
   }, [events, props.pool]);
-
-    // New useEffect for fetching replies
-    useEffect(() => {
-      if (!props.pool) return;
-      const postsToFetch = events
-        .filter((event) => !repliesFetched.current[event.id])
-        .map((event) => event.id);
-
-      if (postsToFetch.length === 0) {
-        return;
-      }
-      props.pool.subscribeManyEose(
-        RELAYS,
-        [
-          {
-            kinds: [1],
-            '#e': postsToFetch,
-          },
-        ],
-        {
-          onevent(event) {
-            setReplies((cur) => {
-              const updatedReplies = { ...cur };
-              const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
-
-              if (postId) {
-                if (updatedReplies[postId]) {
-                  updatedReplies[postId] += 1;
-                } else {
-                  updatedReplies[postId] = 1;
-                }
-              }
-        
-              return updatedReplies;
-            });
-          },
-          onclose() {
-            postsToFetch.forEach(postId => {
-              repliesFetched.current[postId] = true;
-            });
-          }
-        }
-      );
-    }, [events, props.pool]);
 
     async function sendMessage() {
       if (!props.pool) return;
