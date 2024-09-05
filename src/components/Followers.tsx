@@ -3,6 +3,7 @@ import { SimplePool, Event } from "nostr-tools";
 import { useParams, Link } from "react-router-dom";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
+import { getFollowers } from "../utils/profileUtils";
 
 interface FollowersProps {
     keyValue: string;
@@ -26,28 +27,12 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
             setLoading(true);
             if (!pool || !pubkey) return;
 
-            const followerEvents: Event[] = [];
-            await new Promise<void>((resolve) => {
-                pool.subscribeMany(
-                    RELAYS,
-                    [{ kinds: [3], '#p': [pubkey] }],
-                    {
-                        onevent(event) {
-                            followerEvents.push(event);
-                        },
-                        oneose() {
-                            resolve();
-                        }
-                    }
-                );
-            });
-
-            const uniqueFollowers = new Set<string>();
-            followerEvents.forEach(event => uniqueFollowers.add(event.pubkey));
+            const allFollowers = await getFollowers(pool, true, _nostrExists, _keyValue);
+            const uniqueFollowers = Array.from(new Set(allFollowers));
 
             const followerProfiles: Event[] = [];
             await new Promise<void>((resolve) => {
-                pool.subscribeMany(
+                pool.subscribeManyEose(
                     RELAYS,
                     [
                         {
@@ -59,7 +44,7 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
                         onevent(event) {
                             followerProfiles.push(event);
                         },
-                        oneose() {
+                        onclose() {
                             resolve();
                         }
                     }
@@ -105,7 +90,7 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
                                 <img src={follower.picture} alt={follower.name || 'Follower'} className="w-12 h-12 rounded-full" />
                             )}
                             <Link to={`/profile?npub=${follower.pubkey}`} className="text-blue-500 hover:underline">
-                                {follower.name || follower.pubkey.slice(0, 8)}
+                                {follower.name || follower.pubkey}
                             </Link>
                         </div>
                     ))}
