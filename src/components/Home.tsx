@@ -54,7 +54,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);
     }, [props.nostrExists, props.keyValue]);
 
-    const fetchData = async (pool: SimplePool, since: number, until: number, append: boolean = false) => {
+    const fetchData = async (pool: SimplePool, since: number, append: boolean = false, until: number = 0) => {
       try {
         if (!append) {
           setLoading(true);
@@ -67,8 +67,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         // Always get the followers if logged in
         const followers = isLoggedIn ? await getFollowers(pool, isLoggedIn, props.nostrExists, props.keyValue) : [];
         filter = isLoggedIn
-        ? { kinds: [1, 5, 6], since: since, until: until, authors: followers, limit: 10 }
-        : { kinds: [1, 5, 6], since: since, until: until, limit: 10 };
+        ? { kinds: [1, 5, 6], since: since, authors: followers, limit: 10, ...(until !== 0 && { until }) }
+        : { kinds: [1, 5, 6], since: since, limit: 10, ...(until !== 0 && { until }) };
+        console.log(filter);
   
             const sub = pool.subscribeMany(
               RELAYS,
@@ -220,7 +221,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                       setLoading(false);
                       setLoadingMore(false);
                       setInitialLoadComplete(true);
-                      sub.close();
                   }
               }
           );
@@ -239,7 +239,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     useEffect(() => {
       if (!props.pool) return;
       const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-      fetchData(props.pool, oneDayAgo, Math.floor(Date.now() / 1000));
+      fetchData(props.pool, oneDayAgo);
     }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn]);
 
     useEffect(() => {
@@ -281,7 +281,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         // Refresh the list of posts
         if (props.pool) {
           const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-          await fetchData(props.pool, oneDayAgo, Math.floor(Date.now() / 1000));
+          await fetchData(props.pool, oneDayAgo);
         }
       } catch (error) {
         console.error("Error sending message: ", error);
@@ -295,7 +295,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       if (!props.pool) return;
       setLoadingMore(true);
       const oneDayBeforeLastFetched = lastFetchedTimestamp - 24 * 60 * 60;
-      await fetchData(props.pool, oneDayBeforeLastFetched, lastFetchedTimestamp, true);
+      await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp);
     };
 
     return (
