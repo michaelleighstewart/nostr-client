@@ -104,9 +104,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
 
         // Always get the followers if logged in
         const followers = isLoggedIn ? await getFollowers(pool) : [];
-        //filter = isLoggedIn
-        //    ? { kinds: [1, 5, 6], since: since, until: lastFetchedTimestamp, authors: followers, limit: 20 }
-        //    : { kinds: [1, 5, 6], since: since, until: lastFetchedTimestamp, limit: 20 };
         filter = isLoggedIn
         ? { kinds: [1, 5], since: since, until: lastFetchedTimestamp, authors: followers, limit: 20 }
         : { kinds: [1, 5], since: since, until: lastFetchedTimestamp, limit: 20 };
@@ -127,7 +124,13 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                             deleted: false,
                             repostedId: null
                           };
-                          setEvents((events) => insertEventIntoDescendingList(events, extendedEvent));
+                          setEvents((events) => {
+                              // Check if the event already exists
+                              if (!events.some(e => e.id === extendedEvent.id)) {
+                                  return insertEventIntoDescendingList(events, extendedEvent);
+                              }
+                              return events;
+                          });
                       } else if (event.kind === 5) {
                           const deletedIds = event.tags
                               .filter(tag => tag[0] === 'e')
@@ -136,28 +139,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                           setEvents(prevEvents => prevEvents.map(e => 
                               deletedIds.includes(e.id) ? {...e, deleted: true} : e
                           ));
-                      } else if (event.kind === 6) {
-                          const repostedId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                          if (repostedId) {
-                              try {
-                                //michael commented for now
-                                console.log("repostedId: ", repostedId);
-                                  /*const repostedContent = JSON.parse(event.content);
-                                  const extendedEvent: ExtendedEvent = {
-                                      ...repostedContent,
-                                      id: event.id,
-                                      pubkey: event.pubkey,
-                                      created_at: event.created_at,
-                                      tags: event.tags,
-                                      deleted: false,
-                                      repostedId: repostedId
-                                  };*/
-                                  
-                                  //setEvents((events) => insertEventIntoDescendingList(events, extendedEvent));
-                              } catch (error) {
-                                  console.error("Error parsing reposted content:", error);
-                              }
-                          }
                       }
                   },
                   oneose() {
