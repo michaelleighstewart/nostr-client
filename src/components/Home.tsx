@@ -54,7 +54,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);
     }, [props.nostrExists, props.keyValue]);
 
-    const fetchData = async (pool: SimplePool, since: number, append: boolean = false) => {
+    const fetchData = async (pool: SimplePool, since: number, until: number, append: boolean = false) => {
       try {
         if (!append) {
           setLoading(true);
@@ -67,8 +67,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         // Always get the followers if logged in
         const followers = isLoggedIn ? await getFollowers(pool, isLoggedIn, props.nostrExists, props.keyValue) : [];
         filter = isLoggedIn
-        ? { kinds: [1, 5, 6], since: since, until: lastFetchedTimestamp, authors: followers, limit: 10 }
-        : { kinds: [1, 5, 6], since: since, until: lastFetchedTimestamp, limit: 10 };
+        ? { kinds: [1, 5, 6], since: since, until: until, authors: followers, limit: 10 }
+        : { kinds: [1, 5, 6], since: since, until: until, limit: 10 };
   
             const sub = pool.subscribeMany(
               RELAYS,
@@ -93,6 +93,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                               }
                               return events;
                           });
+                          // Update lastFetchedTimestamp if this is the oldest event
+                          setLastFetchedTimestamp(prevTimestamp => 
+                              Math.min(prevTimestamp, extendedEvent.created_at)
+                          );
                       } else if (event.kind === 5) {
                           const deletedIds = event.tags
                               .filter(tag => tag[0] === 'e')
@@ -202,6 +206,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                               }
                               return events;
                           });
+                          // Update lastFetchedTimestamp if this is the oldest event
+                          setLastFetchedTimestamp(prevTimestamp => 
+                              Math.min(prevTimestamp, extendedEvent.created_at)
+                          );
                           } catch (error) {
                             console.error("Error parsing reposted content:", error);
                           }
@@ -211,7 +219,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                   oneose() {
                       setLoading(false);
                       setLoadingMore(false);
-                      setLastFetchedTimestamp(since);
                       setInitialLoadComplete(true);
                       sub.close();
                   }
@@ -232,7 +239,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     useEffect(() => {
       if (!props.pool) return;
       const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-      fetchData(props.pool, oneDayAgo);
+      fetchData(props.pool, oneDayAgo, Math.floor(Date.now() / 1000));
     }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn]);
 
     useEffect(() => {
@@ -274,7 +281,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         // Refresh the list of posts
         if (props.pool) {
           const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-          await fetchData(props.pool, oneDayAgo);
+          await fetchData(props.pool, oneDayAgo, Math.floor(Date.now() / 1000));
         }
       } catch (error) {
         console.error("Error sending message: ", error);
@@ -287,8 +294,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const loadMore = async () => {
       if (!props.pool) return;
       setLoadingMore(true);
-      const oneDayBefore = lastFetchedTimestamp - 24 * 60 * 60;
-      await fetchData(props.pool, oneDayBefore, true);
+      const oneDayBeforeLastFetched = lastFetchedTimestamp - 24 * 60 * 60;
+      await fetchData(props.pool, oneDayBeforeLastFetched, lastFetchedTimestamp, true);
     };
 
     return (
