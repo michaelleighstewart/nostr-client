@@ -50,6 +50,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
     const [showOstrich, setShowOstrich] = useState(false);
     const [userPublicKey, setUserPublicKey] = useState<string | null>(null);
+    const [deletedNoteIds, setDeletedNoteIds] = useState<Set<string>>(new Set());
 
     useEffect(() => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);
@@ -107,68 +108,51 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         let filter;
 
         // Always get the followers if logged in
-        if (isLoggedIn) {
-          const followers = await getFollowers(pool);
-          filter = { kinds: [1], since: since, until: lastFetchedTimestamp, authors: followers, limit: 10 };
-        } else {
-          filter = { kinds: [1], since: since, until: lastFetchedTimestamp, limit: 10 };
-        }
+        const followers = isLoggedIn ? await getFollowers(pool) : [];
+        filter = isLoggedIn
+            ? { kinds: [1, 5], since: since, until: lastFetchedTimestamp, authors: followers, limit: 20 }
+            : { kinds: [1, 5], since: since, until: lastFetchedTimestamp, limit: 20 };
   
-        const subPosts = pool.subscribeMany(
-          RELAYS, 
-          [filter],
-          {
-            onevent(event: Event) {
-              if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
-                const extendedEvent: ExtendedEvent = {
-                  ...event,
-                  id: event.id,
-                  pubkey: event.pubkey,
-                  created_at: event.created_at,
-                  content: event.content,
-                  tags: event.tags,
-                  deleted: false
-                };
-    
-                // Subscribe to delete events
-                const subDelete = props?.pool?.subscribeMany(
-                  RELAYS,
-                  [{ kinds: [5], '#e': [extendedEvent.id ?? ""] }],
-                  {
-                    onevent(deleteEvent) {
-                      if (deleteEvent.pubkey === extendedEvent.pubkey) {
-                        extendedEvent.deleted = true;
-                        setEvents((prevEvents) => {
-                          const updatedEvents = prevEvents.map(event => 
-                            event.id === extendedEvent.id ? {...event, deleted: true} : event
-                          );
-                          return updatedEvents;
-                        });
+            const sub = pool.subscribeMany(
+              RELAYS,
+              [filter],
+              {
+                  onevent(event: Event) {
+                      //console.log("event with id: ", event.id, " and kind: ", event.kind);
+                      if (event.kind === 1 && !event.tags.some((tag: string[]) => tag[0] === 'e')) {
+                          const extendedEvent: ExtendedEvent = {
+                              ...event,
+                              id: event.id,
+                              pubkey: event.pubkey,
+                              created_at: event.created_at,
+                              content: event.content,
+                              tags: event.tags,
+                              deleted: false
+                          };
+                          setEvents((events) => insertEventIntoDescendingList(events, extendedEvent));
+                      } else if (event.kind === 5) {
+                          const deletedIds = event.tags
+                              .filter(tag => tag[0] === 'e')
+                              .map(tag => tag[1]);
+                          setDeletedNoteIds(prev => new Set([...prev, ...deletedIds]));
+                          setEvents(prevEvents => prevEvents.map(e => 
+                              deletedIds.includes(e.id) ? {...e, deleted: true} : e
+                          ));
                       }
-                    },
-                    oneose() {
-                      if (!extendedEvent.deleted) {
-                        setEvents((events) => insertEventIntoDescendingList(events, extendedEvent));
-                      }
-                      subDelete?.close();
-                    }
+                  },
+                  oneose() {
+                      setLoading(false);
+                      setLoadingMore(false);
+                      setLastFetchedTimestamp(since);
+                      setInitialLoadComplete(true);
+                      sub.close();
                   }
-                );
               }
-            },
-            oneose() {
-              setLoading(false);
-              setLoadingMore(false);
-              setLastFetchedTimestamp(since);
-              setInitialLoadComplete(true);
-            }
-          }
-        );
-  
-        // Return a cleanup function
-        return () => {
-          subPosts.close();
-        };
+          );
+
+          return () => {
+              sub.close();
+          };
       } catch (error) {
         console.error("Error fetching data: ", error);
         setError("An error occurred while fetching posts. Please try again later.");
@@ -182,136 +166,74 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
       fetchData(props.pool, oneDayAgo);
     }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn]);
- 
-    useEffect(() => {
-      if (!props.pool || !userPublicKey) return;
-  
-      // Fetch current user's metadata
-      const fetchUserMetadata = () => {
-        let ogUserFound = false;
-        const subUserMeta = props.pool?.subscribeMany(RELAYS, [
-          {
-            kinds: [0],
-            authors: [userPublicKey],
-          },
-        ],
-        {
-          onevent(event) {
-            const metadata = JSON.parse(event.content) as Metadata;
-            setMetadata((cur) => ({
-              ...cur,
-              [userPublicKey]: metadata,
-            }));
-            if (!metadata.name) {
-              setShowOstrich(true);
-              ogUserFound = false;
-            }
-            else {
-              ogUserFound = true;
-            }
-          },
-          oneose() {
-            subUserMeta?.close();
-            if (!ogUserFound) {
-              setShowOstrich(true);
-            }
-          }
-        });
-      };
 
-      fetchUserMetadata();
-
-      //get authors
-      const pubkeysToFetch = events
-        .filter((event) => metadataFetched.current[event.pubkey] !== true && event.pubkey !== userPublicKey)
-        .map((event) => event.pubkey);
-
-      pubkeysToFetch.forEach(
-        (pubkey) => (metadataFetched.current[pubkey] = true)
-      );
-  
-      const subMeta = props.pool.subscribeMany(RELAYS, [
-        {
-          kinds: [0],
-          authors: pubkeysToFetch,
-        },
-      ],
-      {
-        onevent(event) {
-          const metadata = JSON.parse(event.content) as Metadata;
-  
-          setMetadata((cur) => ({
-            ...cur,
-            [event.pubkey]: metadata,
-          }));
-        },
-        oneose() {
-          subMeta.close();
-        }
-      });
-
-      return () => {};
-    }, [events, props.pool, userPublicKey]);
-    
-    // Updated useEffect for fetching likes
     useEffect(() => {
       if (!props.pool) return;
-      const postsToFetch = events
-        .filter((event) => !reactionsFetched.current[event.id])
-        .map((event) => event.id);
 
-      if (postsToFetch.length === 0) {
-        return;
-      }
-      const subReactions = props.pool.subscribeMany(
-        RELAYS,
-        [
-          {
-            kinds: [7],
-            '#e': postsToFetch,
-          },
-        ],
-        {
-          onevent(event) {
-            setReactions((cur) => {
-              const newReaction: Reaction = {
-                liker_pubkey: event.pubkey,
-                type: event.content,
-                sig: event.sig
-              };
-              const updatedReactions = { ...cur };
-              const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+      const fetchMetadataAndReactions = () => {
+          const pubkeysToFetch = new Set(events.map(event => event.pubkey));
+          const postsToFetch = events.map(event => event.id);
 
-              if (postId) {
-                if (updatedReactions[postId]) {
-                  const postReactions = updatedReactions[postId];
-                  const isDuplicate = postReactions.some(
-                    (reaction) => reaction.sig === newReaction.sig
-                  );
-          
-                  if (!isDuplicate) {
-                    updatedReactions[postId] = [...postReactions, newReaction];
+          const sub = props.pool?.subscribeMany(
+              RELAYS,
+              [
+                  { kinds: [0], authors: Array.from(pubkeysToFetch) },
+                  { kinds: [7], '#e': postsToFetch },
+                  { kinds: [1], '#e': postsToFetch }  // For replies
+              ],
+              {
+                  onevent(event: Event) {
+                      if (event.kind === 0) {
+                          const metadata = JSON.parse(event.content) as Metadata;
+                          setMetadata(cur => ({
+                              ...cur,
+                              [event.pubkey]: metadata
+                          }));
+                      } else if (event.kind === 7) {
+                          setReactions(cur => {
+                              const newReaction: Reaction = {
+                                  liker_pubkey: event.pubkey,
+                                  type: event.content,
+                                  sig: event.sig
+                              };
+                              const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                              if (postId) {
+                                  const updatedReactions = { ...cur };
+                                  if (updatedReactions[postId]) {
+                                      if (!updatedReactions[postId].some(r => r.sig === newReaction.sig)) {
+                                          updatedReactions[postId] = [...updatedReactions[postId], newReaction];
+                                      }
+                                  } else {
+                                      updatedReactions[postId] = [newReaction];
+                                  }
+                                  return updatedReactions;
+                              }
+                              return cur;
+                          });
+                      } else if (event.kind === 1) {
+                          setReplies(cur => {
+                              const updatedReplies = { ...cur };
+                              const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                              if (postId) {
+                                  updatedReplies[postId] = (updatedReplies[postId] || 0) + 1;
+                              }
+                              return updatedReplies;
+                          });
+                      }
+                  },
+                  oneose() {
+                      sub?.close();
                   }
-                } else {
-                  updatedReactions[postId] = [newReaction];
-                }
               }
-        
-              return updatedReactions;
-            });
-          },
-          oneose() {
-            postsToFetch.forEach(postId => {
-              reactionsFetched.current[postId] = true;
-            });
-          }
-        }
-      );
+          );
 
-      return () => {
-        subReactions.close();
+          return () => {
+              sub?.close();
+          };
       };
-    }, [events, props.pool]);
+
+      fetchMetadataAndReactions();
+  }, [events, props.pool]);
 
     // New useEffect for fetching replies
     useEffect(() => {
@@ -443,7 +365,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         ) 
          : (
           <div className={`pt-32 relative ${!isLoggedIn ? 'pointer-events-none opacity-50' : ''}`}>
-            <NotesList metadata={metadata} reactions={reactions} notes={events} pool={props.pool} 
+            <NotesList metadata={metadata} reactions={reactions} notes={events.filter(e => !deletedNoteIds.has(e.id))} pool={props.pool} 
               nostrExists={props.nostrExists} keyValue={props.keyValue}
               replies={replies} />
             {initialLoadComplete && events.length > 0 && isLoggedIn && (
