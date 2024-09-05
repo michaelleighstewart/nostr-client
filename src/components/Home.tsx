@@ -1,6 +1,6 @@
 import '../App.css';
 import { SimplePool } from "nostr-tools";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import NotesList from "./NotesList";
 import { useDebounce } from "use-debounce";
 import { insertEventIntoDescendingList, bech32Decoder, ExtendedEvent } from "../utils/helperFunctions";
@@ -49,6 +49,78 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
     const [showOstrich, setShowOstrich] = useState(false);
     const [deletedNoteIds, setDeletedNoteIds] = useState<Set<string>>(new Set());
+    const [userPublicKey, setUserPublicKey] = useState<string | null>(null);
+    const metadataFetched = useRef<Record<string, boolean>>({});
+
+    useEffect(() => {
+      if (!props.pool || !userPublicKey) return;
+  
+      // Fetch current user's metadata
+      const fetchUserMetadata = () => {
+        let ogUserFound = false;
+        const subUserMeta = props.pool?.subscribeMany(RELAYS, [
+          {
+            kinds: [0],
+            authors: [userPublicKey],
+          },
+        ],
+        {
+          onevent(event) {
+            const metadata = JSON.parse(event.content) as Metadata;
+            setMetadata((cur) => ({
+              ...cur,
+              [userPublicKey]: metadata,
+            }));
+            if (!metadata.name) {
+              setShowOstrich(true);
+              ogUserFound = false;
+            }
+            else {
+              ogUserFound = true;
+            }
+          },
+          oneose() {
+            subUserMeta?.close();
+            if (!ogUserFound) {
+              setShowOstrich(true);
+            }
+          }
+        });
+      };
+
+      fetchUserMetadata();
+
+      //get authors
+      const pubkeysToFetch = events
+        .filter((event) => metadataFetched.current[event.pubkey] !== true && event.pubkey !== userPublicKey)
+        .map((event) => event.pubkey);
+
+      pubkeysToFetch.forEach(
+        (pubkey) => (metadataFetched.current[pubkey] = true)
+      );
+  
+      const subMeta = props.pool.subscribeMany(RELAYS, [
+        {
+          kinds: [0],
+          authors: pubkeysToFetch,
+        },
+      ],
+      {
+        onevent(event) {
+          const metadata = JSON.parse(event.content) as Metadata;
+  
+          setMetadata((cur) => ({
+            ...cur,
+            [event.pubkey]: metadata,
+          }));
+        },
+        oneose() {
+          subMeta.close();
+        }
+      });
+
+      return () => {};
+    }, [events, props.pool, userPublicKey]);
 
     useEffect(() => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);
@@ -65,7 +137,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         let filter;
 
         // Always get the followers if logged in
-        const followers = isLoggedIn ? await getFollowers(pool, isLoggedIn, props.nostrExists, props.keyValue) : [];
+        const followers = isLoggedIn ? await getFollowers(pool, isLoggedIn, props.nostrExists, props.keyValue, setUserPublicKey) : [];
         filter = isLoggedIn
         ? { kinds: [1, 5, 6], since: since, authors: followers, limit: 10, ...(until !== 0 && { until }) }
         : { kinds: [1, 5, 6], since: since, limit: 10, ...(until !== 0 && { until }) };

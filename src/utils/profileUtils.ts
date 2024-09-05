@@ -2,7 +2,7 @@ import { getPublicKey, SimplePool, Event } from "nostr-tools";
 import { bech32Decoder } from "./helperFunctions";
 import { RELAYS } from "./constants";
 
-export const getFollowers = async (pool: SimplePool, isLoggedIn: boolean, nostrExists: boolean | null, keyValue: string): Promise<string[]> => {
+export const getFollowers = async (pool: SimplePool, isLoggedIn: boolean, nostrExists: boolean | null, keyValue: string, setUserPublicKey: (pk: string) => void): Promise<string[]> => {
     if (!isLoggedIn) return [];
       
     let pk: string = "";
@@ -24,6 +24,7 @@ export const getFollowers = async (pool: SimplePool, isLoggedIn: boolean, nostrE
       pk = getPublicKey(skDecoded);
     }
     if (pk && !followers.includes(pk)) followers.push(pk);
+    setUserPublicKey(pk);
     return new Promise((resolve) => {
       
       pool.subscribeManyEose(
