@@ -121,7 +121,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             setPubkey(fetchedPubkey);
 
             //await new Promise<void>((resolve) => {
-                const subscription = pool.subscribeManyEose(RELAYS, [
+                pool.subscribeManyEose(RELAYS, [
                 {
                     kinds: [1, 6],
                     authors: [fetchedPubkey],
