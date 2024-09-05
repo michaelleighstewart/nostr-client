@@ -228,6 +228,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         setLoadingMore(false);
       }
     };
+    
 
     useEffect(() => {
       if (!props.pool) return;
