@@ -52,6 +52,7 @@ interface Props {
     const [imageUrls, setImageUrls] = useState<string[]>([]);
     const [processedContent, setProcessedContent] = useState<React.ReactNode[]>([]);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [youtubeVideoId, setYoutubeVideoId] = useState<string | null>(null);
     const navigate = useNavigate();
 
     function checkReactions() {
@@ -70,15 +71,22 @@ interface Props {
       const imageMatches: string[] = content.match(imageRegex) || [];
       setImageUrls(imageMatches);
 
+      // Check for YouTube video
+      const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?(.+)/g;
+      const youtubeMatch = youtubeRegex.exec(content);
+      if (youtubeMatch && youtubeMatch[1]) {
+        setYoutubeVideoId(youtubeMatch[1]);
+      }
+
       // Process content to detect and enable clicking on links
       const linkRegex = /(https?:\/\/[^\s]+)/g;
       const parts: string[] = content.split(linkRegex);
       const processed = parts.map((part, index) => {
         if (part.match(linkRegex)) {
-          if (!imageMatches.includes(part as string)) {
+          if (!imageMatches.includes(part as string) && !youtubeMatch) {
             return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{part}</a>;
           }
-          return null; // Skip image links in the text
+          return null; // Skip image and YouTube links in the text
         }
         return part;
       });
@@ -240,6 +248,18 @@ interface Props {
         )}
         <div onClick={handleContentClick} className="cursor-pointer">
           <p>{processedContent}</p>
+          {youtubeVideoId && (
+            <div className="mt-2">
+              <iframe
+                width="100%"
+                height="315"
+                src={`https://www.youtube.com/embed/${youtubeVideoId}`}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            </div>
+          )}
           {imageUrls.map((url, index) => (
             <img 
               key={index} 
