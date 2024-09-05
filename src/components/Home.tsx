@@ -1,6 +1,6 @@
 import '../App.css';
 import { SimplePool } from "nostr-tools";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import NotesList from "./NotesList";
 import { useDebounce } from "use-debounce";
 import { insertEventIntoDescendingList, bech32Decoder, ExtendedEvent } from "../utils/helperFunctions";
@@ -104,16 +104,18 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
 
         // Always get the followers if logged in
         const followers = isLoggedIn ? await getFollowers(pool) : [];
+        //filter = isLoggedIn
+        //    ? { kinds: [1, 5, 6], since: since, until: lastFetchedTimestamp, authors: followers, limit: 20 }
+        //    : { kinds: [1, 5, 6], since: since, until: lastFetchedTimestamp, limit: 20 };
         filter = isLoggedIn
-            ? { kinds: [1, 5], since: since, until: lastFetchedTimestamp, authors: followers, limit: 20 }
-            : { kinds: [1, 5], since: since, until: lastFetchedTimestamp, limit: 20 };
+        ? { kinds: [1, 5], since: since, until: lastFetchedTimestamp, authors: followers, limit: 20 }
+        : { kinds: [1, 5], since: since, until: lastFetchedTimestamp, limit: 20 };
   
             const sub = pool.subscribeMany(
               RELAYS,
               [filter],
               {
                   onevent(event: Event) {
-                      //console.log("event with id: ", event.id, " and kind: ", event.kind);
                       if (event.kind === 1 && !event.tags.some((tag: string[]) => tag[0] === 'e')) {
                           const extendedEvent: ExtendedEvent = {
                             ...event,
@@ -134,6 +136,28 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                           setEvents(prevEvents => prevEvents.map(e => 
                               deletedIds.includes(e.id) ? {...e, deleted: true} : e
                           ));
+                      } else if (event.kind === 6) {
+                          const repostedId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                          if (repostedId) {
+                              try {
+                                //michael commented for now
+                                console.log("repostedId: ", repostedId);
+                                  /*const repostedContent = JSON.parse(event.content);
+                                  const extendedEvent: ExtendedEvent = {
+                                      ...repostedContent,
+                                      id: event.id,
+                                      pubkey: event.pubkey,
+                                      created_at: event.created_at,
+                                      tags: event.tags,
+                                      deleted: false,
+                                      repostedId: repostedId
+                                  };*/
+                                  
+                                  //setEvents((events) => insertEventIntoDescendingList(events, extendedEvent));
+                              } catch (error) {
+                                  console.error("Error parsing reposted content:", error);
+                              }
+                          }
                       }
                   },
                   oneose() {
