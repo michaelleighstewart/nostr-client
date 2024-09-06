@@ -284,7 +284,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                 </div>
             )}
             <Ostrich show={showOstrich} onClose={() => setShowOstrich(false)} 
-                text="Congratulatons on following your first user! Now, go publish your first note!" linkText="publish your first note!" 
+                text="Congratulatons on following your first user! Now, go " linkText="publish your first note!" 
                 linkUrl="/" />
         </div>
     );

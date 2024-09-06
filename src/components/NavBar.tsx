@@ -4,6 +4,7 @@ import * as React from 'react';
 import { HomeIcon, UserIcon, CogIcon, KeyIcon, UserGroupIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon, BellIcon } from '@heroicons/react/24/outline';
 import { validatePrivateKey } from '../utils/helperFunctions';
 import { getPublicKey } from 'nostr-tools';
+import Ostrich from "./Ostrich";
 
 interface NavBarProps {
   keyValue: string;
@@ -139,17 +140,13 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
           </div>
         </ul>
         {!isLoggedIn && isHomePage && (
-          <div className="fixed inset-0 flex items-center justify-center pt-[150px]">
-            <div className="fixed inset-0 bg-black opacity-50 pointer-events-none"></div>
-            <div className="z-10 flex flex-col items-center justify-center">
-              <div className="mb-8">
-                <Link to="/generate-key" className="bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded inline-block">
-                  Sign Up / Sign In
-                </Link>
-              </div>
-              <img src="/ostrich.png" alt="Ostrich" className="max-w-full max-h-full" />
-            </div>
-          </div>
+          <Ostrich
+            show={!isLoggedIn && isHomePage}
+            onClose={() => {}}
+            text="Nostr is the future of communication on the internet!"
+            linkText="Sign up or sign in now"
+            linkUrl="/generate-key"
+          />
         )}
       </nav>
 

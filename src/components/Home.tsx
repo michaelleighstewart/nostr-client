@@ -362,7 +362,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           </div>
         )}
         <Ostrich show={showOstrich} onClose={() => setShowOstrich(false)} 
-            text="Hey! Please set up your profile so that users on the network can know who you are" linkText="set up your profile" 
+            text="Hey! Please " linkText="set up your profile to let users know who you are" 
             linkUrl="/edit-profile" />
       </div>
     )

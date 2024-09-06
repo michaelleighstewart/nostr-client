@@ -122,8 +122,8 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue }) => {
                 )}
             </div>
             <Ostrich show={showOstrich} onClose={() => setShowOstrich(false)} 
-            text="You are now on the Nostr network! Now, go find some people to follow!" 
-            linkText="find some people to follow" 
+            text="You are now on the Nostr network! Now, go " 
+            linkText="find some people to follow!" 
             linkUrl="/people-to-follow" />
             {!nsec && !npub && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
