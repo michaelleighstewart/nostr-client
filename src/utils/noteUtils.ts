@@ -11,7 +11,15 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     const pubkeysToFetch = new Set(events.map(event => event.pubkey));
     const postsToFetch = events.map(event => event.id);
 
-    pool?.subscribeManyEose(
+    let sub: any;
+
+    const cleanup = () => {
+        if (sub) {
+            sub.close();
+        }
+    };
+
+    sub = pool?.subscribeManyEose(
         RELAYS,
         [
             { kinds: [0], authors: Array.from(pubkeysToFetch) },
@@ -62,4 +70,6 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
             }
         }
     );
+
+    return cleanup;
 }
