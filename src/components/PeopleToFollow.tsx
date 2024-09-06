@@ -49,7 +49,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
 
         const pubkey = await getCurrentUserPubkey();
         
-        props.pool.subscribeMany(
+        const followingListSubscription = props.pool.subscribeManyEose(
             RELAYS,
             [{ kinds: [3], authors: [pubkey] }],
             {
@@ -59,59 +59,52 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                         .map(tag => tag[1]);
                     setFollowingList(following);
                 },
-                oneose() {
+                onclose() {
                     setLoading(false);
                 }
             }
         );
+
+        return () => {
+            followingListSubscription?.close();
+        };
     }
 
-    function setupFollowingList() {
+    async function setupFollowingList() {
         if (!props.pool || !props.keyValue) return;
 
-        setPeopleToFollow([]);  // Clear the list before fetching new people
+        setPeopleToFollow([]);
         setSearchingPeople(true);
-        const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-        props.pool.subscribeMany(
-            RELAYS, 
-            [{ kinds: [1], since: oneDayAgo, limit: 10, '#t': [selectedHashtag] }],
-            {
-                onevent(event) {
-                    const name = event.tags.find(tag => tag[0] === 'name')?.[1] || 'Unknown';
-                    const npub = nip19.npubEncode(event.pubkey);
-                    const content = event.content;
-                    props.pool?.subscribeMany(
-                        RELAYS,
-                        [{ kinds: [0], authors: [event.pubkey] }],
-                        {
-                            onevent(metadataEvent) {
-                                try {
-                                    const metadata = JSON.parse(metadataEvent.content);
-                                    const updatedName = metadata.name || name;
-                                    const picture = metadata.picture;
-                                    setPeopleToFollow(prev => prev.map(person => 
-                                        person.npub === npub 
-                                            ? { ...person, name: updatedName, picture } 
-                                            : person
-                                    ));
-                                } catch (error) {
-                                    console.error("Error parsing metadata:", error);
-                                }
-                            }
-                        }
-                    );
-                    setPeopleToFollow(prev => {
-                        if (!prev.some(person => person.npub === npub)) {
-                            return [...prev, { name, npub, loadingFollowing: false, content }];
-                        }
-                        return prev;
-                    });
-                },
-                oneose() {
-                    setSearchingPeople(false);
+        const people = await props.pool.querySync(RELAYS, { kinds: [1], limit: 5, '#t': [selectedHashtag] });
+        const peopleToFollow: { name: any; npub: `npub1${string}`; picture: any; content: string; }[] = [];
+        for (const person of people) {
+            const name = person.tags.find(tag => tag[0] === 'name')?.[1] || 'Unknown';
+            const npub = nip19.npubEncode(person.pubkey);
+            const content = person.content;
+            if (!peopleToFollow.some(person => person.npub === npub)) {
+                //michael - optimize - do this in a single call for all people
+                const meta = await props.pool?.querySync(RELAYS, { kinds: [0], authors: [person.pubkey] });
+                try {
+                    if (meta) {
+                        const metadata = JSON.parse(meta[0].content);
+                        const updatedName = metadata.name || name;
+                        const picture = metadata.picture;
+                        peopleToFollow.push({ name: updatedName, npub, picture, content });
+                    }
+                } catch (error) {
+                    console.error("Error parsing metadata:", error);
                 }
             }
-        );
+        }
+        setPeopleToFollow(peopleToFollow.map(person => ({
+            ...person,
+            loadingFollowing: false
+        })));
+        setSearchingPeople(false);
+        return () => {
+            //peopleSubscription?.close();
+            //metadataSubscription?.close();
+        };
     }
 
     useEffect(() => {

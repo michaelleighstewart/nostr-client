@@ -132,6 +132,8 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                     if (event.kind === 1) {
                         // Regular post
                         if (!event.tags.some(tag => tag[0] === 'e')) {
+                            //michael - performance improvement - use subscribeManyEose instead of querySync,
+                            //just ensure that subscription is closed when component unmounts
                             const reactionEvents = await pool.querySync(
                                 RELAYS,
                                 {
@@ -151,6 +153,8 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                             }));
 
                             // Fetch replies
+                            //michael - performance improvement - use subscribeManyEose instead of querySync,
+                            //just ensure that subscription is closed when component unmounts
                             const replyEvents = await pool.querySync(
                                 RELAYS,
                                 {
@@ -196,6 +200,8 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                             repostedEvent: repostedEvent
                             };
                             // Fetch metadata for the reposted event's author
+                            //michael - performance improvement - use subscribeManyEose instead of querySync,
+                            //just ensure that subscription is closed when component unmounts
                             const profileEvents = await pool?.querySync(
                             RELAYS,
                             {
@@ -222,6 +228,8 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                             }
                             }
                             // Fetch reactions and replies for the reposted event
+                            //michael - performance improvement - use subscribeManyEose instead of querySync,
+                            //just ensure that subscription is closed when component unmounts
                             const eventsReactionsReplies = await pool?.querySync(
                             RELAYS,
                             {
