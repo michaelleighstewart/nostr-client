@@ -356,7 +356,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               <div className="float-right">
                 <button 
                   className={posting ? "bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded opacity-50 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded"}
-                  onClick={(e) => handleSendMessage()}
+                  onClick={(_e) => handleSendMessage()}
                   disabled={posting}
                 >
                   {posting ? 'Posting...' : 'Post'}
