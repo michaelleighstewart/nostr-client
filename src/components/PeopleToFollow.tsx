@@ -77,25 +77,27 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
         setSearchingPeople(true);
         const people = await props.pool.querySync(RELAYS, { kinds: [1], limit: 5, '#t': [selectedHashtag] });
         const peopleToFollow: { name: any; npub: `npub1${string}`; picture: any; content: string; }[] = [];
-        for (const person of people) {
-            const name = person.tags.find(tag => tag[0] === 'name')?.[1] || 'Unknown';
-            const npub = nip19.npubEncode(person.pubkey);
-            const content = person.content;
-            if (!peopleToFollow.some(person => person.npub === npub)) {
-                //michael - optimize - do this in a single call for all people
-                const meta = await props.pool?.querySync(RELAYS, { kinds: [0], authors: [person.pubkey] });
-                try {
-                    if (meta) {
-                        const metadata = JSON.parse(meta[0].content);
-                        const updatedName = metadata.name || name;
-                        const picture = metadata.picture;
-                        peopleToFollow.push({ name: updatedName, npub, picture, content });
+        const pubkeys = Array.from(new Set(people.map(person => person.pubkey)));
+        const meta = await props.pool?.querySync(RELAYS, { kinds: [0], authors: pubkeys });
+        try {
+            if (meta && meta.length > 0) {
+                for (const metaEvent of meta) {
+                    const metadata = JSON.parse(metaEvent.content);
+                    const pubkey = metaEvent.pubkey;
+                    const npub = nip19.npubEncode(pubkey);
+                    const name = metadata.name || 'Unknown';
+                    const picture = metadata.picture;
+                    const content = people.find(p => p.pubkey === pubkey)?.content || '';
+                    if (!peopleToFollow.some(person => person.npub === npub)) {
+                        peopleToFollow.push({ name, npub, picture, content });
                     }
-                } catch (error) {
-                    console.error("Error parsing metadata:", error);
                 }
             }
+        } catch (error) {
+            console.error("Error fetching metadata:", error);
         }
+        //}
+        //}
         setPeopleToFollow(peopleToFollow.map(person => ({
             ...person,
             loadingFollowing: false
