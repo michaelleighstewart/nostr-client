@@ -5,7 +5,6 @@ import { bech32Decoder } from "../utils/helperFunctions";
 import Loading from "./Loading";
 import { Link } from "react-router-dom";
 import { UserCircleIcon } from '@heroicons/react/24/solid';
-import { motion, AnimatePresence } from "framer-motion";
 import Ostrich from "./Ostrich";
 
 interface PeopleToFollowProps {

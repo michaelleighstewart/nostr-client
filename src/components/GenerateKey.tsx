@@ -2,11 +2,9 @@
 import { useState, useEffect } from "react";
 import { getPublicKey, generateSecretKey } from 'nostr-tools';
 import { bech32 } from 'bech32';
-import { Link } from 'react-router-dom';
 import Loading from './Loading';
 import { ClipboardDocumentIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
-import { motion, AnimatePresence } from 'framer-motion';
 import Ostrich from './Ostrich';
 
 interface GenerateKeyProps {

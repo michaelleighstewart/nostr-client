@@ -9,8 +9,6 @@ import { getPublicKey, finalizeEvent } from 'nostr-tools';
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import { toast } from 'react-toastify';
-import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import { getFollowers } from "../utils/profileUtils";
 import { fetchMetadataReactionsAndReplies } from '../utils/noteUtils';
 import Ostrich from "./Ostrich";
