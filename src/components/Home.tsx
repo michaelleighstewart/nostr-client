@@ -13,6 +13,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getFollowers } from "../utils/profileUtils";
 import { fetchMetadataReactionsAndReplies } from '../utils/noteUtils';
+import Ostrich from "./Ostrich";
 
 interface HomeProps {
   keyValue: string;
@@ -430,60 +431,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             )}
           </div>
         )}
-        <AnimatePresence>
-          {showOstrich && (
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
-              onClick={() => setShowOstrich(false)}
-            >
-              <div className="relative">
-                <img src="/ostrich.png" alt="Ostrich" className="ostrich max-w-full max-h-full" />
-                <div className="absolute top-0 left-full ml-4 p-32 bg-white rounded-lg shadow-lg speech-bubble" style={{ width: '400px' }}>
-                  <p className="text-black">
-                    Hey! Please{' '}
-                    <Link to="/edit-profile" className="text-blue-500 hover:underline">
-                      set up your profile
-                    </Link>
-                    {' '}so that users on the network can know who you are
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <style>{`
-                .speech-bubble::before {
-                    content: '';
-                    position: absolute;
-                    left: -20px;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    border-width: 10px;
-                    border-style: solid;
-                    border-color: transparent white transparent transparent;
-                }
-                .ostrich {
-                    max-width: 100%;
-                    max-height: 100%;
-                }
-                @media (max-width: 768px) {
-                    .ostrich {
-                        display: none;
-                    }
-                    .speech-bubble {
-                        position: static;
-                        width: 90% !important;
-                        margin: 0 auto;
-                    }
-                    .speech-bubble::before {
-                        display: none;
-                    }
-                }
-            `}</style>
+        <Ostrich show={showOstrich} onClose={() => setShowOstrich(false)} 
+            text="Hey! Please set up your profile so that users on the network can know who you are" linkText="set up your profile" 
+            linkUrl="/edit-profile" />
       </div>
     )
   }

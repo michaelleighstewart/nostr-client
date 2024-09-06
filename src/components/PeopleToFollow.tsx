@@ -6,6 +6,7 @@ import Loading from "./Loading";
 import { Link } from "react-router-dom";
 import { UserCircleIcon } from '@heroicons/react/24/solid';
 import { motion, AnimatePresence } from "framer-motion";
+import Ostrich from "./Ostrich";
 
 interface PeopleToFollowProps {
     keyValue: string;
@@ -283,59 +284,9 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                     </div>
                 </div>
             )}
-            <AnimatePresence>
-                {showOstrich && (
-                    <motion.div
-                        initial={{ y: "100%" }}
-                        animate={{ y: 0 }}
-                        exit={{ y: "100%" }}
-                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
-                        onClick={() => setShowOstrich(false)}
-                    >
-                        <div className="relative">
-                            <img src="/ostrich.png" alt="Ostrich" className="ostrichmax-w-full max-h-full" />
-                            <div className="absolute top-0 left-full ml-4 p-32 bg-white rounded-lg shadow-lg speech-bubble">
-                                <p className="text-black">
-                                    Congratulations on following your first user! Now, go{' '}
-                                    <Link to="/" className="text-blue-500 hover:underline">
-                                        publish your first note!
-                                    </Link>
-                                </p>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-            <style>{`
-                .speech-bubble::before {
-                    content: '';
-                    position: absolute;
-                    left: -20px;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    border-width: 10px;
-                    border-style: solid;
-                    border-color: transparent white transparent transparent;
-                }
-                .ostrich {
-                    max-width: 100%;
-                    max-height: 100%;
-                }
-                @media (max-width: 768px) {
-                    .ostrich {
-                        display: none;
-                    }
-                    .speech-bubble {
-                        position: static;
-                        width: 90% !important;
-                        margin: 0 auto;
-                    }
-                    .speech-bubble::before {
-                        display: none;
-                    }
-                }
-            `}</style>
+            <Ostrich show={showOstrich} onClose={() => setShowOstrich(false)} 
+                text="Congratulatons on following your first user! Now, go publish your first note!" linkText="publish your first note!" 
+                linkUrl="/" />
         </div>
     );
 }
