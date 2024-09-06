@@ -120,171 +120,175 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             }
             setPubkey(fetchedPubkey);
 
-            //await new Promise<void>((resolve) => {
-                pool.subscribeManyEose(RELAYS, [
+            //michael - optimize - fetch posts synchronously, split into two lists, one with kind 1 and one with kind 6
+            const posts = await pool.querySync(RELAYS, { kinds: [1, 6], authors: [fetchedPubkey], limit: 20 });
+            const filteredPostsOG = posts.filter(event => event.kind === 1 && !event.tags.some(tag => tag[0] === 'e'));
+            const filteredPostsReposts = posts.filter(event => event.kind === 6);
+            // Set posts
+            setPosts([...filteredPostsOG, ...filteredPostsReposts]
+                .map(post => {
+                    const extendedPost: ExtendedEvent = {
+                        ...post,
+                        deleted: false,
+                        repostedEvent: post.kind === 6 ? JSON.parse(post.content) : null,
+                        content: post.kind === 6 ? "" : post.content
+                    };
+                    return extendedPost;
+                })
+                .sort((a, b) => {
+                    const timeA = a.repostedEvent ? a.repostedEvent.created_at : a.created_at;
+                    const timeB = b.repostedEvent ? b.repostedEvent.created_at : b.created_at;
+                    return timeB - timeA;
+                })
+                .slice(0, 10)
+            );
+
+            setLoadingPosts(false);
+            const postIdsOG = filteredPostsOG.map(post => post.id);
+            const reactionsPostsOG = pool.subscribeManyEose(
+                RELAYS,
+                [
+                    {
+                        kinds: [7],
+                        '#e': postIdsOG,
+                    }
+                ],
                 {
-                    kinds: [1, 6],
-                    authors: [fetchedPubkey],
-                    limit: 5
-                }
-                ], {
-                async onevent(event) {
-                    if (event.kind === 1) {
-                        // Regular post
-                        if (!event.tags.some(tag => tag[0] === 'e')) {
-                            //michael - performance improvement - use subscribeManyEose instead of querySync,
-                            //just ensure that subscription is closed when component unmounts
-                            const reactionEvents = await pool.querySync(
-                                RELAYS,
-                                {
-                                    kinds: [7],
-                                    '#e': [event.id],
-                                }
-                            );
-                            const reactions: Reaction[] = reactionEvents.map(event => ({
-                                id: event.id,
-                                liker_pubkey: event.pubkey,
-                                type: event.content,
-                                sig: event.sig
-                            }));
-                            setReactions(prevReactions => ({
-                                ...prevReactions,
-                                [event.id]: reactions
-                            }));
-
-                            // Fetch replies
-                            //michael - performance improvement - use subscribeManyEose instead of querySync,
-                            //just ensure that subscription is closed when component unmounts
-                            const replyEvents = await pool.querySync(
-                                RELAYS,
-                                {
-                                    kinds: [1],
-                                    '#e': [event.id],
-                                }
-                            );
-                            setReplies(prevReplies => ({
-                                ...prevReplies,
-                                [event.id]: new Set(replyEvents.map(e => e.id))
-                            }));
-                            setPosts(prevPosts => {
-                                const postExists = prevPosts.some(post => post.id === event.id);
-                                if (!postExists) {
-                                    return [...prevPosts, { ...event, deleted: false, repostedEvent: null }];
-                                }
-                                return prevPosts;
-                            });
-                        }
-                    } else if (event.kind === 6) {
-                        // Repost
-                        const repostedId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                        if (repostedId) {
-                        try {
-                            const repostedContent = JSON.parse(event.content);
-                            const repostedEvent: ExtendedEvent = {
-                            ...event,
-                            id: repostedContent.id,
-                            pubkey: repostedContent.pubkey,
-                            created_at: repostedContent.created_at,
-                            content: repostedContent.content,
-                            tags: repostedContent.tags,
-                            deleted: false,
-                            repostedEvent: null
-                            };
-                            const extendedEvent: ExtendedEvent = {
-                            id: event.id,
-                            pubkey: event.pubkey,
-                            created_at: event.created_at,
-                            content: "",
-                            tags: event.tags,
-                            deleted: false,
-                            repostedEvent: repostedEvent
-                            };
-                            // Fetch metadata for the reposted event's author
-                            //michael - performance improvement - use subscribeManyEose instead of querySync,
-                            //just ensure that subscription is closed when component unmounts
-                            const profileEvents = await pool?.querySync(
-                            RELAYS,
-                            {
-                                kinds: [0],
-                                authors: [repostedEvent.pubkey],
-                            }
-                            );
-
-                            if (profileEvents && profileEvents.length > 0) {
-                            const event = profileEvents[0];
-                            try {
-                                const profileContent = JSON.parse(event.content);
-                                setMetadata((prevMetadata) => ({
-                                ...prevMetadata,
-                                [event.pubkey]: {
-                                    name: profileContent.name,
-                                    about: profileContent.about,
-                                    picture: profileContent.picture,
-                                    nip05: profileContent.nip05,
-                                },
-                                }));
-                            } catch (error) {
-                                console.error("Error parsing profile metadata:", error);
-                            }
-                            }
-                            // Fetch reactions and replies for the reposted event
-                            //michael - performance improvement - use subscribeManyEose instead of querySync,
-                            //just ensure that subscription is closed when component unmounts
-                            const eventsReactionsReplies = await pool?.querySync(
-                            RELAYS,
-                            {
-                                kinds: [1, 7],
-                                "#e": [repostedEvent.id],
-                            }
-                            );
-
-                            if (eventsReactionsReplies) {
-                                eventsReactionsReplies.forEach((eventReactionReply) => {
-                                if (eventReactionReply.kind === 7) {
-                                // This is a reaction
-                                setReactions((prevReactions) => ({
+                    onevent(event) {
+                        const reaction: Reaction = {
+                            liker_pubkey: event.pubkey,
+                            type: event.content,
+                            sig: event.sig
+                        };
+                        setReactions(prevReactions => {
+                            const existingReactions = prevReactions[event.tags.find(tag => tag[0] === 'e')?.[1] || ''] || [];
+                            const eventId = event.tags.find(tag => tag[0] === 'e')?.[1] || '';
+                            if (eventId && !existingReactions.some(r => r.liker_pubkey === reaction.liker_pubkey)) {
+                                return {
                                     ...prevReactions,
-                                    [repostedEvent.id]: [
-                                    ...(prevReactions[repostedEvent.id] || []),
-                                    {
-                                        id: eventReactionReply.id,
-                                        liker_pubkey: event.pubkey,
-                                        type: eventReactionReply.tags.find((t) => t[0] === "p")?.[1] || "+",
-                                        sig: eventReactionReply.sig,
-                                    },
-                                    ],
-                                }));
-                                } else if (eventReactionReply.kind === 1) {
-                                // This is a reply
-                                setReplies(cur => {
-                                    const updatedReplies = { ...cur };
-                                    const postId = eventReactionReply.tags.find(tag => tag[0] === 'e')?.[1];
-                                    if (postId) {
-                                        updatedReplies[postId] = (updatedReplies[postId] || new Set()).add(eventReactionReply.id);
-                                    }
-                                    return updatedReplies;
-                                });
-                                }
-                            });
+                                    [eventId]: [...existingReactions, reaction]
+                                };
                             }
-                        setPosts(prevPosts => {
-                            const postExists = prevPosts.some(post => post.id === extendedEvent.id);
-                            if (!postExists) {
-                                return [...prevPosts, extendedEvent];
-                            }
-                            return prevPosts;
+                            return prevReactions;
                         });
-                        } catch (error) {
-                            console.error("Error parsing reposted content:", error);
-                        }
-                        }
                     }
                 },
-                onclose() {
-                    setLoadingPosts(false);
+            );
+            const replySubscription = pool.subscribeManyEose(
+                RELAYS,
+                [
+                    {
+                        kinds: [1],
+                        '#e': postIdsOG,  
+                    }
+                ],
+                {
+                    onevent(event) {
+                        setReplies(prevReplies => {
+                            const existingReplies = prevReplies[event.tags.find(tag => tag[0] === 'e')?.[1] || ''] || new Set();
+                            const eventId = event.tags.find(tag => tag[0] === 'e')?.[1] || '';
+                            if (!existingReplies.has(event.id)) {
+                                return {
+                                    ...prevReplies,
+                                    [eventId]: new Set([...existingReplies, event.id])
+                                };
+                            }
+                            return prevReplies;
+                        });
+                    }
                 }
-                });           
-        };
+            );
+            const filteredPostsRepostsToSearch: string[] = [];
+            const filteredPostsRepostsPubkeys: string[] = [];
+            filteredPostsReposts.forEach(post => {
+                const repostedContent = JSON.parse(post.content);
+                filteredPostsRepostsToSearch.push(repostedContent.id);
+                filteredPostsRepostsPubkeys.push(repostedContent.pubkey);
+            });
+
+            const metadataPostsReposts = pool.subscribeManyEose(
+                RELAYS,
+                [
+                    {
+                        kinds: [0],
+                        authors: filteredPostsRepostsPubkeys,
+                    }
+                ],
+                {
+                    onevent(event) {
+                        const metadata: Metadata = JSON.parse(event.content);
+                        setMetadata(prevMetadata => ({
+                            ...prevMetadata,
+                            [event.pubkey]: metadata
+                        }));
+                    }
+                }
+            );  
+
+            const reactionsPostsReposts = pool.subscribeManyEose(
+                RELAYS,
+                [
+                    {
+                        kinds: [7],
+                        '#e': filteredPostsRepostsToSearch,
+                    }
+                ],
+                {
+                    onevent(event) {
+                        const reaction: Reaction = {
+                            liker_pubkey: event.pubkey,
+                            type: event.content,
+                            sig: event.sig
+                        };
+                        setReactions(prevReactions => {
+                            const existingReactions = prevReactions[event.tags.find(tag => tag[0] === 'e')?.[1] || ''] || [];
+                            const eventId = event.tags.find(tag => tag[0] === 'e')?.[1] || '';
+                            if (eventId && !existingReactions.some(r => r.liker_pubkey === reaction.liker_pubkey)) {
+                                return {
+                                    ...prevReactions,
+                                    [eventId]: [...existingReactions, reaction]
+                                };
+                            }
+                            return prevReactions;
+                        });
+                    }
+                }
+            );
+
+            const repliesPostsReposts = pool.subscribeManyEose(
+                RELAYS,
+                [
+                    {
+                        kinds: [1],
+                        '#e': filteredPostsRepostsToSearch,
+                    }
+                ],
+                {
+                    onevent(event) {
+                        setReplies(prevReplies => {
+                            const existingReplies = prevReplies[event.tags.find(tag => tag[0] === 'e')?.[1] || ''] || new Set();
+                            const eventId = event.tags.find(tag => tag[0] === 'e')?.[1] || '';
+                            if (!existingReplies.has(event.id)) {
+                                return {
+                                    ...prevReplies,
+                                    [eventId]: new Set([...existingReplies, event.id])
+                                };
+                            }
+                            return prevReplies;
+                        });
+                    }
+                }
+            );
+
+            return () => {
+                reactionsPostsOG?.close();
+                reactionsPostsReposts?.close();
+                replySubscription?.close();
+                metadataPostsReposts?.close();
+                repliesPostsReposts?.close();
+                setLoadingPosts(false);
+            };
+        }
         fetchProfileData();
         fetchPosts();
     }, []);
@@ -317,6 +321,10 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
         const dateB = b.repostedEvent ? b.repostedEvent.created_at : b.created_at;
         return dateB - dateA;
     });
+
+    if (loadingProfile || loadingPosts) {
+        return <Loading vCentered={false} />;
+    }
 
     return (
         <div className="py-64">
@@ -354,7 +362,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             )}
 
             {loadingPosts ? <Loading vCentered={false} /> : <></>}
-            {!loadingPosts ? (
+            {!loadingPosts && !loadingProfile ? (
                 <div>
                     
                     {sortedPosts.length === 0 ? (

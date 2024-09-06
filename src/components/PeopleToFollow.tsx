@@ -96,8 +96,6 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
         } catch (error) {
             console.error("Error fetching metadata:", error);
         }
-        //}
-        //}
         setPeopleToFollow(peopleToFollow.map(person => ({
             ...person,
             loadingFollowing: false
