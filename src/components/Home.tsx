@@ -3,12 +3,10 @@ import { SimplePool } from "nostr-tools";
 import { useState, useEffect, useRef } from "react";
 import NotesList from "./NotesList";
 import { useDebounce } from "use-debounce";
-import { insertEventIntoDescendingList, bech32Decoder, ExtendedEvent } from "../utils/helperFunctions";
+import { insertEventIntoDescendingList, ExtendedEvent, sendMessage } from "../utils/helperFunctions";
 import { Event } from "nostr-tools";
-import { getPublicKey, finalizeEvent } from 'nostr-tools';
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
-import { toast } from 'react-toastify';
 import { getFollowers } from "../utils/profileUtils";
 import { fetchMetadataReactionsAndReplies } from '../utils/noteUtils';
 import Ostrich from "./Ostrich";
@@ -129,7 +127,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);
     }, [props.nostrExists, props.keyValue]);
 
-    const fetchData = async (pool: SimplePool, since: number, append: boolean = false, until: number = 0) => {
+    const fetchData = async (pool: SimplePool | null, since: number, append: boolean = false, until: number = 0) => {
       try {
         if (!append) {
           setLoading(true);
@@ -138,16 +136,15 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         }
         setError(null);
         let filter;
-
         // Always get the followers if logged in
-        const followers = isLoggedIn ? await getFollowers(pool, isLoggedIn, props.nostrExists, props.keyValue, setUserPublicKey) : [];
+        const followers = isLoggedIn ? await getFollowers(pool as SimplePool, isLoggedIn, props.nostrExists, props.keyValue, setUserPublicKey) : [];
         filter = isLoggedIn
         ? { kinds: [1, 5, 6], since: since, authors: followers, limit: 10, ...(until !== 0 && { until }) }
         : { kinds: [1, 5, 6], since: since, limit: 10, ...(until !== 0 && { until }) };
         let subRepostedMeta: any;
         let subReactionsReplies: any;
   
-            const sub = pool.subscribeMany(
+            const sub = pool?.subscribeMany(
               RELAYS,
               [filter],
               {
@@ -300,11 +297,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                   }
               }
           );
-
           return () => {
-              sub.close();
-              subRepostedMeta?.close();
-              subReactionsReplies?.close();
+              if (sub) sub.close();
+              if (subRepostedMeta) subRepostedMeta.close();
+              if (subReactionsReplies) subReactionsReplies.close();
           };
       } catch (error) {
         console.error("Error fetching data: ", error);
@@ -328,55 +324,21 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       fetchMetadataReactionsAndReplies(props.pool, events, setMetadata, setReactions, setReplies);
     }, [events, props.pool]);
 
-    async function sendMessage() {
-      if (!props.pool) return;
-      setPosting(true);
-      try {
-        if (props.nostrExists) {
-          let event = {
-            kind: 1,
-            created_at: Math.floor(Date.now() / 1000),
-            tags: [],
-            content: message,
-          }
-          await (window as any).nostr.signEvent(event).then(async (eventToSend: any) => {
-            await props.pool?.publish(RELAYS, eventToSend);
-          });
-        }
-        else {
-          let sk = props.keyValue;
-          let skDecoded = bech32Decoder('nsec', sk);
-          let pk = getPublicKey(skDecoded);
-          let event = {
-            kind: 1,
-            pubkey: pk,
-            created_at: Math.floor(Date.now() / 1000),
-            tags: [],
-            content: message,
-          }
-          let eventFinal = finalizeEvent(event, skDecoded);
-          await props.pool?.publish(RELAYS, eventFinal);
-        }
-        setMessage('');
-        toast.success("Post sent successfully!");
-        // Refresh the list of posts
-        if (props.pool) {
-          const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-          await fetchData(props.pool, oneDayAgo);
-        }
-      } catch (error) {
-        console.error("Error sending message: ", error);
-        toast.error("Failed to send post. Please try again.");
-      } finally {
-        setPosting(false);
-      }
-    }
-
     const loadMore = async () => {
       if (!props.pool) return;
       setLoadingMore(true);
       const oneDayBeforeLastFetched = lastFetchedTimestamp - 24 * 60 * 60;
       await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp);
+    };
+
+    const handleSendMessage = async () => {
+      if (!props.pool) return;
+      const success = await sendMessage(props.pool, props.nostrExists, props.keyValue, message, setPosting, setMessage);
+      if (success) {
+        // Refresh the list of posts
+        const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
+        await fetchData(props.pool, oneDayAgo);
+      }
     };
 
     return (
@@ -394,7 +356,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               <div className="float-right">
                 <button 
                   className={posting ? "bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded opacity-50 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded"}
-                  onClick={sendMessage}
+                  onClick={(e) => handleSendMessage()}
                   disabled={posting}
                 >
                   {posting ? 'Posting...' : 'Post'}

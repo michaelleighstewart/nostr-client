@@ -4,6 +4,7 @@ import { RELAYS } from "../utils/constants";
 import { LightningAddress } from "@getalby/lightning-tools";
 import { SimplePool, getPublicKey, finalizeEvent } from "nostr-tools";
 import { Reaction } from "../components/Home";
+import { toast } from 'react-toastify';
 
 export interface User {
     name: string;
@@ -182,5 +183,53 @@ export function validatePrivateKey(key: string): boolean {
     return data.length === 32;
   } catch (error) {
     return false;
+  }
+}
+
+export async function sendMessage(
+  pool: SimplePool | null,
+  nostrExists: boolean | null,
+  keyValue: string | null,
+  message: string,
+  setPosting: React.Dispatch<React.SetStateAction<boolean>>,
+  setMessage: React.Dispatch<React.SetStateAction<string>>
+): Promise<boolean> {
+  if (!pool) return false;
+  setPosting(true);
+  try {
+    if (nostrExists) {
+      let event = {
+        kind: 1,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [],
+        content: message,
+      }
+      await (window as any).nostr.signEvent(event).then(async (eventToSend: any) => {
+        await pool?.publish(RELAYS, eventToSend);
+      });
+    }
+    else {
+      let sk = keyValue ?? "";
+      let skDecoded = bech32Decoder('nsec', sk);
+      let pk = getPublicKey(skDecoded);
+      let event = {
+        kind: 1,
+        pubkey: pk,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [],
+        content: message,
+      }
+      let eventFinal = finalizeEvent(event, skDecoded);
+      await pool?.publish(RELAYS, eventFinal);
+    }
+    setMessage('');
+    toast.success("Post sent successfully!");
+    return true;
+  } catch (error) {
+    console.error("Error sending message: ", error);
+    toast.error("Failed to send post. Please try again.");
+    return false;
+  } finally {
+    setPosting(false);
   }
 }
