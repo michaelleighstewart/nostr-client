@@ -7,7 +7,7 @@ import { insertEventIntoDescendingList, ExtendedEvent, sendMessage } from "../ut
 import { Event } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
-import { getFollowers } from "../utils/profileUtils";
+import { getFollowers, fetchUserMetadata } from "../utils/profileUtils";
 import { fetchMetadataReactionsAndReplies } from '../utils/noteUtils';
 import Ostrich from "./Ostrich";
 
@@ -54,39 +54,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
   
       // Fetch current user's metadata
       let subUserMeta: any;
-      const fetchUserMetadata = () => {
-        let ogUserFound = false;
-        subUserMeta = props.pool?.subscribeMany(RELAYS, [
-          {
-            kinds: [0],
-            authors: [userPublicKey],
-          },
-        ],
-        {
-          onevent(event) {
-            const metadata = JSON.parse(event.content) as Metadata;
-            setMetadata((cur) => ({
-              ...cur,
-              [userPublicKey]: metadata,
-            }));
-            if (!metadata.name) {
-              setShowOstrich(true);
-              ogUserFound = false;
-            }
-            else {
-              ogUserFound = true;
-            }
-          },
-          oneose() {
-            subUserMeta?.close();
-            if (!ogUserFound) {
-              setShowOstrich(true);
-            }
-          }
-        });
-      };
 
-      fetchUserMetadata();
+      fetchUserMetadata(props.pool, userPublicKey, setShowOstrich, setMetadata);
+
 
       //get authors
       const pubkeysToFetch = events

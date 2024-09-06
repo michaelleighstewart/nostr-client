@@ -1,6 +1,7 @@
 import { getPublicKey, SimplePool, Event } from "nostr-tools";
 import { bech32Decoder } from "./helperFunctions";
 import { RELAYS } from "./constants";
+import { Metadata } from "../components/Home";
 
 export const getFollowers = async (pool: SimplePool, isLoggedIn: boolean, nostrExists: boolean | null, keyValue: string, setUserPublicKey: (pk: string) => void): Promise<string[]> => {
     if (!isLoggedIn) return [];
@@ -42,3 +43,28 @@ export const getFollowers = async (pool: SimplePool, isLoggedIn: boolean, nostrE
       );
     });
 }
+
+export const fetchUserMetadata = async (pool: SimplePool, userPublicKey: string, 
+  setShowOstrich: (show: boolean) => void, setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>) => {
+  if (!pool || !userPublicKey) return;
+
+  const events = await pool.querySync(RELAYS, {
+    kinds: [0],
+    authors: [userPublicKey],
+  });
+
+  if (events.length > 0) {
+    const event = events[0];
+    const metadata = JSON.parse(event.content) as Metadata;
+    setMetadata((cur) => ({
+      ...cur,
+      [userPublicKey]: metadata,
+    }));
+
+    if (!metadata.name) {
+      setShowOstrich(true);
+    }
+  } else {
+    setShowOstrich(true);
+  }
+};
