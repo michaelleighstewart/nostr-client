@@ -36,15 +36,3 @@ export interface Reply {
   hashtags: string[];
   reactions: Reaction[];
 }
-
-
-export interface MessageGroup {
-    pubkey: string;
-    messages: Event[];
-    userInfo: UserInfo | null;
-}
-  
-export interface UserInfo {
-    name: string;
-    picture: string;
-}
