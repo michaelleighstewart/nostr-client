@@ -22,6 +22,7 @@ interface Props {
     replies: number;
     deleted: boolean | undefined;
     repostedEvent: ExtendedEvent | null;
+    repliedEvent: ExtendedEvent | null;
     metadata: Record<string, Metadata> | null;
     allReactions: Record<string, Reaction[]> | null;
     allReplies: Record<string, number> | null;
@@ -40,6 +41,7 @@ interface Props {
     deleted,
     replies,
     repostedEvent,
+    repliedEvent,
     metadata,
     allReactions,
     allReplies
@@ -92,7 +94,6 @@ interface Props {
         }
         const nostrMatch = part.match(nostrBech32Regex);
         if (nostrMatch) {
-          console.log("got a nostr match, ", part);
           const [fullMatch, nostrEntity] = nostrMatch;
           try {
             const decoded = nip19.decode(nostrEntity.slice(6));
@@ -290,6 +291,37 @@ interface Props {
             </span>
           </div>
         </div>
+        {repliedEvent && (
+          <div className="mt-2 border-l-2 border-gray-500">
+            <p className="text-gray-400 text-sm mb-2 pl-4">Replied</p>
+            <NoteCard
+              id={repliedEvent.id}
+              content={repliedEvent.content}
+              user={{
+                name:
+                    metadata?.[repliedEvent.pubkey]?.name ??
+                    `${nip19.npubEncode(repliedEvent.pubkey).slice(0, 12)}...`,
+                image:
+                    metadata?.[repliedEvent.pubkey]?.picture,
+                pubkey: repliedEvent.pubkey,
+                nip05: metadata?.[repliedEvent.pubkey]?.nip05
+              }}
+              created_at={repliedEvent.created_at}
+              hashtags={[]}
+              pool={pool}   
+              nostrExists={nostrExists}
+              reactions={allReactions?.[repliedEvent.id] ?? []}
+              keyValue={keyValue}
+              replies={allReplies?.[repliedEvent.id] ?? 0}
+              deleted={repliedEvent.deleted}
+              repostedEvent={null}
+              repliedEvent={null}
+              metadata={metadata}
+              allReactions={allReactions}
+              allReplies={allReplies}
+            />
+          </div>
+        )}
         {repostedEvent && (
           <div className="mt-2 border-l-2 border-gray-500">
             <p className="text-gray-400 text-sm mb-2 pl-4">Reposted</p>
@@ -314,6 +346,7 @@ interface Props {
               replies={allReplies?.[repostedEvent.id] ?? 0}
               deleted={repostedEvent.deleted}
               repostedEvent={null}
+              repliedEvent={repliedEvent}
               metadata={metadata}
               allReactions={allReactions}
               allReplies={allReplies}

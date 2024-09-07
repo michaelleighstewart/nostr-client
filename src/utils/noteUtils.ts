@@ -105,37 +105,79 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
       : { kinds: [1, 5, 6], since: since, limit: 10, ...(until !== 0 && { until }) };
       let subRepostedMeta: any;
       let subReactionsReplies: any;
-      console.log("filters is: ", filter);
 
           const sub = pool?.subscribeMany(
             RELAYS,
             [filter],
             {
                 onevent(event: Event) {
-                    console.log("event is: ", event);
                     // Update lastFetchedTimestamp for every event, regardless of its kind
                     setLastFetchedTimestamp(prevTimestamp => 
                         Math.min(prevTimestamp, event.created_at)
                     );
 
-                    if (event.kind === 1 && !event.tags.some((tag: string[]) => tag[0] === 'e')) {
-                        const extendedEvent: ExtendedEvent = {
-                          ...event,
-                          id: event.id,
-                          pubkey: event.pubkey,
-                          created_at: event.created_at,
-                          content: event.content,
-                          tags: event.tags,
-                          deleted: false,
-                          repostedEvent: null
-                        };
-                        setEvents((events) => {
-                            // Check if the event already exists
-                            if (!events.some(e => e.id === extendedEvent.id)) {
-                                return insertEventIntoDescendingList(events, extendedEvent);
+                    if (event.kind === 1) {
+                        if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
+                            const extendedEvent: ExtendedEvent = {
+                                ...event,
+                                id: event.id,
+                                pubkey: event.pubkey,
+                                created_at: event.created_at,
+                                content: event.content,
+                                tags: event.tags,
+                                deleted: false,
+                                repostedEvent: null,
+                                repliedEvent: null
+                            };
+                            setEvents((events) => {
+                                // Check if the event already exists
+                                if (!events.some(e => e.id === extendedEvent.id)) {
+                                    return insertEventIntoDescendingList(events, extendedEvent);
+                                }
+                                return events;
+                            });
+                        }
+                        else {
+                            // Get the original note referenced in the first 'e' tag
+                            const replyToId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                            if (replyToId) {
+                                // Fetch the original note
+                                pool?.get(RELAYS, {
+                                    ids: [replyToId]
+                                }).then(originalEvent => {
+                                    if (originalEvent) {
+                                        const repliedEvent: ExtendedEvent = {
+                                            ...originalEvent,
+                                            id: originalEvent.id,
+                                            pubkey: originalEvent.pubkey,
+                                            created_at: originalEvent.created_at,
+                                            content: originalEvent.content,
+                                            tags: originalEvent.tags,
+                                            deleted: false,
+                                            repostedEvent: null,
+                                            repliedEvent: null
+                                        };
+                                        const extendedEvent: ExtendedEvent = {
+                                            ...event,
+                                            id: event.id,
+                                            pubkey: event.pubkey,
+                                            created_at: event.created_at,
+                                            content: event.content,
+                                            tags: event.tags,
+                                            deleted: false,
+                                            repostedEvent: null,
+                                            repliedEvent: repliedEvent
+                                        };
+                                        setEvents(prevEvents => {
+                                            if (!prevEvents.some(e => e.id === extendedEvent.id)) {
+                                                return insertEventIntoDescendingList(prevEvents, extendedEvent);
+                                            }
+                                            return prevEvents;
+                                        });
+                                    }
+                                });
                             }
-                            return events;
-                        });
+                        }
                     } else if (event.kind === 5) {
                         const deletedIds = event.tags
                             .filter(tag => tag[0] === 'e')
@@ -153,15 +195,16 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
                             try {
                                 const repostedContent = JSON.parse(event.content);
                                 const repostedEvent: ExtendedEvent = {
-                                ...event,
-                                id: repostedContent.id,
-                                pubkey: repostedContent.pubkey,
-                                created_at: repostedContent.created_at,
-                                content: repostedContent.content,
-                                tags: repostedContent.tags,
-                                deleted: false,
-                                repostedEvent: null
-                            };
+                                    ...event,
+                                    id: repostedContent.id,
+                                    pubkey: repostedContent.pubkey,
+                                    created_at: repostedContent.created_at,
+                                    content: repostedContent.content,
+                                    tags: repostedContent.tags,
+                                    deleted: false,
+                                    repostedEvent: null,
+                                    repliedEvent: null
+                                };
                             const extendedEvent: ExtendedEvent = {
                                 id: event.id,
                                 pubkey: event.pubkey,
@@ -169,7 +212,8 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
                                 content: "",
                                 tags: event.tags,
                                 deleted: false,
-                                repostedEvent: repostedEvent
+                                repostedEvent: repostedEvent,
+                                repliedEvent: null
                             };
                             // Fetch metadata for the reposted event's author
                             subRepostedMeta = pool?.subscribeManyEose(

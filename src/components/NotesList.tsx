@@ -79,6 +79,7 @@ export default function NotesList({ notes, metadata, pool, nostrExists, reaction
                                 allReplies={replies}
                                 deleted={note.deleted}
                                 repostedEvent={note.repostedEvent}
+                                repliedEvent={note.repliedEvent}
                                 metadata={metadata}
                             />
                         </div>

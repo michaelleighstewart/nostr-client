@@ -13,6 +13,7 @@ export type ExtendedEvent = {
   content: string;
   tags: string[][];
   repostedEvent: ExtendedEvent | null;
+  repliedEvent: ExtendedEvent | null;
 }
 
 export interface Metadata {

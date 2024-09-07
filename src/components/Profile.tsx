@@ -119,7 +119,8 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                         ...post,
                         deleted: false,
                         repostedEvent: post.kind === 6 ? JSON.parse(post.content) : null,
-                        content: post.kind === 6 ? "" : post.content
+                        content: post.kind === 6 ? "" : post.content,
+                        repliedEvent: null
                     };
                     return extendedPost;
                 })
@@ -381,7 +382,8 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                                         repostedEvent={post.repostedEvent || null}
                                         metadata={metadata}
                                         allReactions={reactions}
-                                        allReplies={Object.fromEntries(Object.entries(replies).map(([key, value]) => [key, value.size]))}
+                                        allReplies={Object.fromEntries(Object.entries(replies).map(([key, value]) => [key, value.size]))} 
+                                        repliedEvent={null}
                                     />
                                 </div>
                             ))}
