@@ -37,3 +37,10 @@ export interface Reply {
   hashtags: string[];
   reactions: Reaction[];
 }
+
+export interface ProfileData {
+  name?: string;
+  about?: string;
+  picture?: string;
+  nip05?: string;
+}

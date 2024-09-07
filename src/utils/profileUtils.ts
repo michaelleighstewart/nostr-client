@@ -1,7 +1,7 @@
 import { getPublicKey, SimplePool, Event } from "nostr-tools";
 import { bech32Decoder } from "./helperFunctions";
 import { RELAYS } from "./constants";
-import { Metadata } from "./interfaces";
+import { ExtendedEvent, Metadata, Reaction, ProfileData } from "./interfaces";
 
 export const getFollowers = async (pool: SimplePool, isLoggedIn: boolean, nostrExists: boolean | null, keyValue: string | null, 
   setUserPublicKey: (pk: string) => void): Promise<string[]> => {
@@ -69,3 +69,197 @@ export const fetchUserMetadata = async (pool: SimplePool, userPublicKey: string,
     setShowOstrich(true);
   }
 };
+
+
+export const fetchPostsForProfile = async (pool: SimplePool, _userPublicKey: string, 
+  targetNpub: string | null, nostrExists: boolean | null, keyValue: string | null,
+  setLoadingPosts: React.Dispatch<React.SetStateAction<boolean>>, 
+  setPosts: React.Dispatch<React.SetStateAction<ExtendedEvent[]>>,
+  setProfileData: React.Dispatch<React.SetStateAction<ProfileData | null>>, 
+  setReactions: React.Dispatch<React.SetStateAction<Record<string, Reaction[]>>>,
+  setReplies: React.Dispatch<React.SetStateAction<Record<string, number>>>, 
+  setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>) => {
+  setLoadingPosts(true);
+  setPosts([]);
+  setProfileData(null);
+  setReactions({});
+  setReplies({});
+  if (!pool) return;
+  let fetchedPubkey: string;
+  if (targetNpub) {
+      fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
+  } else if (nostrExists) {
+      fetchedPubkey = await (window as any).nostr.getPublicKey();
+  } else if (keyValue) {
+      const skDecoded = bech32Decoder("nsec", keyValue);
+      fetchedPubkey = getPublicKey(skDecoded);
+  } else {
+      throw new Error("Unable to fetch public key");
+  }
+  // Remove setPubkey as it's not defined in the function parameters
+
+  //michael - optimize - fetch posts synchronously, split into two lists, one with kind 1 and one with kind 6
+  const posts = await pool.querySync(RELAYS, { kinds: [1, 6], authors: [fetchedPubkey], limit: 20 });
+  console.log(posts);
+  const filteredPostsOG = posts.filter(event => event.kind === 1 && !event.tags.some(tag => tag[0] === 'e'));
+  const filteredPostsReposts = posts.filter(event => event.kind === 6);
+  // Set posts
+  setPosts([...filteredPostsOG, ...filteredPostsReposts]
+      .map(post => {
+          const extendedPost: ExtendedEvent = {
+              ...post,
+              deleted: false,
+              repostedEvent: post.kind === 6 && post.content !== "" ? JSON.parse(post.content) : null,
+              content: post.kind === 6 ? "" : post.content,
+              repliedEvent: null
+          };
+          return extendedPost;
+      })
+      .sort((a, b) => {
+          const timeA = a.repostedEvent ? a.repostedEvent.created_at : a.created_at;
+          const timeB = b.repostedEvent ? b.repostedEvent.created_at : b.created_at;
+          return timeB - timeA;
+      })
+      .slice(0, 10)
+  );
+
+  setLoadingPosts(false);
+  const postIdsOG = filteredPostsOG.map(post => post.id);
+  const reactionsPostsOG = pool.subscribeManyEose(
+      RELAYS,
+      [
+          {
+              kinds: [7],
+              '#e': postIdsOG,
+          }
+      ],
+      {
+          onevent(event) {
+              const reaction: Reaction = {
+                  liker_pubkey: event.pubkey,
+                  type: event.content,
+                  sig: event.sig
+              };
+              setReactions(prevReactions => {
+                  const existingReactions = prevReactions[event.tags.find(tag => tag[0] === 'e')?.[1] || ''] || [];
+                  const eventId = event.tags.find(tag => tag[0] === 'e')?.[1] || '';
+                  if (eventId && !existingReactions.some(r => r.liker_pubkey === reaction.liker_pubkey)) {
+                      return {
+                          ...prevReactions,
+                          [eventId]: [...existingReactions, reaction]
+                      };
+                  }
+                  return prevReactions;
+              });
+          }
+      },
+  );
+  const replySubscription = pool.subscribeManyEose(
+      RELAYS,
+      [
+          {
+              kinds: [1],
+              '#e': postIdsOG,  
+          }
+      ],
+      {
+          onevent(event) {
+            setReplies(cur => {
+              const updatedReplies = { ...cur };
+              const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+              if (postId) {
+                  updatedReplies[postId] = (updatedReplies[postId] || 0) + 1;
+              }
+              return updatedReplies;
+          });
+          }
+      }
+  );
+  const filteredPostsRepostsToSearch: string[] = [];
+  const filteredPostsRepostsPubkeys: string[] = [];
+  filteredPostsReposts.forEach(post => {
+      const repostedContent = JSON.parse(post.content);
+      filteredPostsRepostsToSearch.push(repostedContent.id);
+      filteredPostsRepostsPubkeys.push(repostedContent.pubkey);
+  });
+
+  const metadataPostsReposts = pool.subscribeManyEose(
+      RELAYS,
+      [
+          {
+              kinds: [0],
+              authors: filteredPostsRepostsPubkeys,
+          }
+      ],
+      {
+          onevent(event) {
+              const metadata: Metadata = JSON.parse(event.content);
+              setMetadata(prevMetadata => ({
+                  ...prevMetadata,
+                  [event.pubkey]: metadata
+              }));
+          }
+      }
+  );  
+
+  const reactionsPostsReposts = pool.subscribeManyEose(
+      RELAYS,
+      [
+          {
+              kinds: [7],
+              '#e': filteredPostsRepostsToSearch,
+          }
+      ],
+      {
+          onevent(event) {
+              const reaction: Reaction = {
+                  liker_pubkey: event.pubkey,
+                  type: event.content,
+                  sig: event.sig
+              };
+              setReactions(prevReactions => {
+                  const existingReactions = prevReactions[event.tags.find(tag => tag[0] === 'e')?.[1] || ''] || [];
+                  const eventId = event.tags.find(tag => tag[0] === 'e')?.[1] || '';
+                  if (eventId && !existingReactions.some(r => r.liker_pubkey === reaction.liker_pubkey)) {
+                      return {
+                          ...prevReactions,
+                          [eventId]: [...existingReactions, reaction]
+                      };
+                  }
+                  return prevReactions;
+              });
+          }
+      }
+  );
+
+  const repliesPostsReposts = pool.subscribeManyEose(
+      RELAYS,
+      [
+          {
+              kinds: [1],
+              '#e': filteredPostsRepostsToSearch,
+          }
+      ],
+      {
+          onevent(event) {
+            setReplies(cur => {
+              const updatedReplies = { ...cur };
+              const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+              if (postId) {
+                  updatedReplies[postId] = (updatedReplies[postId] || 0) + 1;
+              }
+              return updatedReplies;
+          });
+          }
+      }
+  );
+
+  return () => {
+      reactionsPostsOG?.close();
+      reactionsPostsReposts?.close();
+      replySubscription?.close();
+      metadataPostsReposts?.close();
+      repliesPostsReposts?.close();
+      setLoadingPosts(false);
+  };
+}
