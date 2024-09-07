@@ -84,6 +84,7 @@ interface Props {
 
       const linkRegex = /(https?:\/\/[^\s]+)/g;
       const nostrBech32Regex = /(nostr:(naddr|npub|note|nsec|nprofile)1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]+)\b/;
+      const hashtagRegex = /#(\w+)/g;
       const parts: string[] = content.split(linkRegex);
       const processed = parts.map((part, index) => {
         if (part.match(linkRegex)) {
@@ -159,7 +160,21 @@ interface Props {
             {lines.map((line, lineIndex) => (
               <React.Fragment key={lineIndex}>
                 {lineIndex > 0 && <br />}
-                {line}
+                {line.split(hashtagRegex).map((segment, segmentIndex) => {
+                  if (segmentIndex % 2 === 1) { // This is a hashtag
+                    return (
+                      <Link 
+                        key={segmentIndex} 
+                        to={`/people-to-follow?hashtag=${segment}`}
+                        className="text-blue-500 hover:underline"
+                        onClick={(e) => e.stopPropagation()} // Prevent the post click event from triggering
+                      >
+                        #{segment}
+                      </Link>
+                    );
+                  }
+                  return segment;
+                })}
               </React.Fragment>
             ))}
           </span>

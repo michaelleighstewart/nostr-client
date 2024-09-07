@@ -3,7 +3,7 @@ import { SimplePool, finalizeEvent, getPublicKey, nip19 } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import { bech32Decoder } from "../utils/helperFunctions";
 import Loading from "./Loading";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { UserCircleIcon } from '@heroicons/react/24/solid';
 import Ostrich from "./Ostrich";
 
@@ -29,10 +29,25 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     const [customHashtag, setCustomHashtag] = useState<string>("");
     const [searchingPeople, setSearchingPeople] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
-    const hashtags = ["bitcoin", "btc", "nostr", "crypto", "food", "travel"];
+    const [hashtags, setHashtags] = useState<string[]>(["bitcoin", "btc", "nostr", "crypto", "food", "travel"]);
     const carouselRef = useRef<HTMLDivElement>(null);
     const contentRefs = useRef<(HTMLDivElement | null)[]>([]);
     const [showOstrich, setShowOstrich] = useState(false);
+    const location = useLocation();
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const hashtagParam = params.get('hashtag');
+        if (hashtagParam) {
+            setHashtags(prevHashtags => {
+                if (!prevHashtags.includes(hashtagParam)) {
+                    return [...prevHashtags, hashtagParam];
+                }
+                return prevHashtags;
+            });
+            setSelectedHashtag(hashtagParam);
+        }
+    }, [location]);
 
     async function getCurrentUserPubkey() {
         if (props.nostrExists) {
@@ -172,7 +187,11 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     const handleCustomHashtagSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (customHashtag.trim()) {
-            setSelectedHashtag(customHashtag.trim());
+            const newHashtag = customHashtag.trim();
+            if (!hashtags.includes(newHashtag)) {
+                setHashtags(prevHashtags => [...prevHashtags, newHashtag]);
+            }
+            setSelectedHashtag(newHashtag);
             setCustomHashtag("");
         }
     };
