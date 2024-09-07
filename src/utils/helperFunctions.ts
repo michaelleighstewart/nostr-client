@@ -3,7 +3,6 @@ import { Buffer } from 'buffer';
 import { RELAYS } from "../utils/constants";
 import { LightningAddress } from "@getalby/lightning-tools";
 import { SimplePool, getPublicKey, finalizeEvent } from "nostr-tools";
-import { toast } from 'react-toastify';
 import { ExtendedEvent, Reaction, User } from "./interfaces";
 
 export function insertEventIntoDescendingList<T extends ExtendedEvent>(
@@ -206,11 +205,11 @@ export async function sendMessage(
       await pool?.publish(RELAYS, eventFinal);
     }
     setMessage('');
-    toast.success("Post sent successfully!");
+    //toast.success("Post sent successfully!");
     return true;
   } catch (error) {
     console.error("Error sending message: ", error);
-    toast.error("Failed to send post. Please try again.");
+    //toast.error("Failed to send post. Please try again.");
     return false;
   } finally {
     setPosting(false);

@@ -8,6 +8,7 @@ import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import NoteCard from "./NoteCard";
 import { UserGroupIcon, UsersIcon, UserPlusIcon } from '@heroicons/react/24/outline';
+import { showCustomToast } from "./CustomToast";
 
 interface ProfileProps {
     npub?: string;
@@ -292,16 +293,22 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             content: '',
         };
 
-        if (nostrExists) {
-            const signedEvent = await (window as any).nostr.signEvent(event);
-            await pool.publish(RELAYS, signedEvent);
-        } else {
-            const skDecoded = bech32Decoder("nsec", keyValue);
-            const signedEvent = finalizeEvent(event, skDecoded);
-            await pool.publish(RELAYS, signedEvent);
-        }
+        try {
+            if (nostrExists) {
+                const signedEvent = await (window as any).nostr.signEvent(event);
+                await pool.publish(RELAYS, signedEvent);
+            } else {
+                const skDecoded = bech32Decoder("nsec", keyValue);
+                const signedEvent = finalizeEvent(event, skDecoded);
+                await pool.publish(RELAYS, signedEvent);
+            }
 
-        setIsFollowing(true);
+            setIsFollowing(true);
+            showCustomToast("Successfully followed user!");
+        } catch (error) {
+            console.error("Error following user:", error);
+            showCustomToast("Failed to follow user. Please try again.");
+        }
     };
 
     // Sort posts and reposts by date

@@ -10,6 +10,7 @@ import Loading from "./Loading";
 import { fetchUserMetadata } from "../utils/profileUtils";
 import { fetchMetadataReactionsAndReplies, fetchData } from '../utils/noteUtils';
 import Ostrich from "./Ostrich";
+import { showCustomToast } from "./CustomToast";
 
 interface HomeProps {
   keyValue: string;
@@ -113,11 +114,15 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       if (!props.pool) return;
       const success = await sendMessage(props.pool, props.nostrExists, props.keyValue, message, setPosting, setMessage);
       if (success) {
+        showCustomToast("Posted note successfully!");
         // Refresh the list of posts
         const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
         await fetchData(props.pool, oneDayAgo, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
           setLoading, setLoadingMore, setError, setEvents, events, setMetadata, setReactions, setReplies, setLastFetchedTimestamp, 
           setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);
+      }
+      else {
+        showCustomToast("Failed to send post. Please try again.");
       }
     };
 

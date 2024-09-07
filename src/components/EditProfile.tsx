@@ -5,7 +5,7 @@ import { getPublicKey, finalizeEvent } from 'nostr-tools';
 import { RELAYS } from "../utils/constants";
 import { useState, useEffect } from "react";
 import Loading from "./Loading";
-import { toast } from 'react-toastify';
+import { showCustomToast } from "./CustomToast";
 
 interface EditProfileProps {
     keyValue: string;
@@ -69,7 +69,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
     async function saveProfile() {
         setSaving(true);
         if (!props.pool) {
-            toast.error("Pool is not initialized");
+            showCustomToast("Pool is not initialized");
             setSaving(false);
             return;
         }
@@ -104,10 +104,10 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                 let eventFinal = finalizeEvent(event, skDecoded);
                 await props.pool.publish(RELAYS, eventFinal);
               }
-            toast.success("Profile updated successfully!");
+            showCustomToast("Profile updated successfully!");
         } catch (error) {
             console.error("Error saving profile:", error);
-            toast.error("Failed to update profile. Please try again.");
+            showCustomToast("Failed to update profile. Please try again.");
         } finally {
             setSaving(false);
         }

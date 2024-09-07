@@ -2,7 +2,7 @@ import { BoltIcon, HandThumbUpIcon, HandThumbDownIcon, TrashIcon, ChatBubbleLeft
 import { sendZap, reactToPost, deletePost, bech32Decoder } from "../utils/helperFunctions";
 import { SimplePool, getPublicKey } from "nostr-tools";
 import { useState, useEffect } from "react";
-import { toast } from 'react-toastify';
+import { CustomToast } from '../components/CustomToast'; // Import CustomToast
 import { Link, useNavigate } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import React from "react";
@@ -245,11 +245,11 @@ interface Props {
     const handleDelete = (id: string) => {
       deletePost(id, pool, nostrExists, keyValue).then((result) => {
         if (result.success) {
-          toast.success("Post deleted");
+          CustomToast("Post deleted", "success");
           setLocalDeleted(true);
         }
         else {
-          toast.error("Failed to delete post");
+          CustomToast("Failed to delete post", "error");
         }
       });
     }
