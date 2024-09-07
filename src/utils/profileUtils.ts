@@ -71,7 +71,7 @@ export const fetchUserMetadata = async (pool: SimplePool, userPublicKey: string,
 };
 
 
-export const fetchPostsForProfile = async (pool: SimplePool, _userPublicKey: string, 
+export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicKey: string, 
   targetNpub: string | null, nostrExists: boolean | null, keyValue: string | null,
   setLoadingPosts: React.Dispatch<React.SetStateAction<boolean>>, 
   setPosts: React.Dispatch<React.SetStateAction<ExtendedEvent[]>>,
@@ -100,7 +100,7 @@ export const fetchPostsForProfile = async (pool: SimplePool, _userPublicKey: str
 
   //michael - optimize - fetch posts synchronously, split into two lists, one with kind 1 and one with kind 6
   const posts = await pool.querySync(RELAYS, { kinds: [1, 6], authors: [fetchedPubkey], limit: 20 });
-  console.log(posts);
+  //console.log(posts);
   const filteredPostsOG = posts.filter(event => event.kind === 1 && !event.tags.some(tag => tag[0] === 'e'));
   const filteredPostsReposts = posts.filter(event => event.kind === 6);
   // Set posts
