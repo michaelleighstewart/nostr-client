@@ -7,6 +7,7 @@ import { toast } from 'react-toastify';
 import { Link, useNavigate } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import React from "react";
+import { RELAYS } from "../utils/constants";
 
 interface Props {
     id: string;
@@ -80,6 +81,7 @@ interface Props {
       }
 
       const linkRegex = /(https?:\/\/[^\s]+)/g;
+      const nostrBech32Regex = /(nostr:(naddr|npub|note|nsec|nprofile)1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]+)\b/;
       const parts: string[] = content.split(linkRegex);
       const processed = parts.map((part, index) => {
         if (part.match(linkRegex)) {
@@ -88,13 +90,66 @@ interface Props {
           }
           return null;
         }
+        const nostrMatch = part.match(nostrBech32Regex);
+        if (nostrMatch) {
+          console.log("got a nostr match, ", part);
+          const [fullMatch, nostrEntity] = nostrMatch;
+          try {
+            const decoded = nip19.decode(nostrEntity.slice(6));
+            if (decoded.type === 'naddr' && decoded.data.kind === 30023) {
+              pool?.subscribeManyEose(RELAYS, [{
+                kinds: [30023],
+                authors: [decoded.data.pubkey],
+                '#d': [decoded.data.identifier]
+              }], 
+              {
+                onevent(event) {
+                  console.log("Retrieved 30023 event:", event);
+                  const npub = nip19.npubEncode(event.pubkey);
+                  setProcessedContent(prevContent => [
+                    ...prevContent,
+                    <div key={`preview-${event.id}`} className="border rounded-lg p-4 my-2">
+                      <h3 className="text-lg font-semibold">{event.tags.find(tag => tag[0] === 'title')?.[1] || 'Untitled'}</h3>
+                      <p className="text-sm text-gray-400 my-2">{event.tags.find(tag => tag[0] === 'summary')?.[1] || 'No summary available'}</p>
+                      {event.tags.find(tag => tag[0] === 'image')?.[1] && (
+                        <img src={event.tags.find(tag => tag[0] === 'image')?.[1]} alt={event.tags.find(tag => tag[0] === 'title')?.[1] || 'Untitled'} className="w-full h-auto max-h-96 object-contain rounded my-2" />
+                      )}
+                      <a href={`https://highlighter.com/${npub}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                        View on Highlighter
+                      </a>
+                    </div>
+                  ]);
+                }
+              });
+            }
+            return (
+              <React.Fragment key={index}>
+                {part.substring(0, nostrMatch.index).split('\n').map((line, lineIndex) => (
+                  <React.Fragment key={`before-${lineIndex}`}>
+                    {lineIndex > 0 && <br />}
+                    {line}
+                  </React.Fragment>
+                ))}
+                {part.substring(nostrMatch.index !== undefined ? nostrMatch.index + fullMatch.length : 0).split('\n').map((line, lineIndex) => (
+                  <React.Fragment key={`after-${lineIndex}`}>
+                    {lineIndex > 0 && <br />}
+                    {line}
+                  </React.Fragment>
+                ))}
+              </React.Fragment>
+            );
+          } catch (error) {
+            console.error("Error decoding Nostr entity:", error);
+            return part;
+          }
+        }
 
         const lines = part.split('\n');
         return (
           <span key={index}>
             {lines.map((line, lineIndex) => (
               <React.Fragment key={lineIndex}>
-                {lineIndex > 0 && !imageMatches.includes(lines[lineIndex - 1]) && !imageMatches.includes(line) && <br />}
+                {lineIndex > 0 && <br />}
                 {line}
               </React.Fragment>
             ))}
