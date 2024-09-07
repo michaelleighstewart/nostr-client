@@ -185,6 +185,7 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
                                         };
                                         setEvents(prevEvents => {
                                             if (!prevEvents.some(e => e.id === extendedEvent.id)) {
+                                                console.log("inserting event into descending list reply", extendedEvent);
                                                 return insertEventIntoDescendingList(prevEvents, extendedEvent);
                                             }
                                             return prevEvents;
@@ -303,7 +304,7 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
                             setEvents((events) => {
                                 // Check if the event already exists
                                 if (!events.some(e => e.id === extendedEvent.id)) {
-                                    console.log("inserting event into descending list repost", extendedEvent);
+                                    //console.log("inserting event into descending list repost", extendedEvent);
                                     return insertEventIntoDescendingList(events, extendedEvent);
                                 }
                                 return events;

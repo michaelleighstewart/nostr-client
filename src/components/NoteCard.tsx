@@ -324,34 +324,6 @@ interface Props {
         {repliedEvent && (
           <div className="mt-2 border-l-2 border-gray-500">
             <p className="text-gray-400 text-sm mb-2 pl-4">Replied</p>
-            <NoteCard
-              id={repliedEvent.id}
-              content={repliedEvent.content}
-              user={{
-                name:
-                    metadata?.[repliedEvent.pubkey]?.name ??
-                    `${nip19.npubEncode(repliedEvent.pubkey).slice(0, 12)}...`,
-                image:
-                    metadata?.[repliedEvent.pubkey]?.picture,
-                pubkey: repliedEvent.pubkey,
-                nip05: metadata?.[repliedEvent.pubkey]?.nip05
-              }}
-              created_at={repliedEvent.created_at}
-              hashtags={[]}
-              pool={pool}   
-              nostrExists={nostrExists}
-              reactions={allReactions?.[repliedEvent.id] ?? []}
-              keyValue={keyValue}
-              replies={allReplies?.[repliedEvent.id] ?? 0}
-              deleted={repliedEvent.deleted}
-              repostedEvent={null}
-              repliedEvent={null}
-              metadata={metadata}
-              allReactions={allReactions}
-              allReplies={allReplies}
-              reposts={reposts}
-              allReposts={allReposts}
-            />
           </div>
         )}
         {repostedEvent && (
@@ -510,6 +482,36 @@ interface Props {
             />
           </div>
         )}
+        {repliedEvent ? (
+                    <NoteCard
+                    id={repliedEvent.id}
+                    content={repliedEvent.content}
+                    user={{
+                      name:
+                          metadata?.[repliedEvent.pubkey]?.name ??
+                          `${nip19.npubEncode(repliedEvent.pubkey).slice(0, 12)}...`,
+                      image:
+                          metadata?.[repliedEvent.pubkey]?.picture,
+                      pubkey: repliedEvent.pubkey,
+                      nip05: metadata?.[repliedEvent.pubkey]?.nip05
+                    }}
+                    created_at={repliedEvent.created_at}
+                    hashtags={[]}
+                    pool={pool}   
+                    nostrExists={nostrExists}
+                    reactions={allReactions?.[repliedEvent.id] ?? []}
+                    keyValue={keyValue}
+                    replies={allReplies?.[repliedEvent.id] ?? 0}
+                    deleted={repliedEvent.deleted}
+                    repostedEvent={null}
+                    repliedEvent={null}
+                    metadata={metadata}
+                    allReactions={allReactions}
+                    allReplies={allReplies}
+                    reposts={reposts}
+                    allReposts={allReposts}
+                  />
+      ) : <></>}
       </div>
     );
   }
