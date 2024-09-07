@@ -263,7 +263,14 @@ interface Props {
     };
 
     const handleRepost = () => {
-      repostMessage(pool, nostrExists, keyValue, id, user.pubkey, content);
+      repostMessage(pool, nostrExists, keyValue, id, user.pubkey, content).then((result) => {
+        if (result) {
+          CustomToast("Post reposted", "success");
+        }
+        else {
+          CustomToast("Failed to repost post", "error");
+        }
+      });
     };
 
     if (localDeleted) {
