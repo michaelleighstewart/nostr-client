@@ -215,3 +215,45 @@ export async function sendMessage(
     setPosting(false);
   }
 }
+
+export async function repostMessage(
+  pool: SimplePool | null,
+  nostrExists: boolean | null,
+  keyValue: string | null,
+  originalEventId: string,
+  originalEventPubkey: string,
+  comment: string = ""
+): Promise<boolean> {
+  if (!pool) return false;
+  
+  try {
+    const event = {
+      kind: 6,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [
+        ['e', originalEventId],
+        ['p', originalEventPubkey]
+      ],
+      content: comment,
+    };
+
+    if (nostrExists) {
+      const signedEvent = await (window as any).nostr.signEvent(event);
+      await pool.publish(RELAYS, signedEvent);
+    } else {
+      const sk = keyValue ?? "";
+      const skDecoded = bech32Decoder('nsec', sk);
+      const pk = getPublicKey(skDecoded);
+      const eventWithPubkey = { ...event, pubkey: pk };
+      const eventFinal = finalizeEvent(eventWithPubkey, skDecoded);
+      await pool.publish(RELAYS, eventFinal);
+    }
+
+    //toast.success("Repost sent successfully!");
+    return true;
+  } catch (error) {
+    console.error("Error reposting message: ", error);
+    //toast.error("Failed to repost. Please try again.");
+    return false;
+  }
+}

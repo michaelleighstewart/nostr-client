@@ -111,6 +111,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
 
             //michael - optimize - fetch posts synchronously, split into two lists, one with kind 1 and one with kind 6
             const posts = await pool.querySync(RELAYS, { kinds: [1, 6], authors: [fetchedPubkey], limit: 20 });
+            console.log(posts);
             const filteredPostsOG = posts.filter(event => event.kind === 1 && !event.tags.some(tag => tag[0] === 'e'));
             const filteredPostsReposts = posts.filter(event => event.kind === 6);
             // Set posts
@@ -119,7 +120,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                     const extendedPost: ExtendedEvent = {
                         ...post,
                         deleted: false,
-                        repostedEvent: post.kind === 6 ? JSON.parse(post.content) : null,
+                        repostedEvent: post.kind === 6 && post.content !== "" ? JSON.parse(post.content) : null,
                         content: post.kind === 6 ? "" : post.content,
                         repliedEvent: null
                     };

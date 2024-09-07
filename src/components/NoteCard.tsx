@@ -1,5 +1,5 @@
-import { BoltIcon, HandThumbUpIcon, HandThumbDownIcon, TrashIcon, ChatBubbleLeftIcon } from "@heroicons/react/16/solid";
-import { sendZap, reactToPost, deletePost, bech32Decoder } from "../utils/helperFunctions";
+import { BoltIcon, HandThumbUpIcon, HandThumbDownIcon, TrashIcon, ChatBubbleLeftIcon, ArrowPathRoundedSquareIcon } from "@heroicons/react/16/solid";
+import { sendZap, reactToPost, deletePost, bech32Decoder, repostMessage } from "../utils/helperFunctions";
 import { SimplePool, getPublicKey } from "nostr-tools";
 import { useState, useEffect } from "react";
 import { CustomToast } from '../components/CustomToast'; // Import CustomToast
@@ -262,6 +262,10 @@ interface Props {
       setSelectedImage(url);
     };
 
+    const handleRepost = () => {
+      repostMessage(pool, nostrExists, keyValue, id, user.pubkey);
+    };
+
     if (localDeleted) {
       return (
         <div className="rounded p-16 border border-gray-600 bg-gray-700 flex flex-col gap-16 break-words">
@@ -426,6 +430,13 @@ interface Props {
               <span className="text-body5 text-gray-400">
                 {localReactions.filter((r) => r.type === "-").length}
               </span>
+            </div>
+            <div className="p-4 pl-32">
+              <ArrowPathRoundedSquareIcon
+                className="h-6 w-6 text-blue-500 cursor-pointer"
+                title="Repost this post"
+                onClick={handleRepost}
+              />
             </div>
             <div className="p-4 pl-32">
               <ChatBubbleLeftIcon
