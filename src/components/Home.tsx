@@ -24,6 +24,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
     const [replies, setReplies] = useState<Record<string, number>>({});
+    const [reposts, setReposts] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -98,7 +99,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
 
     useEffect(() => {
       if (!props.pool) return;
-      fetchMetadataReactionsAndReplies(props.pool, events, setMetadata, setReactions, setReplies);
+      fetchMetadataReactionsAndReplies(props.pool, events, setMetadata, setReactions, setReplies, setReposts);
     }, [events, props.pool]);
 
     const loadMore = async () => {
@@ -159,7 +160,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           <div className={`pt-32 relative ${!isLoggedIn ? 'pointer-events-none opacity-50' : ''}`}>
             <NotesList metadata={metadata} reactions={reactions} notes={events.filter(e => !deletedNoteIds.has(e.id))} pool={props.pool} 
               nostrExists={props.nostrExists} keyValue={props.keyValue}
-              replies={replies} />
+              replies={replies} reposts={reposts} />
             {initialLoadComplete && events.length > 0 && isLoggedIn && (
               <div className="mt-8 mb-8 text-center">
                 {loadingMore ? (

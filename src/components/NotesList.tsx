@@ -13,9 +13,10 @@ interface Props {
     reactions: Record<string, Reaction[]>;
     keyValue: string;
     replies: Record<string, number>;
+    reposts: Record<string, number>;
 }
 
-export default function NotesList({ notes, metadata, pool, nostrExists, reactions, keyValue, replies } : Props) {
+export default function NotesList({ notes, metadata, pool, nostrExists, reactions, keyValue, replies, reposts } : Props) {
     const [visibleNotes, setVisibleNotes] = useState<ExtendedEvent[]>([]);
     const isLoggedIn = nostrExists || !!keyValue;
 
@@ -81,6 +82,8 @@ export default function NotesList({ notes, metadata, pool, nostrExists, reaction
                                 repostedEvent={note.repostedEvent}
                                 repliedEvent={note.repliedEvent}
                                 metadata={metadata}
+                                reposts={reposts[note.id] ?? 0}
+                                allReposts={reposts}
                             />
                         </div>
                     </motion.div>

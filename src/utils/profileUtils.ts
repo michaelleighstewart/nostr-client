@@ -25,15 +25,16 @@ export const getFollowers = async (pool: SimplePool, isLoggedIn: boolean, nostrE
       let skDecoded = bech32Decoder('nsec', sk);
       pk = getPublicKey(skDecoded);
     }
+    console.log("pk", pk);
     if (pk && !followers.includes(pk)) followers.push(pk);
     setUserPublicKey(pk);
     return new Promise((resolve) => {
-      
       pool.subscribeManyEose(
         RELAYS,
         [{ authors: [pk], kinds: [3] }],
         {
           onevent(event: Event) {
+            console.log("followerevent", event);
             followers.push(...event.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]));
             resolve(followers);
           },

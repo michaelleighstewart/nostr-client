@@ -7,7 +7,8 @@ import { ExtendedEvent, Metadata, Reaction } from "./interfaces";
 export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events: ExtendedEvent[], 
     setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>, 
     setReactions: React.Dispatch<React.SetStateAction<Record<string, Reaction[]>>>, 
-    setReplies: React.Dispatch<React.SetStateAction<Record<string, number>>>) => {
+    setReplies: React.Dispatch<React.SetStateAction<Record<string, number>>>,
+    setReposts: React.Dispatch<React.SetStateAction<Record<string, number>>>) => {
         
     const pubkeysToFetch = new Set(events.map(event => event.pubkey));
     const postsToFetch = events.map(event => event.id);
@@ -25,7 +26,8 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
         [
             { kinds: [0], authors: Array.from(pubkeysToFetch) },
             { kinds: [7], '#e': postsToFetch },
-            { kinds: [1], '#e': postsToFetch }
+            { kinds: [1], '#e': postsToFetch },
+            { kinds: [6], '#e': postsToFetch }
         ],
         {
             onevent(event: Event) {
@@ -65,6 +67,15 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                         }
                         return updatedReplies;
                     });
+                } else if (event.kind === 6) {
+                    setReposts(cur => {
+                        const updatedReposts = { ...cur };
+                        const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                        if (postId) {
+                            updatedReposts[postId] = (updatedReposts[postId] || 0) + 1;
+                        }
+                        return updatedReposts;
+                    });
                 }
             },
             onclose() {
@@ -100,6 +111,7 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
       let filter;
       // Always get the followers if logged in
       const followers = isLoggedIn ? await getFollowers(pool as SimplePool, isLoggedIn, nostrExists, keyValue, setUserPublicKey) : [];
+      //console.log("followers", followers);
       filter = isLoggedIn
       ? { kinds: [1, 5, 6], since: since, authors: followers, limit: 10, ...(until !== 0 && { until }) }
       : { kinds: [1, 5, 6], since: since, limit: 10, ...(until !== 0 && { until }) };
@@ -112,6 +124,7 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
             [filter],
             {
                 onevent(event: Event) {
+                    //console.log("event", event);
                     // Update lastFetchedTimestamp for every event, regardless of its kind
                     //console.log("event", event);
                     setLastFetchedTimestamp(prevTimestamp => 
@@ -190,7 +203,7 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
                         ));
                     }
                     else if (event.kind === 6) {
-                        console.log("event is: ", event);
+                        //console.log("event is: ", event);
                         if (!events.some(e => e.id === event.id)) {
                         const repostedId = event.tags.find(tag => tag[0] === 'e')?.[1];
                         //if (!events.some(e => e.id === event.id)) {
@@ -290,6 +303,7 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
                             setEvents((events) => {
                                 // Check if the event already exists
                                 if (!events.some(e => e.id === extendedEvent.id)) {
+                                    console.log("inserting event into descending list repost", extendedEvent);
                                     return insertEventIntoDescendingList(events, extendedEvent);
                                 }
                                 return events;
@@ -320,4 +334,3 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
       setLoadingMore(false);
     }
   };
-

@@ -26,6 +26,8 @@ interface Props {
     metadata: Record<string, Metadata> | null;
     allReactions: Record<string, Reaction[]> | null;
     allReplies: Record<string, number> | null;
+    reposts: number;
+    allReposts: Record<string, number> | null;
   }
   
   export default function NoteCard({
@@ -44,7 +46,9 @@ interface Props {
     repliedEvent,
     metadata,
     allReactions,
-    allReplies
+    allReplies,
+    reposts,
+    allReposts
   }: Props) {
     const [alreadyLiked, setAlreadyLiked] = useState(false);
     const [alreadyDisliked, setAlreadyDisliked] = useState(false);
@@ -345,6 +349,8 @@ interface Props {
               metadata={metadata}
               allReactions={allReactions}
               allReplies={allReplies}
+              reposts={reposts}
+              allReposts={allReposts}
             />
           </div>
         )}
@@ -376,6 +382,8 @@ interface Props {
               metadata={metadata}
               allReactions={allReactions}
               allReplies={allReplies}
+              reposts={allReposts?.[repostedEvent.id] ?? 0}
+              allReposts={allReposts}
             />
           </div>
         )}
@@ -459,6 +467,11 @@ interface Props {
                 title="Repost this post"
                 onClick={handleRepost}
               />
+            </div>
+            <div className="p-4">
+              <span className="text-body5 text-gray-400">
+                {reposts}
+              </span>
             </div>
             <div className="p-4 pl-32">
               <ChatBubbleLeftIcon
