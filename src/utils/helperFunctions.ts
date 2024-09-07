@@ -3,7 +3,6 @@ import { Buffer } from 'buffer';
 import { RELAYS } from "../utils/constants";
 import { LightningAddress } from "@getalby/lightning-tools";
 import { SimplePool, getPublicKey, finalizeEvent } from "nostr-tools";
-import { Reaction } from "../components/Home";
 import { toast } from 'react-toastify';
 
 export interface User {
@@ -21,6 +20,19 @@ export type ExtendedEvent = {
   content: string;
   tags: string[][];
   repostedEvent: ExtendedEvent | null;
+}
+
+export interface Metadata {
+  name?: string;
+  about?: string;
+  picture?: string;
+  nip05?: string;
+}
+
+export interface Reaction {
+  liker_pubkey: string;
+  type: string;
+  sig: string;
 }
 
 export function insertEventIntoDescendingList<T extends ExtendedEvent>(

@@ -1,7 +1,8 @@
 import { SimplePool, Event } from "nostr-tools";
 import { RELAYS } from "./constants";
-import { Metadata, Reaction } from "../components/Home";
 import { ExtendedEvent } from "./helperFunctions";
+import { getFollowers } from "./profileUtils";
+import { insertEventIntoDescendingList, Metadata, Reaction } from "./helperFunctions";
 
 export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events: ExtendedEvent[], 
     setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>, 
@@ -73,3 +74,200 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
 
     return cleanup;
 }
+
+export const fetchData = async (pool: SimplePool | null, since: number, append: boolean = false, until: number = 0,
+    isLoggedIn: boolean, nostrExists: boolean | null, keyValue: string | null,
+    setLoading: React.Dispatch<React.SetStateAction<boolean>>,
+    setLoadingMore: React.Dispatch<React.SetStateAction<boolean>>,
+    setError: React.Dispatch<React.SetStateAction<string | null>>,
+    setEvents: React.Dispatch<React.SetStateAction<ExtendedEvent[]>>,
+    setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>,
+    setReactions: React.Dispatch<React.SetStateAction<Record<string, Reaction[]>>>,
+    setReplies: React.Dispatch<React.SetStateAction<Record<string, number>>>,
+    setLastFetchedTimestamp: React.Dispatch<React.SetStateAction<number>>,
+    setDeletedNoteIds: React.Dispatch<React.SetStateAction<Set<string>>>,
+    setUserPublicKey: React.Dispatch<React.SetStateAction<string | null>>,
+    setInitialLoadComplete: React.Dispatch<React.SetStateAction<boolean>>,
+) => {
+    try {
+      if (!append) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+      setError(null);
+      let filter;
+      // Always get the followers if logged in
+      const followers = isLoggedIn ? await getFollowers(pool as SimplePool, isLoggedIn, nostrExists, keyValue, setUserPublicKey) : [];
+      filter = isLoggedIn
+      ? { kinds: [1, 5, 6], since: since, authors: followers, limit: 10, ...(until !== 0 && { until }) }
+      : { kinds: [1, 5, 6], since: since, limit: 10, ...(until !== 0 && { until }) };
+      let subRepostedMeta: any;
+      let subReactionsReplies: any;
+
+          const sub = pool?.subscribeMany(
+            RELAYS,
+            [filter],
+            {
+                onevent(event: Event) {
+                    if (event.kind === 1 && !event.tags.some((tag: string[]) => tag[0] === 'e')) {
+                        const extendedEvent: ExtendedEvent = {
+                          ...event,
+                          id: event.id,
+                          pubkey: event.pubkey,
+                          created_at: event.created_at,
+                          content: event.content,
+                          tags: event.tags,
+                          deleted: false,
+                          repostedEvent: null
+                        };
+                        setEvents((events) => {
+                            // Check if the event already exists
+                            if (!events.some(e => e.id === extendedEvent.id)) {
+                                return insertEventIntoDescendingList(events, extendedEvent);
+                            }
+                            return events;
+                        });
+                        // Update lastFetchedTimestamp if this is the oldest event
+                        setLastFetchedTimestamp(prevTimestamp => 
+                            Math.min(prevTimestamp, extendedEvent.created_at)
+                        );
+                    } else if (event.kind === 5) {
+                        const deletedIds = event.tags
+                            .filter(tag => tag[0] === 'e')
+                            .map(tag => tag[1]);
+                        setDeletedNoteIds(prev => new Set([...prev, ...deletedIds]));
+                        setEvents(prevEvents => prevEvents.map(e => 
+                            deletedIds.includes(e.id) ? {...e, deleted: true} : e
+                        ));
+                    }
+                    else if (event.kind === 6) {
+                      const repostedId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                      if (repostedId) {
+                        try {
+                          const repostedContent = JSON.parse(event.content);
+                          const repostedEvent: ExtendedEvent = {
+                            ...event,
+                            id: repostedContent.id,
+                            pubkey: repostedContent.pubkey,
+                            created_at: repostedContent.created_at,
+                            content: repostedContent.content,
+                            tags: repostedContent.tags,
+                            deleted: false,
+                            repostedEvent: null
+                          };
+                          const extendedEvent: ExtendedEvent = {
+                            id: event.id,
+                            pubkey: event.pubkey,
+                            created_at: event.created_at,
+                            content: "",
+                            tags: event.tags,
+                            deleted: false,
+                            repostedEvent: repostedEvent
+                          };
+                          // Fetch metadata for the reposted event's author
+                          subRepostedMeta = pool?.subscribeManyEose(
+                            RELAYS,
+                            [
+                              {
+                                kinds: [0],
+                                authors: [repostedEvent.pubkey],
+                              },
+                            ],
+                            {
+                              onevent: (event) => {
+                                if (event.kind === 0) {
+                                  try {
+                                    const profileContent = JSON.parse(event.content);
+                                    setMetadata((prevMetadata) => ({
+                                      ...prevMetadata,
+                                      [event.pubkey]: {
+                                        name: profileContent.name,
+                                        about: profileContent.about,
+                                        picture: profileContent.picture,
+                                        nip05: profileContent.nip05,
+                                      },
+                                    }));
+                                  } catch (error) {
+                                    console.error("Error parsing profile metadata:", error);
+                                  }
+                                }
+                              },
+                            }
+                          );
+                          // Fetch reactions and replies for the reposted event
+                          subReactionsReplies = pool?.subscribeManyEose(
+                            RELAYS,
+                            [
+                              {
+                                kinds: [1, 7],
+                                "#e": [repostedEvent.id],
+                              },
+                            ],
+                            {
+                              onevent: (event) => {
+                                if (event.kind === 7) {
+                                  // This is a reaction
+                                  setReactions((prevReactions) => ({
+                                    ...prevReactions,
+                                    [repostedEvent.id]: [
+                                      ...(prevReactions[repostedEvent.id] || []),
+                                      {
+                                        id: event.id,
+                                        liker_pubkey: event.pubkey,
+                                        type: event.tags.find((t) => t[0] === "p")?.[1] || "+",
+                                        sig: event.sig, // Add the 'sig' property
+                                      },
+                                    ],
+                                  }));
+                                } else if (event.kind === 1) {
+                                  // This is a reply
+                                  setReplies(cur => {
+                                    const updatedReplies = { ...cur };
+                                    const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                                    if (postId) {
+                                        updatedReplies[postId] = (updatedReplies[postId] || 0) + 1;
+                                    }
+                                    return updatedReplies;
+                                });
+                                }
+                              },
+                            }
+                          );
+                          setEvents((events) => {
+                            // Check if the event already exists
+                            if (!events.some(e => e.id === extendedEvent.id)) {
+                                return insertEventIntoDescendingList(events, extendedEvent);
+                            }
+                            return events;
+                        });
+                        // Update lastFetchedTimestamp if this is the oldest event
+                        setLastFetchedTimestamp(prevTimestamp => 
+                            Math.min(prevTimestamp, extendedEvent.created_at)
+                        );
+                        } catch (error) {
+                          console.error("Error parsing reposted content:", error);
+                        }
+                      }
+                    }
+                },
+                oneose() {
+                    setLoading(false);
+                    setLoadingMore(false);
+                    setInitialLoadComplete(true);
+                }
+            }
+        );
+        return () => {
+            if (sub) sub.close();
+            if (subRepostedMeta) subRepostedMeta.close();
+            if (subReactionsReplies) subReactionsReplies.close();
+        };
+    } catch (error) {
+      console.error("Error fetching data: ", error);
+      setError("An error occurred while fetching posts. Please try again later.");
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+

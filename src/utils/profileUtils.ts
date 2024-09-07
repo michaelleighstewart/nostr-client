@@ -1,9 +1,9 @@
 import { getPublicKey, SimplePool, Event } from "nostr-tools";
-import { bech32Decoder } from "./helperFunctions";
+import { bech32Decoder, Metadata } from "./helperFunctions";
 import { RELAYS } from "./constants";
-import { Metadata } from "../components/Home";
 
-export const getFollowers = async (pool: SimplePool, isLoggedIn: boolean, nostrExists: boolean | null, keyValue: string, setUserPublicKey: (pk: string) => void): Promise<string[]> => {
+export const getFollowers = async (pool: SimplePool, isLoggedIn: boolean, nostrExists: boolean | null, keyValue: string | null, 
+  setUserPublicKey: (pk: string) => void): Promise<string[]> => {
     if (!isLoggedIn) return [];
       
     let pk: string = "";

@@ -3,31 +3,17 @@ import { SimplePool } from "nostr-tools";
 import { useState, useEffect, useRef } from "react";
 import NotesList from "./NotesList";
 import { useDebounce } from "use-debounce";
-import { insertEventIntoDescendingList, ExtendedEvent, sendMessage } from "../utils/helperFunctions";
-import { Event } from "nostr-tools";
+import { ExtendedEvent, sendMessage, Metadata, Reaction } from "../utils/helperFunctions";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
-import { getFollowers, fetchUserMetadata } from "../utils/profileUtils";
-import { fetchMetadataReactionsAndReplies } from '../utils/noteUtils';
+import { fetchUserMetadata } from "../utils/profileUtils";
+import { fetchMetadataReactionsAndReplies, fetchData } from '../utils/noteUtils';
 import Ostrich from "./Ostrich";
 
 interface HomeProps {
   keyValue: string;
   pool: SimplePool | null;
   nostrExists: boolean | null;
-}
-
-export interface Metadata {
-  name?: string;
-  about?: string;
-  picture?: string;
-  nip05?: string;
-}
-
-export interface Reaction {
-  liker_pubkey: string;
-  type: string;
-  sig: string;
 }
 
 const Home : React.FC<HomeProps> = (props: HomeProps) => {
@@ -97,193 +83,12 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);
     }, [props.nostrExists, props.keyValue]);
 
-    const fetchData = async (pool: SimplePool | null, since: number, append: boolean = false, until: number = 0) => {
-      try {
-        if (!append) {
-          setLoading(true);
-        } else {
-          setLoadingMore(true);
-        }
-        setError(null);
-        let filter;
-        // Always get the followers if logged in
-        const followers = isLoggedIn ? await getFollowers(pool as SimplePool, isLoggedIn, props.nostrExists, props.keyValue, setUserPublicKey) : [];
-        filter = isLoggedIn
-        ? { kinds: [1, 5, 6], since: since, authors: followers, limit: 10, ...(until !== 0 && { until }) }
-        : { kinds: [1, 5, 6], since: since, limit: 10, ...(until !== 0 && { until }) };
-        let subRepostedMeta: any;
-        let subReactionsReplies: any;
-  
-            const sub = pool?.subscribeMany(
-              RELAYS,
-              [filter],
-              {
-                  onevent(event: Event) {
-                      if (event.kind === 1 && !event.tags.some((tag: string[]) => tag[0] === 'e')) {
-                          const extendedEvent: ExtendedEvent = {
-                            ...event,
-                            id: event.id,
-                            pubkey: event.pubkey,
-                            created_at: event.created_at,
-                            content: event.content,
-                            tags: event.tags,
-                            deleted: false,
-                            repostedEvent: null
-                          };
-                          setEvents((events) => {
-                              // Check if the event already exists
-                              if (!events.some(e => e.id === extendedEvent.id)) {
-                                  return insertEventIntoDescendingList(events, extendedEvent);
-                              }
-                              return events;
-                          });
-                          // Update lastFetchedTimestamp if this is the oldest event
-                          setLastFetchedTimestamp(prevTimestamp => 
-                              Math.min(prevTimestamp, extendedEvent.created_at)
-                          );
-                      } else if (event.kind === 5) {
-                          const deletedIds = event.tags
-                              .filter(tag => tag[0] === 'e')
-                              .map(tag => tag[1]);
-                          setDeletedNoteIds(prev => new Set([...prev, ...deletedIds]));
-                          setEvents(prevEvents => prevEvents.map(e => 
-                              deletedIds.includes(e.id) ? {...e, deleted: true} : e
-                          ));
-                      }
-                      else if (event.kind === 6) {
-                        const repostedId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                        if (repostedId) {
-                          try {
-                            const repostedContent = JSON.parse(event.content);
-                            const repostedEvent: ExtendedEvent = {
-                              ...event,
-                              id: repostedContent.id,
-                              pubkey: repostedContent.pubkey,
-                              created_at: repostedContent.created_at,
-                              content: repostedContent.content,
-                              tags: repostedContent.tags,
-                              deleted: false,
-                              repostedEvent: null
-                            };
-                            const extendedEvent: ExtendedEvent = {
-                              id: event.id,
-                              pubkey: event.pubkey,
-                              created_at: event.created_at,
-                              content: "",
-                              tags: event.tags,
-                              deleted: false,
-                              repostedEvent: repostedEvent
-                            };
-                            // Fetch metadata for the reposted event's author
-                            subRepostedMeta = props.pool?.subscribeManyEose(
-                              RELAYS,
-                              [
-                                {
-                                  kinds: [0],
-                                  authors: [repostedEvent.pubkey],
-                                },
-                              ],
-                              {
-                                onevent: (event) => {
-                                  if (event.kind === 0) {
-                                    try {
-                                      const profileContent = JSON.parse(event.content);
-                                      setMetadata((prevMetadata) => ({
-                                        ...prevMetadata,
-                                        [event.pubkey]: {
-                                          name: profileContent.name,
-                                          about: profileContent.about,
-                                          picture: profileContent.picture,
-                                          nip05: profileContent.nip05,
-                                        },
-                                      }));
-                                    } catch (error) {
-                                      console.error("Error parsing profile metadata:", error);
-                                    }
-                                  }
-                                },
-                              }
-                            );
-                            // Fetch reactions and replies for the reposted event
-                            subReactionsReplies = props.pool?.subscribeManyEose(
-                              RELAYS,
-                              [
-                                {
-                                  kinds: [1, 7],
-                                  "#e": [repostedEvent.id],
-                                },
-                              ],
-                              {
-                                onevent: (event) => {
-                                  if (event.kind === 7) {
-                                    // This is a reaction
-                                    setReactions((prevReactions) => ({
-                                      ...prevReactions,
-                                      [repostedEvent.id]: [
-                                        ...(prevReactions[repostedEvent.id] || []),
-                                        {
-                                          id: event.id,
-                                          liker_pubkey: event.pubkey,
-                                          type: event.tags.find((t) => t[0] === "p")?.[1] || "+",
-                                          sig: event.sig, // Add the 'sig' property
-                                        },
-                                      ],
-                                    }));
-                                  } else if (event.kind === 1) {
-                                    // This is a reply
-                                    setReplies(cur => {
-                                      const updatedReplies = { ...cur };
-                                      const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                                      if (postId) {
-                                          updatedReplies[postId] = (updatedReplies[postId] || 0) + 1;
-                                      }
-                                      return updatedReplies;
-                                  });
-                                  }
-                                },
-                              }
-                            );
-                            setEvents((events) => {
-                              // Check if the event already exists
-                              if (!events.some(e => e.id === extendedEvent.id)) {
-                                  return insertEventIntoDescendingList(events, extendedEvent);
-                              }
-                              return events;
-                          });
-                          // Update lastFetchedTimestamp if this is the oldest event
-                          setLastFetchedTimestamp(prevTimestamp => 
-                              Math.min(prevTimestamp, extendedEvent.created_at)
-                          );
-                          } catch (error) {
-                            console.error("Error parsing reposted content:", error);
-                          }
-                        }
-                      }
-                  },
-                  oneose() {
-                      setLoading(false);
-                      setLoadingMore(false);
-                      setInitialLoadComplete(true);
-                  }
-              }
-          );
-          return () => {
-              if (sub) sub.close();
-              if (subRepostedMeta) subRepostedMeta.close();
-              if (subReactionsReplies) subReactionsReplies.close();
-          };
-      } catch (error) {
-        console.error("Error fetching data: ", error);
-        setError("An error occurred while fetching posts. Please try again later.");
-        setLoading(false);
-        setLoadingMore(false);
-      }
-    };
-
     useEffect(() => {
       if (!props.pool) return;
       const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-      const fetchDataCleanup = fetchData(props.pool, oneDayAgo);
+      const fetchDataCleanup = fetchData(props.pool, oneDayAgo, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
+        setLoading, setLoadingMore, setError, setEvents, setMetadata, setReactions, setReplies, setLastFetchedTimestamp, 
+        setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);
       return () => {
         fetchDataCleanup.then(cleanup => cleanup && cleanup());
       };
@@ -298,7 +103,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       if (!props.pool) return;
       setLoadingMore(true);
       const oneDayBeforeLastFetched = lastFetchedTimestamp - 24 * 60 * 60;
-      await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp);
+      await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
+        setLoading, setLoadingMore, setError, setEvents, setMetadata, setReactions, setReplies, setLastFetchedTimestamp, 
+        setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);
     };
 
     const handleSendMessage = async () => {
@@ -307,7 +114,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       if (success) {
         // Refresh the list of posts
         const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-        await fetchData(props.pool, oneDayAgo);
+        await fetchData(props.pool, oneDayAgo, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
+          setLoading, setLoadingMore, setError, setEvents, setMetadata, setReactions, setReplies, setLastFetchedTimestamp, 
+          setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);
       }
     };
 

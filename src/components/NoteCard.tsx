@@ -1,13 +1,13 @@
 import { BoltIcon, HandThumbUpIcon, HandThumbDownIcon, TrashIcon, ChatBubbleLeftIcon } from "@heroicons/react/16/solid";
 import { User, sendZap, reactToPost, deletePost, bech32Decoder, ExtendedEvent } from "../utils/helperFunctions";
 import { SimplePool, getPublicKey } from "nostr-tools";
-import { Metadata, Reaction } from "./Home";
 import { useState, useEffect } from "react";
 import { toast } from 'react-toastify';
 import { Link, useNavigate } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import React from "react";
 import { RELAYS } from "../utils/constants";
+import { Metadata, Reaction } from "../utils/helperFunctions";
 
 interface Props {
     id: string;
@@ -106,19 +106,28 @@ interface Props {
                 onevent(event) {
                   console.log("Retrieved 30023 event:", event);
                   const npub = nip19.npubEncode(event.pubkey);
-                  setProcessedContent(prevContent => [
-                    ...prevContent,
-                    <div key={`preview-${event.id}`} className="border rounded-lg p-4 my-2">
-                      <h3 className="text-lg font-semibold">{event.tags.find(tag => tag[0] === 'title')?.[1] || 'Untitled'}</h3>
-                      <p className="text-sm text-gray-400 my-2">{event.tags.find(tag => tag[0] === 'summary')?.[1] || 'No summary available'}</p>
-                      {event.tags.find(tag => tag[0] === 'image')?.[1] && (
-                        <img src={event.tags.find(tag => tag[0] === 'image')?.[1]} alt={event.tags.find(tag => tag[0] === 'title')?.[1] || 'Untitled'} className="w-full h-auto max-h-96 object-contain rounded my-2" />
-                      )}
-                      <a href={`https://highlighter.com/${npub}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                        View on Highlighter
-                      </a>
-                    </div>
-                  ]);
+                  setProcessedContent(prevContent => {
+                    // Check if this event has already been processed
+                    if (prevContent.some(item => 
+                      item !== null && typeof item === 'object' && 'key' in item && item.key === `preview-${event.id}`
+                    )) {
+                      return prevContent; // If it has, return the previous content without changes
+                    }
+                    // If it hasn't been processed, add it to the content
+                    return [
+                      ...prevContent,
+                      <div key={`preview-${event.id}`} className="border rounded-lg p-4 my-2">
+                        <h3 className="text-lg font-semibold">{event.tags.find(tag => tag[0] === 'title')?.[1] || 'Untitled'}</h3>
+                        <p className="text-sm text-gray-400 my-2">{event.tags.find(tag => tag[0] === 'summary')?.[1] || 'No summary available'}</p>
+                        {event.tags.find(tag => tag[0] === 'image')?.[1] && (
+                          <img src={event.tags.find(tag => tag[0] === 'image')?.[1]} alt={event.tags.find(tag => tag[0] === 'title')?.[1] || 'Untitled'} className="w-full h-auto max-h-96 object-contain rounded my-2" />
+                        )}
+                        <a href={`https://highlighter.com/${npub}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                          View on Highlighter
+                        </a>
+                      </div>
+                    ];
+                  });
                 }
               });
             }
