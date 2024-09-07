@@ -88,7 +88,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       if (!props.pool) return;
       const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
       const fetchDataCleanup = fetchData(props.pool, oneDayAgo, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-        setLoading, setLoadingMore, setError, setEvents, setMetadata, setReactions, setReplies, setLastFetchedTimestamp, 
+        setLoading, setLoadingMore, setError, setEvents, events, setMetadata, setReactions, setReplies, setLastFetchedTimestamp, 
         setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);
       return () => {
         fetchDataCleanup.then(cleanup => cleanup && cleanup());
@@ -105,7 +105,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       setLoadingMore(true);
       const oneDayBeforeLastFetched = lastFetchedTimestamp - 24 * 60 * 60;
       await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-        setLoading, setLoadingMore, setError, setEvents, setMetadata, setReactions, setReplies, setLastFetchedTimestamp, 
+        setLoading, setLoadingMore, setError, setEvents, events, setMetadata, setReactions, setReplies, setLastFetchedTimestamp, 
         setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);
     };
 
@@ -116,7 +116,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         // Refresh the list of posts
         const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
         await fetchData(props.pool, oneDayAgo, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-          setLoading, setLoadingMore, setError, setEvents, setMetadata, setReactions, setReplies, setLastFetchedTimestamp, 
+          setLoading, setLoadingMore, setError, setEvents, events, setMetadata, setReactions, setReplies, setLastFetchedTimestamp, 
           setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);
       }
     };

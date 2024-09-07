@@ -104,7 +104,6 @@ interface Props {
               }], 
               {
                 onevent(event) {
-                  console.log("Retrieved 30023 event:", event);
                   const npub = nip19.npubEncode(event.pubkey);
                   setProcessedContent(prevContent => {
                     // Check if this event has already been processed
