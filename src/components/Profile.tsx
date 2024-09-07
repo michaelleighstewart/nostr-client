@@ -204,6 +204,8 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                                         allReactions={reactions}
                                         allReplies={Object.fromEntries(Object.entries(replies).map(([key, value]) => [key, value]))}
                                         repliedEvent={null}
+                                        reposts={0}
+                                        allReposts={null}
                                     />
                                 </div>
                             ))}
