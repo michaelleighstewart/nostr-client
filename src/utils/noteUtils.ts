@@ -103,6 +103,7 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
       filter = isLoggedIn
       ? { kinds: [1, 5, 6], since: since, authors: followers, limit: 10, ...(until !== 0 && { until }) }
       : { kinds: [1, 5, 6], since: since, limit: 10, ...(until !== 0 && { until }) };
+      //console.log("filter", filter);
       let subRepostedMeta: any;
       let subReactionsReplies: any;
 
@@ -112,6 +113,7 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
             {
                 onevent(event: Event) {
                     // Update lastFetchedTimestamp for every event, regardless of its kind
+                    //console.log("event", event);
                     setLastFetchedTimestamp(prevTimestamp => 
                         Math.min(prevTimestamp, event.created_at)
                     );
@@ -188,10 +190,11 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
                         ));
                     }
                     else if (event.kind === 6) {
+                        console.log("event is: ", event);
                         if (!events.some(e => e.id === event.id)) {
                         const repostedId = event.tags.find(tag => tag[0] === 'e')?.[1];
                         //if (!events.some(e => e.id === event.id)) {
-                        if (repostedId && event.content.length > 0) {
+                        if (repostedId) {
                             try {
                                 const repostedContent = JSON.parse(event.content);
                                 const repostedEvent: ExtendedEvent = {

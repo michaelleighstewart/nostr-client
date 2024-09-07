@@ -96,20 +96,42 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
   } else {
       throw new Error("Unable to fetch public key");
   }
-  // Remove setPubkey as it's not defined in the function parameters
 
-  //michael - optimize - fetch posts synchronously, split into two lists, one with kind 1 and one with kind 6
   const posts = await pool.querySync(RELAYS, { kinds: [1, 6], authors: [fetchedPubkey], limit: 20 });
-  //console.log(posts);
+  if (posts.length === 0) {
+    setLoadingPosts(false);
+    return;
+  }
+  console.log("posts is: ", posts);
   const filteredPostsOG = posts.filter(event => event.kind === 1 && !event.tags.some(tag => tag[0] === 'e'));
   const filteredPostsReposts = posts.filter(event => event.kind === 6);
+
+  // Fetch reposted events
+  const repostedEventIds = filteredPostsReposts
+    .map(post => {
+      try {
+        return post.content ? JSON.parse(post.content).id : null;
+      } catch (error) {
+        console.error("Error parsing repost content:", error);
+        return null;
+      }
+    })
+    .filter((id): id is string => id !== null);
+  const repostedEvents = await pool.querySync(RELAYS, { ids: repostedEventIds });
+
+  // Create a map of reposted events for quick lookup
+  const repostedEventsMap = new Map(repostedEvents.map(event => [event.id, event]));
+
   // Set posts
   setPosts([...filteredPostsOG, ...filteredPostsReposts]
       .map(post => {
           const extendedPost: ExtendedEvent = {
               ...post,
               deleted: false,
-              repostedEvent: post.kind === 6 && post.content !== "" ? JSON.parse(post.content) : null,
+              repostedEvent: post.kind === 6 && post.content !== "" ? {
+                  ...JSON.parse(post.content),
+                  content: repostedEventsMap.get(JSON.parse(post.content).id)?.content || ""
+              } : null,
               content: post.kind === 6 ? "" : post.content,
               repliedEvent: null
           };
@@ -178,7 +200,8 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
   const filteredPostsRepostsToSearch: string[] = [];
   const filteredPostsRepostsPubkeys: string[] = [];
   filteredPostsReposts.forEach(post => {
-      const repostedContent = JSON.parse(post.content);
+    
+      const repostedContent = post.content ? JSON.parse(post.content) : "";
       filteredPostsRepostsToSearch.push(repostedContent.id);
       filteredPostsRepostsPubkeys.push(repostedContent.pubkey);
   });

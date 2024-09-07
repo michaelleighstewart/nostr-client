@@ -263,7 +263,7 @@ interface Props {
     };
 
     const handleRepost = () => {
-      repostMessage(pool, nostrExists, keyValue, id, user.pubkey);
+      repostMessage(pool, nostrExists, keyValue, id, user.pubkey, content);
     };
 
     if (localDeleted) {

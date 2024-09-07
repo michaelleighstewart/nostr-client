@@ -222,19 +222,29 @@ export async function repostMessage(
   keyValue: string | null,
   originalEventId: string,
   originalEventPubkey: string,
-  comment: string = ""
+  originalPostContent: string = ""
 ): Promise<boolean> {
   if (!pool) return false;
   
   try {
     const event = {
       kind: 6,
+      content: JSON.stringify({
+        id: originalEventId,
+        pubkey: originalEventPubkey,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [
+          ['e', originalEventId],
+          ['p', originalEventPubkey]
+        ],
+        content: originalPostContent,
+      }),
       created_at: Math.floor(Date.now() / 1000),
       tags: [
         ['e', originalEventId],
         ['p', originalEventPubkey]
       ],
-      content: comment,
+      //content: comment,
     };
 
     if (nostrExists) {
