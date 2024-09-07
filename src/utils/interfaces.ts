@@ -1,0 +1,50 @@
+export interface User {
+    name: string;
+    image: string | undefined;
+    pubkey: string;
+    nip05: string | undefined;
+}
+
+export type ExtendedEvent = {
+  id: string;
+  pubkey: string;
+  created_at: number;
+  deleted: boolean;
+  content: string;
+  tags: string[][];
+  repostedEvent: ExtendedEvent | null;
+}
+
+export interface Metadata {
+  name?: string;
+  about?: string;
+  picture?: string;
+  nip05?: string;
+}
+
+export interface Reaction {
+  liker_pubkey: string;
+  type: string;
+  sig: string;
+}
+
+export interface Reply {
+  id: string;
+  content: string;
+  pubkey: string;
+  created_at: number;
+  hashtags: string[];
+  reactions: Reaction[];
+}
+
+
+export interface MessageGroup {
+    pubkey: string;
+    messages: Event[];
+    userInfo: UserInfo | null;
+}
+  
+export interface UserInfo {
+    name: string;
+    picture: string;
+}

@@ -4,36 +4,7 @@ import { RELAYS } from "../utils/constants";
 import { LightningAddress } from "@getalby/lightning-tools";
 import { SimplePool, getPublicKey, finalizeEvent } from "nostr-tools";
 import { toast } from 'react-toastify';
-
-export interface User {
-    name: string;
-    image: string | undefined;
-    pubkey: string;
-    nip05: string | undefined;
-}
-
-export type ExtendedEvent = {
-  id: string;
-  pubkey: string;
-  created_at: number;
-  deleted: boolean;
-  content: string;
-  tags: string[][];
-  repostedEvent: ExtendedEvent | null;
-}
-
-export interface Metadata {
-  name?: string;
-  about?: string;
-  picture?: string;
-  nip05?: string;
-}
-
-export interface Reaction {
-  liker_pubkey: string;
-  type: string;
-  sig: string;
-}
+import { ExtendedEvent, Reaction, User } from "./interfaces";
 
 export function insertEventIntoDescendingList<T extends ExtendedEvent>(
   sortedArray: T[],

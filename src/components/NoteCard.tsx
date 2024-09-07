@@ -1,5 +1,5 @@
 import { BoltIcon, HandThumbUpIcon, HandThumbDownIcon, TrashIcon, ChatBubbleLeftIcon } from "@heroicons/react/16/solid";
-import { User, sendZap, reactToPost, deletePost, bech32Decoder, ExtendedEvent } from "../utils/helperFunctions";
+import { sendZap, reactToPost, deletePost, bech32Decoder } from "../utils/helperFunctions";
 import { SimplePool, getPublicKey } from "nostr-tools";
 import { useState, useEffect } from "react";
 import { toast } from 'react-toastify';
@@ -7,7 +7,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import React from "react";
 import { RELAYS } from "../utils/constants";
-import { Metadata, Reaction } from "../utils/helperFunctions";
+import { Metadata, Reaction, User, ExtendedEvent } from "../utils/interfaces";
 
 interface Props {
     id: string;

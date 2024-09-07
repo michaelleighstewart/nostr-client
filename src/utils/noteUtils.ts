@@ -1,8 +1,8 @@
 import { SimplePool, Event } from "nostr-tools";
 import { RELAYS } from "./constants";
-import { ExtendedEvent } from "./helperFunctions";
 import { getFollowers } from "./profileUtils";
-import { insertEventIntoDescendingList, Metadata, Reaction } from "./helperFunctions";
+import { insertEventIntoDescendingList } from "./helperFunctions";
+import { ExtendedEvent, Metadata, Reaction } from "./interfaces";
 
 export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events: ExtendedEvent[], 
     setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>, 

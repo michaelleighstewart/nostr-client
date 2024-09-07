@@ -1,6 +1,7 @@
 import { getPublicKey, SimplePool, Event } from "nostr-tools";
-import { bech32Decoder, Metadata } from "./helperFunctions";
+import { bech32Decoder } from "./helperFunctions";
 import { RELAYS } from "./constants";
+import { Metadata } from "./interfaces";
 
 export const getFollowers = async (pool: SimplePool, isLoggedIn: boolean, nostrExists: boolean | null, keyValue: string | null, 
   setUserPublicKey: (pk: string) => void): Promise<string[]> => {

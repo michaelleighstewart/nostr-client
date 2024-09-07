@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { SimplePool, Event, getPublicKey } from 'nostr-tools';
 import { useParams } from 'react-router-dom';
 import NoteCard from './NoteCard';
-import { Reaction, Metadata } from './Home';
 import { RELAYS } from '../utils/constants';
 import { bech32Decoder } from '../utils/helperFunctions';
+import { Metadata, Reaction } from '../utils/interfaces';
 import Loading from './Loading';
 
 interface PostProps {

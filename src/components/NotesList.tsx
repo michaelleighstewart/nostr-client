@@ -1,8 +1,7 @@
 import { nip19 } from "nostr-tools";
 import NoteCard from "./NoteCard";
-import { Metadata, Reaction } from "./Home";
 import { SimplePool } from "nostr-tools";
-import { ExtendedEvent } from "../utils/helperFunctions";
+import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 

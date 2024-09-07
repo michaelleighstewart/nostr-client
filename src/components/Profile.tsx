@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { SimplePool } from "nostr-tools";
 import { useLocation, Link } from "react-router-dom";
-import { bech32Decoder, ExtendedEvent } from "../utils/helperFunctions";
+import { bech32Decoder } from "../utils/helperFunctions";
+import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";
 import { getPublicKey, finalizeEvent } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
@@ -21,19 +22,6 @@ interface ProfileData {
     picture?: string;
     nip05?: string;
 }
-
-interface Reaction {
-    liker_pubkey: string;
-    type: string;
-    sig: string;
-}
-
-export interface Metadata {
-    name?: string;
-    about?: string;
-    picture?: string;
-    nip05?: string;
-  }
 
 const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) => {
     const [profileData, setProfileData] = useState<ProfileData | null>(null);
