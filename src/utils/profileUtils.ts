@@ -87,7 +87,6 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
   setReposts({});
   if (!pool) return;
   let fetchedPubkey: string;
-  console.log("fetching posts for profile");
   if (targetNpub) {
       //fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
       fetchedPubkey = targetNpub;
@@ -99,13 +98,8 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
   } else {
       throw new Error("Unable to fetch public key");
   }
-  console.log("before getting posts");
-  console.log("fetchedPubkey: ", fetchedPubkey);
   const posts = await pool.querySync(RELAYS, { kinds: [1, 6], authors: [fetchedPubkey], limit: 20 });
-  console.log("after getting posts");
-  console.log("posts length: ", posts.length);
   if (posts.length === 0) {
-    console.log("no posts found");
     setPosts([]);
     setLoadingPosts(false);
     return;
