@@ -41,6 +41,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     useEffect(() => {
         const queryParams = new URLSearchParams(location.search);
         const npubFromUrl = queryParams.get("npub");
+        const isFromUrl = npubFromUrl !== null;
         const targetNpub = npubFromUrl || npub;
 
         const fetchProfileData = async () => {
@@ -50,8 +51,12 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             let fetchedPubkey: string;
             let currentUserPubkey: string;
             if (targetNpub) {
-                //fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
-                fetchedPubkey = targetNpub;
+                if (isFromUrl) {
+                    fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
+                }
+                else {
+                    fetchedPubkey = targetNpub;
+                }
             } else if (nostrExists) {
                 fetchedPubkey = await (window as any).nostr.getPublicKey();
             } else {
@@ -91,12 +96,11 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                 const metadata = JSON.parse(profileEvents[0].content) as ProfileData;
                 setProfileData(metadata);
             }
-            console.log("finished fetching profile data");
             setLoadingProfile(false);
         };
         fetchProfileData();
         fetchPostsForProfile(pool, pubkey, targetNpub ?? null, nostrExists, keyValue,
-            setLoadingPosts, setPosts, setProfileData, setReactions, setReplies, setReposts, setMetadata);
+            setLoadingPosts, setPosts, setProfileData, setReactions, setReplies, setReposts, setMetadata, isFromUrl);
     }, []);
 
     const handleFollow = async () => {

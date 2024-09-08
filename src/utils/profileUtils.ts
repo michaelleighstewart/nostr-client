@@ -78,7 +78,8 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
   setReactions: React.Dispatch<React.SetStateAction<Record<string, Reaction[]>>>,
   setReplies: React.Dispatch<React.SetStateAction<Record<string, number>>>, 
   setReposts: React.Dispatch<React.SetStateAction<Record<string, number>>>,
-  setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>) => {
+  setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>, 
+  isFromUrl: boolean = false) => {
   setLoadingPosts(true);
   setPosts([]);
   setProfileData(null);
@@ -88,8 +89,12 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
   if (!pool) return;
   let fetchedPubkey: string;
   if (targetNpub) {
-      //fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
+    if (isFromUrl) {
+      fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
+    }
+    else {
       fetchedPubkey = targetNpub;
+    }
   } else if (nostrExists) {
       fetchedPubkey = await (window as any).nostr.getPublicKey();
   } else if (keyValue) {
