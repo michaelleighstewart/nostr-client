@@ -49,7 +49,8 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             let fetchedPubkey: string;
             let currentUserPubkey: string;
             if (targetNpub) {
-                fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
+                //fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
+                fetchedPubkey = targetNpub;
             } else if (nostrExists) {
                 fetchedPubkey = await (window as any).nostr.getPublicKey();
             } else {

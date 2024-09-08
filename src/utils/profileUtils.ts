@@ -86,7 +86,8 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
   if (!pool) return;
   let fetchedPubkey: string;
   if (targetNpub) {
-      fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
+      //fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
+      fetchedPubkey = targetNpub;
   } else if (nostrExists) {
       fetchedPubkey = await (window as any).nostr.getPublicKey();
   } else if (keyValue) {
@@ -101,7 +102,6 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
     setLoadingPosts(false);
     return;
   }
-  console.log("posts is: ", posts);
   const filteredPostsOG = posts.filter(event => event.kind === 1 && !event.tags.some(tag => tag[0] === 'e'));
   const filteredPostsReposts = posts.filter(event => event.kind === 6);
 
