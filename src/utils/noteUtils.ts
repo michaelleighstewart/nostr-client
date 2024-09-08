@@ -6,6 +6,7 @@ import { ExtendedEvent, Metadata, Reaction } from "./interfaces";
 
 export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events: ExtendedEvent[], 
     repostEvents: ExtendedEvent[],
+    replyEvents: ExtendedEvent[],
     setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>, 
     setReactions: React.Dispatch<React.SetStateAction<Record<string, Reaction[]>>>, 
     setReplies: React.Dispatch<React.SetStateAction<Record<string, Event[]>>>,
@@ -16,11 +17,19 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     const repostsToFetch: string[] = [];
     const repostPubkeysToFetch: string[] = [];
     for (const event of repostEvents) {
-        const eventInner = JSON.parse(event.content);
-        repostsToFetch.push(eventInner.id);
-        repostPubkeysToFetch.push(eventInner.pubkey);
+        repostsToFetch.push(event.repostedEvent?.id || "");
+        repostPubkeysToFetch.push(event.repostedEvent?.pubkey || "");
     }
-    console.log("repostEvents", repostEvents);
+    // Handle replyEvents
+    const replyIdsToFetch: string[] = [];
+    const replyPubkeysToFetch: string[] = [];
+    for (const event of replyEvents) {
+        replyIdsToFetch.push(event.repliedEvent?.id || "");
+        replyPubkeysToFetch.push(event.repliedEvent?.pubkey || "");
+    }
+
+    repostPubkeysToFetch.forEach(pubkey => pubkeysToFetch.add(pubkey));
+
     let sub: any;
 
     const cleanup = () => {
@@ -113,7 +122,9 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
             RELAYS,
             [
                 { kinds: [0], authors: Array.from(repostPubkeysToFetch) },
-                { kinds: [1, 5, 6, 7], ids: repostsToFetch }
+                { kinds: [7], '#e': repostsToFetch },
+                { kinds: [1], '#e': repostsToFetch },
+                { kinds: [6], '#e': repostsToFetch }
             ],
             {
                 onevent(event: Event) {
@@ -124,7 +135,83 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                             [event.pubkey]: metadata
                         }));
                     } else if (event.kind === 7) {
-                        console.log("reaction event: ", event);
+                        const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                        if (postId) {
+                            const newReaction: Reaction = {
+                                id: event.id,
+                                liker_pubkey: event.pubkey,
+                                type: event.content,
+                                sig: event.sig
+                            };
+                            setReactions(cur => {
+                                const updatedReactions = { ...cur };
+                                if (updatedReactions[postId]) {
+                                    if (!updatedReactions[postId].some(r => r.id === newReaction.id)) {
+                                        updatedReactions[postId] = [...updatedReactions[postId], newReaction];
+                                    }
+                                } else {
+                                    updatedReactions[postId] = [newReaction];
+                                }
+                                return updatedReactions;
+                            });
+                        }
+                    } else if (event.kind === 1) {
+                        const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                        if (postId) {
+                            setReplies(cur => {
+                                const updatedReplies = { ...cur };
+                                if (updatedReplies[postId]) {
+                                    if (!updatedReplies[postId].some(r => r.id === event.id)) {
+                                        updatedReplies[postId] = [...updatedReplies[postId], event];
+                                    }
+                                } else {
+                                    updatedReplies[postId] = [event];
+                                }
+                                return updatedReplies;
+                            });
+                        }
+                    } else if (event.kind === 6) {
+                        const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                        if (postId) {
+                            setReposts(cur => {
+                                const updatedReposts = { ...cur };
+                                if (updatedReposts[postId]) {
+                                    if (!updatedReposts[postId].some(r => r.id === event.id)) {
+                                        updatedReposts[postId] = [...updatedReposts[postId], event];
+                                    }
+                                } else {
+                                    updatedReposts[postId] = [event];
+                                }
+                                return updatedReposts;
+                            });
+                        }
+                    }
+                },
+                oneose() {
+                    subRepostedMeta?.close();
+                }
+            }
+        );
+    }
+
+    if (replyIdsToFetch.length > 0) {
+        const subRepostedMeta = pool?.subscribeMany(
+            RELAYS,
+            [
+                { kinds: [0], authors: Array.from(replyPubkeysToFetch) },
+                { kinds: [7], '#e': replyIdsToFetch },
+                { kinds: [1], '#e': replyIdsToFetch },
+                { kinds: [6], '#e': replyIdsToFetch }
+            ],
+            {
+                onevent(event: Event) {
+                    if (event.kind === 0) {
+                        const metadata = JSON.parse(event.content) as Metadata;
+                        setMetadata(cur => ({
+                            ...cur,
+                            [event.pubkey]: metadata
+                        }));
+                    } else if (event.kind === 7) {
                         const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                         if (postId) {
                             const newReaction: Reaction = {
@@ -195,6 +282,7 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
     setEvents: React.Dispatch<React.SetStateAction<ExtendedEvent[]>>,
     events: ExtendedEvent[],
     repostEvents: ExtendedEvent[],
+    replyEvents: ExtendedEvent[],
     setLastFetchedTimestamp: React.Dispatch<React.SetStateAction<number>>,
     setDeletedNoteIds: React.Dispatch<React.SetStateAction<Set<string>>>,
     setUserPublicKey: React.Dispatch<React.SetStateAction<string | null>>,
@@ -283,6 +371,7 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
                                             }
                                             return prevEvents;
                                         });
+                                        replyEvents.push(extendedEvent);
                                     }
                                 });
                             }
@@ -297,7 +386,6 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
                         ));
                     }
                     else if (event.kind === 6) {
-                        //console.log("event is: ", event);
                         if (!events.some(e => e.id === event.id)) {
                         const repostedId = event.tags.find(tag => tag[0] === 'e')?.[1];
                         //if (!events.some(e => e.id === event.id)) {
