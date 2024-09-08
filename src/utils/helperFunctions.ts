@@ -85,6 +85,7 @@ export async function reactToPost(user: User, id: string, pool: SimplePool | nul
       const signedEvent = await (window as any).nostr.signEvent(event);
       await pool?.publish(RELAYS, signedEvent);
       return {
+        id: signedEvent.id,
         liker_pubkey: publicKey ?? "",
         type: reaction,
         sig: signedEvent.sig,
@@ -101,6 +102,7 @@ export async function reactToPost(user: User, id: string, pool: SimplePool | nul
       let eventFinal = finalizeEvent(event, skDecoded);
       await pool?.publish(RELAYS, eventFinal);
       return {
+        id: eventFinal.id,
         liker_pubkey: pk,
         type: reaction,
         sig: eventFinal.sig,

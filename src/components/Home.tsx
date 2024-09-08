@@ -22,7 +22,7 @@ interface HomeProps {
 const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [eventsImmediate, setEvents] = useState<ExtendedEvent[]>([]);
     const [events] = useDebounce(eventsImmediate, 1500);
-    const [repostEvents, setRepostEvents] = useState<ExtendedEvent[]>([]);
+    const [repostEvents, _setRepostEvents] = useState<ExtendedEvent[]>([]);
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
     const [replies, setReplies] = useState<Record<string, Event[]>>({});

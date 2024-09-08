@@ -122,7 +122,8 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         onevent: (event: Event) => {
           const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
           if (postId) {
-            const newReaction: Reaction = {
+            const newReaction: Reaction = { 
+              id: event.id,
               liker_pubkey: event.pubkey,
               type: event.content,
               sig: event.sig
