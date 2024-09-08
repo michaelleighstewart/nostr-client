@@ -202,7 +202,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                                         repostedEvent={post.repostedEvent || null}
                                         metadata={metadata}
                                         allReactions={reactions}
-                                        allReplies={Object.fromEntries(Object.entries(replies).map(([key, value]) => [key, value]))}
+                                        allReplies={Object.fromEntries(Object.entries(replies).map(([key, value]) => [key, Array.isArray(value) ? value : []]))}
                                         repliedEvent={null}
                                         reposts={0}
                                         allReposts={null}
