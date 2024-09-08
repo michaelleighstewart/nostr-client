@@ -1,24 +1,7 @@
-import React from 'react';
-import { ToastContainer, toast } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-export const CustomToast: React.FC = () => {
-  return (
-    <ToastContainer
-      position="bottom-right"
-      autoClose={3000}
-      hideProgressBar
-      newestOnTop={false}
-      closeOnClick
-      rtl={false}
-      pauseOnFocusLoss
-      draggable
-      pauseOnHover
-    />
-  );
-};
-
-export const showCustomToast = (message: string) => {
+export const showCustomToast = (message: string, type: 'success' | 'error' = 'success') => {
   toast(
     <div className="flex items-center">
       <img 
@@ -33,6 +16,7 @@ export const showCustomToast = (message: string) => {
     </div>,
     {
       className: 'bg-transparent shadow-none',
+      type: type,
     }
   );
 };

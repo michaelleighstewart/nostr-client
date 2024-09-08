@@ -4,7 +4,7 @@ import { getPublicKey, generateSecretKey } from 'nostr-tools';
 import { bech32 } from 'bech32';
 import Loading from './Loading';
 import { ClipboardDocumentIcon } from '@heroicons/react/24/outline';
-import { CustomToast } from './CustomToast';
+import { showCustomToast } from './CustomToast';
 import Ostrich from './Ostrich';
 
 interface GenerateKeyProps {
@@ -64,7 +64,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue }) => {
 
     const copyToClipboard = (text: string, keyType: string) => {
         navigator.clipboard.writeText(text);
-        CustomToast(`${keyType} key copied to clipboard!`, 'success');
+        showCustomToast(`${keyType} key copied to clipboard!`, 'success');
     };
 
     const handleScreenClick = () => {

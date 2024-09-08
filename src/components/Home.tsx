@@ -11,6 +11,7 @@ import { fetchUserMetadata } from "../utils/profileUtils";
 import { fetchMetadataReactionsAndReplies, fetchData } from '../utils/noteUtils';
 import Ostrich from "./Ostrich";
 import { showCustomToast } from "./CustomToast";
+import { Event } from "nostr-tools";
 
 interface HomeProps {
   keyValue: string;
@@ -23,8 +24,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [events] = useDebounce(eventsImmediate, 1500);
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
-    const [replies, setReplies] = useState<Record<string, number>>({});
-    const [reposts, setReposts] = useState<Record<string, number>>({});
+    const [replies, setReplies] = useState<Record<string, Event[]>>({});
+    const [reposts, setReposts] = useState<Record<string, Event[]>>({});
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -91,6 +92,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
       const fetchDataCleanup = fetchData(props.pool, oneDayAgo, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
         setLoading, setLoadingMore, setError, setEvents, events, setMetadata, setReactions, setReplies, setLastFetchedTimestamp, 
+
         setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);
       return () => {
         fetchDataCleanup.then(cleanup => cleanup && cleanup());
@@ -118,6 +120,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         showCustomToast("Posted note successfully!");
         // Refresh the list of posts
         const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
+
         await fetchData(props.pool, oneDayAgo, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
           setLoading, setLoadingMore, setError, setEvents, events, setMetadata, setReactions, setReplies, setLastFetchedTimestamp, 
           setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);

@@ -7,8 +7,8 @@ import { ExtendedEvent, Metadata, Reaction } from "./interfaces";
 export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events: ExtendedEvent[], 
     setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>, 
     setReactions: React.Dispatch<React.SetStateAction<Record<string, Reaction[]>>>, 
-    setReplies: React.Dispatch<React.SetStateAction<Record<string, number>>>,
-    setReposts: React.Dispatch<React.SetStateAction<Record<string, number>>>) => {
+    setReplies: React.Dispatch<React.SetStateAction<Record<string, Event[]>>>,
+    setReposts: React.Dispatch<React.SetStateAction<Record<string, Event[]>>>) => {
         
     const pubkeysToFetch = new Set(events.map(event => event.pubkey));
     const postsToFetch = events.map(event => event.id);
@@ -63,7 +63,13 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                         const updatedReplies = { ...cur };
                         const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                         if (postId) {
-                            updatedReplies[postId] = (updatedReplies[postId] || 0) + 1;
+                            if (updatedReplies[postId]) {
+                                if (!updatedReplies[postId].some(r => r.id === event.id)) {
+                                    updatedReplies[postId] = [...updatedReplies[postId], event];
+                                }
+                            } else {
+                                updatedReplies[postId] = [event];
+                            }
                         }
                         return updatedReplies;
                     });
@@ -72,7 +78,13 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                         const updatedReposts = { ...cur };
                         const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                         if (postId) {
-                            updatedReposts[postId] = (updatedReposts[postId] || 0) + 1;
+                            if (updatedReposts[postId]) {
+                                if (!updatedReposts[postId].some(r => r.id === event.id)) {
+                                    updatedReposts[postId] = [...updatedReposts[postId], event];
+                                }
+                            } else {
+                                updatedReposts[postId] = [event];
+                            }
                         }
                         return updatedReposts;
                     });
@@ -95,7 +107,7 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
     events: ExtendedEvent[],
     setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>,
     setReactions: React.Dispatch<React.SetStateAction<Record<string, Reaction[]>>>,
-    setReplies: React.Dispatch<React.SetStateAction<Record<string, number>>>,
+    setReplies: React.Dispatch<React.SetStateAction<Record<string, Event[]>>>,
     setLastFetchedTimestamp: React.Dispatch<React.SetStateAction<number>>,
     setDeletedNoteIds: React.Dispatch<React.SetStateAction<Set<string>>>,
     setUserPublicKey: React.Dispatch<React.SetStateAction<string | null>>,
@@ -293,7 +305,10 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
                                         const updatedReplies = { ...cur };
                                         const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                                         if (postId) {
-                                            updatedReplies[postId] = (updatedReplies[postId] || 0) + 1;
+                                            updatedReplies[postId] = [
+                                                ...(updatedReplies[postId] || []),
+                                                event
+                                            ];
                                         }
                                         return updatedReplies;
                                     });

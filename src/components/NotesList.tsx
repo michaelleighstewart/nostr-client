@@ -1,4 +1,4 @@
-import { nip19 } from "nostr-tools";
+import { nip19, Event } from "nostr-tools";
 import NoteCard from "./NoteCard";
 import { SimplePool } from "nostr-tools";
 import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";
@@ -12,8 +12,8 @@ interface Props {
     nostrExists: boolean | null;
     reactions: Record<string, Reaction[]>;
     keyValue: string;
-    replies: Record<string, number>;
-    reposts: Record<string, number>;
+    replies: Record<string, Event[]>;
+    reposts: Record<string, Event[]>;
 }
 
 export default function NotesList({ notes, metadata, pool, nostrExists, reactions, keyValue, replies, reposts } : Props) {
@@ -76,13 +76,13 @@ export default function NotesList({ notes, metadata, pool, nostrExists, reaction
                                 reactions={reactions[note.id]}
                                 allReactions={reactions}
                                 keyValue={keyValue}
-                                replies={replies[note.id] ?? 0}
+                                replies={replies?.[note.id]?.length ?? 0}
                                 allReplies={replies}
                                 deleted={note.deleted}
                                 repostedEvent={note.repostedEvent}
                                 repliedEvent={note.repliedEvent}
                                 metadata={metadata}
-                                reposts={reposts[note.id] ?? 0}
+                                reposts={reposts?.[note.id]?.length ?? 0}
                                 allReposts={reposts}
                             />
                         </div>

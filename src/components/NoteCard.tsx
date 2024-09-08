@@ -1,8 +1,8 @@
 import { BoltIcon, HandThumbUpIcon, HandThumbDownIcon, TrashIcon, ChatBubbleLeftIcon, ArrowPathRoundedSquareIcon } from "@heroicons/react/16/solid";
 import { sendZap, reactToPost, deletePost, bech32Decoder, repostMessage } from "../utils/helperFunctions";
-import { SimplePool, getPublicKey } from "nostr-tools";
+import { SimplePool, getPublicKey, Event } from "nostr-tools";
 import { useState, useEffect } from "react";
-import { CustomToast } from '../components/CustomToast'; // Import CustomToast
+import { showCustomToast } from './CustomToast';
 import { Link, useNavigate } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import React from "react";
@@ -25,9 +25,9 @@ interface Props {
     repliedEvent: ExtendedEvent | null;
     metadata: Record<string, Metadata> | null;
     allReactions: Record<string, Reaction[]> | null;
-    allReplies: Record<string, number> | null;
+    allReplies: Record<string, Event[]> | null;
     reposts: number;
-    allReposts: Record<string, number> | null;
+    allReposts: Record<string, Event[]> | null;
   }
   
   export default function NoteCard({
@@ -264,11 +264,11 @@ interface Props {
     const handleDelete = (id: string) => {
       deletePost(id, pool, nostrExists, keyValue).then((result) => {
         if (result.success) {
-          CustomToast("Post deleted", "success");
+          showCustomToast("Post deleted", "success");
           setLocalDeleted(true);
         }
         else {
-          CustomToast("Failed to delete post", "error");
+          showCustomToast("Failed to delete post", "error");
         }
       });
     }
@@ -284,10 +284,10 @@ interface Props {
     const handleRepost = () => {
       repostMessage(pool, nostrExists, keyValue, id, user.pubkey, content).then((result) => {
         if (result) {
-          CustomToast("Post reposted", "success");
+          showCustomToast("Post reposted", "success");
         }
         else {
-          CustomToast("Failed to repost post", "error");
+          showCustomToast("Failed to repost post", "error");
         }
       });
     };
@@ -347,14 +347,14 @@ interface Props {
               nostrExists={nostrExists}
               reactions={allReactions?.[repostedEvent.id] ?? []}
               keyValue={keyValue}
-              replies={allReplies?.[repostedEvent.id] ?? 0}
+              replies={allReplies?.[repostedEvent.id]?.length ?? 0}
               deleted={repostedEvent.deleted}
               repostedEvent={null}
               repliedEvent={repliedEvent}
               metadata={metadata}
               allReactions={allReactions}
               allReplies={allReplies}
-              reposts={allReposts?.[repostedEvent.id] ?? 0}
+              reposts={allReposts?.[repostedEvent.id]?.length ?? 0}
               allReposts={allReposts}
             />
           </div>
@@ -501,7 +501,7 @@ interface Props {
                     nostrExists={nostrExists}
                     reactions={allReactions?.[repliedEvent.id] ?? []}
                     keyValue={keyValue}
-                    replies={allReplies?.[repliedEvent.id] ?? 0}
+                    replies={allReplies?.[repliedEvent.id].length ?? 0}
                     deleted={repliedEvent.deleted}
                     repostedEvent={null}
                     repliedEvent={null}

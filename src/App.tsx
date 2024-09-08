@@ -109,7 +109,17 @@ function App() {
       <Router>
         <AppContent />
       </Router>
-      <ToastContainer />
+      <ToastContainer 
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   )
 }
