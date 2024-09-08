@@ -120,11 +120,9 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
       let filter;
       // Always get the followers if logged in
       const followers = isLoggedIn ? await getFollowers(pool as SimplePool, isLoggedIn, nostrExists, keyValue, setUserPublicKey) : [];
-      //console.log("followers", followers);
       filter = isLoggedIn
       ? { kinds: [1, 5, 6], since: since, authors: followers, limit: 10, ...(until !== 0 && { until }) }
       : { kinds: [1, 5, 6], since: since, limit: 10, ...(until !== 0 && { until }) };
-      //console.log("filter", filter);
       let subRepostedMeta: any;
       let subReactionsReplies: any;
 
@@ -133,9 +131,6 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
             [filter],
             {
                 onevent(event: Event) {
-                    //console.log("event", event);
-                    // Update lastFetchedTimestamp for every event, regardless of its kind
-                    //console.log("event", event);
                     setLastFetchedTimestamp(prevTimestamp => 
                         Math.min(prevTimestamp, event.created_at)
                     );
@@ -241,91 +236,6 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
                                 repostedEvent: repostedEvent,
                                 repliedEvent: null
                             };
-                            // Fetch metadata for the reposted event's author
-                            /*subRepostedMeta = pool?.subscribeManyEose(
-                                RELAYS,
-                                [
-                                {
-                                    kinds: [0],
-                                    authors: [repostedEvent.pubkey],
-                                },
-                                ],
-                                {
-                                onevent: (event) => {
-                                    if (event.kind === 0) {
-                                    try {
-                                        const profileContent = JSON.parse(event.content);
-                                        setMetadata((prevMetadata) => ({
-                                        ...prevMetadata,
-                                        [event.pubkey]: {
-                                            name: profileContent.name,
-                                            about: profileContent.about,
-                                            picture: profileContent.picture,
-                                            nip05: profileContent.nip05,
-                                        },
-                                        }));
-                                    } catch (error) {
-                                        console.error("Error parsing profile metadata:", error);
-                                    }
-                                    }
-                                },
-                                }
-                            );
-                            // Fetch reactions and replies and reposts for the reposted event
-                            subReactionsReplies = pool?.subscribeManyEose(
-                                RELAYS,
-                                [
-                                {
-                                    kinds: [1, 6, 7],
-                                    "#e": [repostedEvent.id],
-                                },
-                                ],
-                                {
-                                onevent: (event) => {
-                                    if (event.kind === 7) {
-                                    // This is a reaction
-                                    setReactions((prevReactions) => ({
-                                        ...prevReactions,
-                                        [repostedEvent.id]: [
-                                        ...(prevReactions[repostedEvent.id] || []),
-                                        {
-                                            id: event.id,
-                                            liker_pubkey: event.pubkey,
-                                            type: event.tags.find((t) => t[0] === "p")?.[1] || "+",
-                                            sig: event.sig,
-                                        },
-                                        ],
-                                    }));
-                                    } else if (event.kind === 1) {
-                                    // This is a reply
-                                    setReplies(cur => {
-                                        const updatedReplies = { ...cur };
-                                        const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                                        if (postId) {
-                                            updatedReplies[postId] = [
-                                                ...(updatedReplies[postId] || []),
-                                                event
-                                            ];
-                                        }
-                                        return updatedReplies;
-                                    });
-                                    } else if (event.kind === 6) {
-                                    // This is a repost
-                                    setReposts((cur: Record<string, any[]>) => {
-                                        const updatedReposts = { ...cur };
-                                        const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                                        if (postId) {
-                                            updatedReposts[postId] = [
-                                                ...(updatedReposts[postId] || []),
-                                                event
-                                            ];
-                                        }
-                                        return updatedReposts;
-                                    });
-                                    }
-                                },
-                                }
-                            );*/
                             setEvents((events) => {
                                 // Check if the event already exists
                                 if (!events.some(e => e.id === extendedEvent.id)) {
