@@ -22,6 +22,7 @@ interface HomeProps {
 const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [eventsImmediate, setEvents] = useState<ExtendedEvent[]>([]);
     const [events] = useDebounce(eventsImmediate, 1500);
+    const [repostEvents, setRepostEvents] = useState<ExtendedEvent[]>([]);
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
     const [replies, setReplies] = useState<Record<string, Event[]>>({});
@@ -91,7 +92,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       if (!props.pool) return;
       const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
       const fetchDataCleanup = fetchData(props.pool, oneDayAgo, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-        setLoading, setLoadingMore, setError, setEvents, events, setLastFetchedTimestamp, 
+        setLoading, setLoadingMore, setError, setEvents, events, repostEvents, setLastFetchedTimestamp, 
 
         setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);
       return () => {
@@ -101,7 +102,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
 
     useEffect(() => {
       if (!props.pool) return;
-      fetchMetadataReactionsAndReplies(props.pool, events, setMetadata, setReactions, setReplies, setReposts);
+      fetchMetadataReactionsAndReplies(props.pool, events, repostEvents, setMetadata, setReactions, setReplies, setReposts);
     }, [events, props.pool]);
 
     const loadMore = async () => {
@@ -109,7 +110,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       setLoadingMore(true);
       const oneDayBeforeLastFetched = lastFetchedTimestamp - 24 * 60 * 60;
       await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-        setLoading, setLoadingMore, setError, setEvents, events, setLastFetchedTimestamp, 
+        setLoading, setLoadingMore, setError, setEvents, events, repostEvents, setLastFetchedTimestamp, 
         setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);
     };
 
@@ -122,7 +123,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
 
         await fetchData(props.pool, oneDayAgo, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-          setLoading, setLoadingMore, setError, setEvents, events, setLastFetchedTimestamp, 
+          setLoading, setLoadingMore, setError, setEvents, events, repostEvents, setLastFetchedTimestamp, 
           setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);
       }
       else {

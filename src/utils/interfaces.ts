@@ -24,10 +24,12 @@ export interface Metadata {
 }
 
 export interface Reaction {
+  id: string;
   liker_pubkey: string;
   type: string;
   sig: string;
 }
+
 
 export interface Reply {
   id: string;
