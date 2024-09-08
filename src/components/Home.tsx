@@ -91,7 +91,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       if (!props.pool) return;
       const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
       const fetchDataCleanup = fetchData(props.pool, oneDayAgo, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-        setLoading, setLoadingMore, setError, setEvents, events, setMetadata, setReactions, setReplies, setLastFetchedTimestamp, 
+        setLoading, setLoadingMore, setError, setEvents, events, setLastFetchedTimestamp, 
 
         setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);
       return () => {
@@ -109,7 +109,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       setLoadingMore(true);
       const oneDayBeforeLastFetched = lastFetchedTimestamp - 24 * 60 * 60;
       await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-        setLoading, setLoadingMore, setError, setEvents, events, setMetadata, setReactions, setReplies, setLastFetchedTimestamp, 
+        setLoading, setLoadingMore, setError, setEvents, events, setLastFetchedTimestamp, 
         setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);
     };
 
@@ -122,7 +122,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
 
         await fetchData(props.pool, oneDayAgo, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-          setLoading, setLoadingMore, setError, setEvents, events, setMetadata, setReactions, setReplies, setLastFetchedTimestamp, 
+          setLoading, setLoadingMore, setError, setEvents, events, setLastFetchedTimestamp, 
           setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);
       }
       else {

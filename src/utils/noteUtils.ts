@@ -105,9 +105,6 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
     setError: React.Dispatch<React.SetStateAction<string | null>>,
     setEvents: React.Dispatch<React.SetStateAction<ExtendedEvent[]>>,
     events: ExtendedEvent[],
-    setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>,
-    setReactions: React.Dispatch<React.SetStateAction<Record<string, Reaction[]>>>,
-    setReplies: React.Dispatch<React.SetStateAction<Record<string, Event[]>>>,
     setLastFetchedTimestamp: React.Dispatch<React.SetStateAction<number>>,
     setDeletedNoteIds: React.Dispatch<React.SetStateAction<Set<string>>>,
     setUserPublicKey: React.Dispatch<React.SetStateAction<string | null>>,
@@ -245,7 +242,7 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
                                 repliedEvent: null
                             };
                             // Fetch metadata for the reposted event's author
-                            subRepostedMeta = pool?.subscribeManyEose(
+                            /*subRepostedMeta = pool?.subscribeManyEose(
                                 RELAYS,
                                 [
                                 {
@@ -274,12 +271,12 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
                                 },
                                 }
                             );
-                            // Fetch reactions and replies for the reposted event
+                            // Fetch reactions and replies and reposts for the reposted event
                             subReactionsReplies = pool?.subscribeManyEose(
                                 RELAYS,
                                 [
                                 {
-                                    kinds: [1, 7],
+                                    kinds: [1, 6, 7],
                                     "#e": [repostedEvent.id],
                                 },
                                 ],
@@ -295,7 +292,7 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
                                             id: event.id,
                                             liker_pubkey: event.pubkey,
                                             type: event.tags.find((t) => t[0] === "p")?.[1] || "+",
-                                            sig: event.sig, // Add the 'sig' property
+                                            sig: event.sig,
                                         },
                                         ],
                                     }));
@@ -312,10 +309,23 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
                                         }
                                         return updatedReplies;
                                     });
+                                    } else if (event.kind === 6) {
+                                    // This is a repost
+                                    setReposts((cur: Record<string, any[]>) => {
+                                        const updatedReposts = { ...cur };
+                                        const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                                        if (postId) {
+                                            updatedReposts[postId] = [
+                                                ...(updatedReposts[postId] || []),
+                                                event
+                                            ];
+                                        }
+                                        return updatedReposts;
+                                    });
                                     }
                                 },
                                 }
-                            );
+                            );*/
                             setEvents((events) => {
                                 // Check if the event already exists
                                 if (!events.some(e => e.id === extendedEvent.id)) {
