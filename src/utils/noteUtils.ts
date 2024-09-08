@@ -13,7 +13,13 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
         
     const pubkeysToFetch = new Set(events.map(event => event.pubkey));
     const postsToFetch = events.map(event => event.id);
-    const repostsToFetch = repostEvents.map(event => event.id);
+    const repostsToFetch: string[] = [];
+    const repostPubkeysToFetch: string[] = [];
+    for (const event of repostEvents) {
+        const eventInner = JSON.parse(event.content);
+        repostsToFetch.push(eventInner.id);
+        repostPubkeysToFetch.push(eventInner.pubkey);
+    }
     console.log("repostEvents", repostEvents);
     let sub: any;
 
@@ -78,7 +84,6 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                         return updatedReplies;
                     });
                 } else if (event.kind === 6) {
-                    console.log("repost event is: ", event);
                     setReposts(cur => {
                         const updatedReposts = { ...cur };
                         const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
@@ -107,7 +112,7 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
         const subRepostedMeta = pool?.subscribeMany(
             RELAYS,
             [
-                { kinds: [0], authors: repostEvents.map(event => event.repostedEvent?.pubkey).filter(Boolean) as string[] },
+                { kinds: [0], authors: Array.from(repostPubkeysToFetch) },
                 { kinds: [1, 5, 6, 7], ids: repostsToFetch }
             ],
             {
@@ -119,6 +124,7 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                             [event.pubkey]: metadata
                         }));
                     } else if (event.kind === 7) {
+                        console.log("reaction event: ", event);
                         const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                         if (postId) {
                             const newReaction: Reaction = {
@@ -273,7 +279,6 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
                                         };
                                         setEvents(prevEvents => {
                                             if (!prevEvents.some(e => e.id === extendedEvent.id)) {
-                                                console.log("inserting event into descending list reply", extendedEvent);
                                                 return insertEventIntoDescendingList(prevEvents, extendedEvent);
                                             }
                                             return prevEvents;
@@ -323,7 +328,6 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
                             setEvents((events) => {
                                 // Check if the event already exists
                                 if (!events.some(e => e.id === extendedEvent.id)) {
-                                    //console.log("inserting event into descending list repost", extendedEvent);
                                     return insertEventIntoDescendingList(events, extendedEvent);
                                 }
                                 return events;
