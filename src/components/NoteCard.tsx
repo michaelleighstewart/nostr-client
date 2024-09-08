@@ -8,6 +8,7 @@ import { nip19 } from 'nostr-tools';
 import React from "react";
 import { RELAYS } from "../utils/constants";
 import { Metadata, Reaction, User, ExtendedEvent } from "../utils/interfaces";
+import VideoEmbed from "./VideoEmbed";
 
 interface Props {
     id: string;
@@ -58,6 +59,7 @@ interface Props {
     const [localDeleted, setLocalDeleted] = useState(deleted);
     const [userNpub, setUserNpub] = useState<string>('');
     const [imageUrls, setImageUrls] = useState<string[]>([]);
+    const [videoUrls, setVideoUrls] = useState<string[]>([]);
     const [processedContent, setProcessedContent] = useState<React.ReactNode[]>([]);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [youtubeVideoId, setYoutubeVideoId] = useState<string | null>(null);
@@ -79,6 +81,11 @@ interface Props {
       const imageMatches: string[] = content.match(imageRegex) || [];
       setImageUrls(imageMatches);
 
+      // Check if content contains video URLs
+      const videoRegex = /(https?:\/\/.*\.(?:mp4|avi|mov))/gi;
+      const videoMatches: string[] = content.match(videoRegex) || [];
+      setVideoUrls(videoMatches);
+
       // Check for YouTube video
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?(.+)/g;
       const youtubeMatch = youtubeRegex.exec(content);
@@ -92,7 +99,9 @@ interface Props {
       const parts: string[] = content.split(linkRegex);
       const processed = parts.map((part, index) => {
         if (part.match(linkRegex)) {
-          if (!imageMatches.includes(part as string) && !youtubeMatch) {
+          if (videoMatches.includes(part as string)) {
+            return <VideoEmbed key={index} url={part} />;
+          } else if (!imageMatches.includes(part as string) && !youtubeMatch) {
             return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{part}</a>;
           }
           return null;
