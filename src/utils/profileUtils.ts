@@ -157,6 +157,7 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
       {
           onevent(event) {
               const reaction: Reaction = {
+                  id: event.id,
                   liker_pubkey: event.pubkey,
                   type: event.content,
                   sig: event.sig
@@ -235,6 +236,7 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
       {
           onevent(event) {
               const reaction: Reaction = {
+                  id: event.id, 
                   liker_pubkey: event.pubkey,
                   type: event.content,
                   sig: event.sig
