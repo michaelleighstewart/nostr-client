@@ -91,6 +91,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                 const metadata = JSON.parse(profileEvents[0].content) as ProfileData;
                 setProfileData(metadata);
             }
+            console.log("finished fetching profile data");
             setLoadingProfile(false);
         };
         fetchProfileData();
@@ -133,13 +134,13 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
         return dateB - dateA;
     });
 
-    if (loadingProfile || loadingPosts) {
+    if (loadingProfile) {
         return <Loading vCentered={false} />;
     }
 
     return (
         <div className="py-64">
-            {!loadingProfile && profileData ? (
+            {profileData ? (
                 <div className="flex flex-col items-center">
                     <div className="flex items-center mb-4">
                         {profileData?.picture && <img src={profileData.picture} alt="Profile" className="w-32 h-32 rounded-full mr-4" />}
@@ -169,18 +170,17 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                     </div>
                 </div>
             ) : (
-                <></>
+                <p>No profile data available.</p>
             )}
 
-            {loadingPosts ? <Loading vCentered={false} /> : <></>}
-            {!loadingPosts && !loadingProfile ? (
+            {loadingPosts ? (
+                <Loading vCentered={false} />
+            ) : (
                 <div>
-                    
+                    <h2 className="text-2xl font-bold mt-8 mb-4 pb-16">Recent Posts</h2>
                     {sortedPosts.length === 0 ? (
-                        <Loading vCentered={false} />
+                        <p>No posts found.</p>
                     ) : (
-                        <div>
-                            <h2 className="text-2xl font-bold mt-8 mb-4 pb-16">Recent Posts</h2>
                         <div className="space-y-8">
                             {sortedPosts.map(post => (
                                 <div key={post.id} className="mb-8 pb-32">
@@ -212,11 +212,8 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                                 </div>
                             ))}
                         </div>
-                        </div>
                     )}
                 </div>
-            ) : (
-                <></>
             )}
         </div>
     );
