@@ -313,6 +313,26 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
     }
   });
 
+  // Add this new subscription for metadata of replied posts
+  const metadataRepliedPosts = pool.subscribeManyEose(
+      RELAYS,
+      [
+          {
+              kinds: [0],
+              authors: repliedEvents.map(event => event.pubkey),
+          }
+      ],
+      {
+          onevent(event) {
+              const metadata: Metadata = JSON.parse(event.content);
+              setMetadata(prevMetadata => ({
+                  ...prevMetadata,
+                  [event.pubkey]: metadata
+              }));
+          }
+      }
+  );
+
   const metadataPostsReplies = pool.subscribeManyEose(
       RELAYS,
       [
@@ -371,6 +391,7 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
       metadataPostsReposts?.close();
       repliesPostsReposts?.close();
       metadataPostsReplies?.close();
+      metadataRepliedPosts?.close(); // Don't forget to close the new subscription
       setLoadingPosts(false);
   };
 }
