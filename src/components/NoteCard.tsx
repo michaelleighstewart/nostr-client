@@ -59,7 +59,7 @@ interface Props {
     const [localDeleted, setLocalDeleted] = useState(deleted);
     const [userNpub, setUserNpub] = useState<string>('');
     const [imageUrls, setImageUrls] = useState<string[]>([]);
-    const [videoUrls, setVideoUrls] = useState<string[]>([]);
+    const [_videoUrls, setVideoUrls] = useState<string[]>([]);
     const [processedContent, setProcessedContent] = useState<React.ReactNode[]>([]);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [youtubeVideoId, setYoutubeVideoId] = useState<string | null>(null);
