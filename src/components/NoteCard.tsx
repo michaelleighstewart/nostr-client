@@ -501,7 +501,7 @@ interface Props {
                     nostrExists={nostrExists}
                     reactions={allReactions?.[repliedEvent.id] ?? []}
                     keyValue={keyValue}
-                    replies={allReplies?.[repliedEvent.id].length ?? 0}
+                    replies={allReplies?.[repliedEvent.id]?.length ?? 0}
                     deleted={repliedEvent.deleted}
                     repostedEvent={null}
                     repliedEvent={null}
