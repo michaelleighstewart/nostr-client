@@ -32,6 +32,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     const [isFollowing, setIsFollowing] = useState(false);
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
     const [replies, setReplies] = useState<Record<string, number>>({});
+    const [_reposts, setReposts] = useState<Record<string, number>>({});
     const location = useLocation();
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [loadingProfile, setLoadingProfile] = useState(true);
@@ -94,7 +95,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
         };
         fetchProfileData();
         fetchPostsForProfile(pool, pubkey, targetNpub ?? null, nostrExists, keyValue,
-            setLoadingPosts, setPosts, setProfileData, setReactions, setReplies, setMetadata);
+            setLoadingPosts, setPosts, setProfileData, setReactions, setReplies, setReposts, setMetadata);
     }, []);
 
     const handleFollow = async () => {
@@ -204,7 +205,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                                         metadata={metadata}
                                         allReactions={reactions}
                                         allReplies={Object.fromEntries(Object.entries(replies).map(([key, value]) => [key, Array.isArray(value) ? value : []]))}
-                                        repliedEvent={null}
+                                        repliedEvent={post.repliedEvent || null}
                                         reposts={0}
                                         allReposts={null}
                                     />

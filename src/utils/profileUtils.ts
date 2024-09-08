@@ -77,12 +77,14 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
   setProfileData: React.Dispatch<React.SetStateAction<ProfileData | null>>, 
   setReactions: React.Dispatch<React.SetStateAction<Record<string, Reaction[]>>>,
   setReplies: React.Dispatch<React.SetStateAction<Record<string, number>>>, 
+  setReposts: React.Dispatch<React.SetStateAction<Record<string, number>>>,
   setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>) => {
   setLoadingPosts(true);
   setPosts([]);
   setProfileData(null);
   setReactions({});
   setReplies({});
+  setReposts({});
   if (!pool) return;
   let fetchedPubkey: string;
   if (targetNpub) {
@@ -104,6 +106,7 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
   }
   const filteredPostsOG = posts.filter(event => event.kind === 1 && !event.tags.some(tag => tag[0] === 'e'));
   const filteredPostsReposts = posts.filter(event => event.kind === 6);
+  const filteredPostsReplies = posts.filter(event => event.kind === 1 && event.tags.some(tag => tag[0] === 'e'));
 
   // Fetch reposted events
   const repostedEventIds = filteredPostsReposts
@@ -121,8 +124,17 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
   // Create a map of reposted events for quick lookup
   const repostedEventsMap = new Map(repostedEvents.map(event => [event.id, event]));
 
+  // Fetch replied events
+  const repliedEventIds = filteredPostsReplies
+    .map(post => post.tags.find(tag => tag[0] === 'e')?.[1])
+    .filter((id): id is string => id !== null);
+  const repliedEvents = await pool.querySync(RELAYS, { ids: repliedEventIds });
+
+  // Create a map of replied events for quick lookup
+  const repliedEventsMap = new Map(repliedEvents.map(event => [event.id, event]));
+
   // Set posts
-  setPosts([...filteredPostsOG, ...filteredPostsReposts]
+  setPosts([...filteredPostsOG, ...filteredPostsReposts, ...filteredPostsReplies]
       .map(post => {
           const extendedPost: ExtendedEvent = {
               ...post,
@@ -132,9 +144,18 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
                   content: repostedEventsMap.get(JSON.parse(post.content).id)?.content || ""
               } : null,
               content: post.kind === 6 ? "" : post.content,
-              repliedEvent: null
+              repliedEvent: post.kind === 1 && post.tags.some(tag => tag[0] === 'e') ? 
+                repliedEventsMap.get(post.tags.find(tag => tag[0] === 'e')?.[1] || '') || null : null
+          } as ExtendedEvent;
+          const extendedPostWithNullChecks: ExtendedEvent = {
+              ...extendedPost,
+              repostedEvent: extendedPost.repostedEvent ? {
+                  ...extendedPost.repostedEvent,
+                  content: extendedPost.repostedEvent.content || ""
+              } : null,
+              repliedEvent: extendedPost.repliedEvent || null
           };
-          return extendedPost;
+          return extendedPostWithNullChecks;
       })
       .sort((a, b) => {
           const timeA = a.repostedEvent ? a.repostedEvent.created_at : a.created_at;
@@ -254,6 +275,8 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
               });
           }
       }
+
+      
   );
 
   const repliesPostsReposts = pool.subscribeManyEose(
@@ -278,12 +301,76 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
       }
   );
 
+  const filteredPostsRepliesToSearch: string[] = [];
+  const filteredPostsRepliesPubkeys: string[] = [];
+  filteredPostsReplies.forEach(post => {
+    const replyToTag = post.tags.find(tag => tag[0] === 'e');
+    if (replyToTag && replyToTag[1]) {
+      filteredPostsRepliesToSearch.push(replyToTag[1]);
+    }
+    if (post.pubkey) {
+      filteredPostsRepliesPubkeys.push(post.pubkey);
+    }
+  });
+
+  const metadataPostsReplies = pool.subscribeManyEose(
+      RELAYS,
+      [
+          {
+              kinds: [0],
+              authors: filteredPostsRepliesPubkeys,
+          }
+      ],  
+      {
+          onevent(event) {
+              const metadata: Metadata = JSON.parse(event.content);
+              setMetadata(prevMetadata => ({
+                  ...prevMetadata,
+                  [event.pubkey]: metadata
+              }));
+          }
+      } 
+  );  
+
+  const reactionsPostsReplies = pool.subscribeManyEose(
+      RELAYS,
+      [
+          {
+              kinds: [7],
+              '#e': filteredPostsRepliesToSearch,
+          }
+      ],  
+      {
+          onevent(event) {
+              const reaction: Reaction = {
+                  id: event.id, 
+                  liker_pubkey: event.pubkey,
+                  type: event.content,
+                  sig: event.sig
+              };    
+              setReactions(prevReactions => {
+                  const existingReactions = prevReactions[event.tags.find(tag => tag[0] === 'e')?.[1] || ''] || [];
+                  const eventId = event.tags.find(tag => tag[0] === 'e')?.[1] || '';
+                  if (eventId && !existingReactions.some(r => r.liker_pubkey === reaction.liker_pubkey)) {
+                      return {
+                          ...prevReactions,
+                          [eventId]: [...existingReactions, reaction]
+                      };
+                  }
+                  return prevReactions;
+              });
+          }
+      }
+  );  
+
   return () => {
       reactionsPostsOG?.close();
       reactionsPostsReposts?.close();
+      reactionsPostsReplies?.close();
       replySubscription?.close();
       metadataPostsReposts?.close();
       repliesPostsReposts?.close();
+      metadataPostsReplies?.close();
       setLoadingPosts(false);
   };
 }
