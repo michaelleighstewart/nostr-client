@@ -86,7 +86,7 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
                 {isValidKey && (
                   <button
                     onClick={handleLogout}
-                    className="text-white"
+                    className="text-[#535bf2] bg-transparent hover:text-white hover:bg-transparent"
                   >
                     <ArrowRightOnRectangleIcon className="h-5 w-5" />
                   </button>
