@@ -60,7 +60,10 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool }) => {
         ],
         {
             onevent(event) {
-                console.log("Event received:", event);
+                if (event.kind === 0) {
+                    setIsLoggedIn(true);
+                    setShowOstrich(true);
+                }
             }
         });
 
@@ -73,11 +76,6 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool }) => {
 
 
     const handleSignUp = async () => {
-        //const currentPool = externalPool || localPool;
-        //if (!currentPool) {
-        //    showCustomToast("Pool is not initialized", "error");
-        //    return;
-        //}
         setIsSigningUp(true);
         let skDecoded = bech32Decoder('nsec', nsec);
         let pk = getPublicKey(skDecoded);
@@ -105,12 +103,19 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool }) => {
                 kinds: [0],
                 authors: [pk],
             });
-            await pool?.publish(RELAYS, _signedEvent);
+            const verifiedEvent = await pool?.verifyEvent(_signedEvent);
+            if (verifiedEvent) {
+                await pool?.publish(RELAYS, _signedEvent);
 
-            setKeyValue(nsec);
-            setIsLoggedIn(true);
-            localStorage.setItem('privateKey', nsec);
-            setShowOstrich(true);
+                setKeyValue(nsec);
+                //setIsLoggedIn(true);
+                localStorage.setItem('privateKey', nsec);
+                //setShowOstrich(true);
+            }
+            else {
+                console.error("Event verification failed");
+                showCustomToast("Failed to save profile. Please try again.", "error");
+            }
         } catch (error) {
             console.error("Error publishing event:", error);
             showCustomToast("Failed to save profile. Please try again.", "error");

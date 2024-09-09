@@ -67,11 +67,12 @@ function App() {
     const _pool = new SimplePool();
     setPool(_pool);
     initialize();
-
     return () => {
-      _pool.close(RELAYS);
+      if (_pool) {
+        _pool.close(RELAYS);
+      }
     };
-  }, [nostrExists, key]);
+  }, [nostrExists]);
 
   const isLoggedIn = nostrExists || !!key;
 
