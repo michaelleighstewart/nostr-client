@@ -1,9 +1,9 @@
 import '../App.css';
-import { SimplePool } from "nostr-tools";
+import { getPublicKey, SimplePool } from "nostr-tools";
 import { useState, useEffect, useRef, useCallback } from "react";
 import NotesList from "./NotesList";
 import { useDebounce } from "use-debounce";
-import { getBase64, sendMessage } from "../utils/helperFunctions";
+import { bech32Decoder, getBase64, sendMessage } from "../utils/helperFunctions";
 import { ExtendedEvent, Metadata, Reaction, User } from "../utils/interfaces";
 import Loading from "./Loading";
 import { fetchUserMetadata, getFollowers } from "../utils/profileUtils";
@@ -57,6 +57,12 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       
       try {
         const newFollowers = await getFollowers(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey);
+        if (props.keyValue) {
+          let skDecoded = bech32Decoder('nsec', props.keyValue);
+          let pk = getPublicKey(skDecoded);
+          if (!newFollowers.includes(pk)) newFollowers.push(pk);
+        }
+        console.log("newFollowers", newFollowers);
         setFollowers(newFollowers);
 
         let filter = isLoggedIn
