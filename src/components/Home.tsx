@@ -34,7 +34,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [posting, setPosting] = useState(false);
     const [message, setMessage] = useState('');
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(props.nostrExists || !!props.keyValue);
-    const [lastFetchedTimestamp, setLastFetchedTimestamp] = useState<number>(Math.floor(Date.now() / 1000));
+    const [lastFetchedTimestamp, setLastFetchedTimestamp] = useState<number>(0);
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
     const [showOstrich, setShowOstrich] = useState(false);
     const [deletedNoteIds, setDeletedNoteIds] = useState<Set<string>>(new Set());
