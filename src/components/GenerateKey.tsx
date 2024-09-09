@@ -15,7 +15,7 @@ interface GenerateKeyProps {
     nostrExists: boolean | null;
 }
 
-const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool }) => {
+const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }) => {
     const [nsec, setNsec] = useState<string>('');
     const [npub, setNpub] = useState<string>('');
     const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
@@ -191,7 +191,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool }) => {
                         </button>
                     </div>
                 </div>
-                {!isLoggedIn && (
+                {!isLoggedIn && keyValue === "" && (
                     <>
                         <div className="pb-24 border border-gray-300 rounded-lg p-32">
                             <h3 className="text-lg font-medium text-white mb-32">Extra Information:</h3>
