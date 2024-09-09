@@ -303,13 +303,13 @@ interface Props {
 
     if (localDeleted) {
       return (
-        <div className="rounded p-16 border border-gray-600 bg-gray-700 flex flex-col gap-16 break-words">
+        <div className="rounded p-16 border border-gray-600 bg-[#535bf2] bg-opacity-10 flex flex-col gap-16 break-words">
           <p className="text-body3 text-gray-400">This post has been deleted</p>
         </div>
       );
     }
     return (
-      <div className="rounded p-16 border border-gray-600 bg-gray-700 flex flex-col gap-16 break-words">
+      <div className="rounded p-16 border border-gray-600 bg-[#535bf2] bg-opacity-10 flex flex-col gap-16 break-words">
         <div className="flex gap-12 items-center overflow-hidden">
           {user.image ?
           <Link to={`/profile?npub=${userNpub}`}>
