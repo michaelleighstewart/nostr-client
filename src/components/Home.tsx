@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import NotesList from "./NotesList";
 import { useDebounce } from "use-debounce";
 import { getBase64, sendMessage } from "../utils/helperFunctions";
-import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";
+import { ExtendedEvent, Metadata, Reaction, User } from "../utils/interfaces";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import { fetchUserMetadata } from "../utils/profileUtils";
@@ -13,6 +13,7 @@ import Ostrich from "./Ostrich";
 import { showCustomToast } from "./CustomToast";
 import { Event } from "nostr-tools";
 import { PhotoIcon, VideoCameraIcon } from '@heroicons/react/24/solid';
+import NoteCard from "./NoteCard";
 
 interface HomeProps {
   keyValue: string;
@@ -212,66 +213,109 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       }
     };
 
+    const previewUser: User = {
+      name: metadata[userPublicKey || '']?.name || '',
+      image: metadata[userPublicKey || '']?.picture || '',
+      pubkey: userPublicKey || '',
+      nip05: metadata[userPublicKey || '']?.nip05 || '',
+    };
+
+    const previewNote: ExtendedEvent = {
+      id: 'preview',
+      pubkey: userPublicKey || '',
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [],
+      content: message,
+      deleted: false,
+      repostedEvent: null,
+      repliedEvent: null,
+    };
+
     return (
       <div className="py-16 pt-150">
         {isLoggedIn && (
-          <div>
-            <div className="pb-2">
-              <textarea
-                ref={textareaRef}
-                id="message" 
-                className="w-full text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 resize-none overflow-hidden"
-                placeholder="What is happening?!" 
-                required
-                value={message}
-                onChange={handleTextareaChange}
-                rows={1}
-              />
+          <div className="flex flex-col space-y-4 border border-gray-300 rounded-lg p-24 mb-8">
+            <div>
+              <div className="pb-2">
+                <textarea
+                  ref={textareaRef}
+                  id="message" 
+                  className="w-full text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 resize-none overflow-hidden"
+                  placeholder="What is happening?!" 
+                  required
+                  value={message}
+                  onChange={handleTextareaChange}
+                  rows={1}
+                />
+              </div>
+              <div className="h-64 flex justify-between items-center">
+                <div className="flex">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={uploadingImage}
+                    className="hidden"
+                    id="image-upload"
+                    ref={imageInputRef}
+                  />
+                  <button 
+                    className={`flex items-center justify-center text-blue-500 hover:text-blue-700 font-bold p-16 rounded ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={triggerImageInput}
+                    disabled={uploadingImage}
+                  >
+                    {uploadingImage ? <Loading vCentered={false} /> : <PhotoIcon className="h-5 w-5" />}
+                  </button>
+                  <input
+                    type="file"
+                    accept="video/*"
+                    onChange={handleVideoUpload}
+                    disabled={uploadingVideo}
+                    className="hidden"
+                    id="video-upload"
+                    ref={videoInputRef}
+                  />
+                  <button 
+                    className={`flex items-center justify-center text-blue-500 hover:text-blue-700 font-bold p-16 rounded ${uploadingVideo ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={triggerVideoInput}
+                    disabled={uploadingVideo}
+                  >
+                    {uploadingVideo ? <Loading vCentered={false} /> : <VideoCameraIcon className="h-5 w-5" />}
+                  </button>
+                </div>
+                <div>
+                  <button 
+                    className={`bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded ${posting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={(_e) => handleSendMessage()}
+                    disabled={posting || uploadingImage || uploadingVideo}
+                  >
+                    {posting ? 'Posting...' : 'Post'}
+                  </button>
+                </div>
+              </div>
             </div>
-            <div className="h-64 flex justify-between items-center">
-              <div className="flex">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  disabled={uploadingImage}
-                  className="hidden"
-                  id="image-upload"
-                  ref={imageInputRef}
-                />
-                <button 
-                  className={`flex items-center justify-center text-blue-500 hover:text-blue-700 font-bold p-16 rounded ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={triggerImageInput}
-                  disabled={uploadingImage}
-                >
-                  {uploadingImage ? <Loading vCentered={false} /> : <PhotoIcon className="h-5 w-5" />}
-                </button>
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={handleVideoUpload}
-                  disabled={uploadingVideo}
-                  className="hidden"
-                  id="video-upload"
-                  ref={videoInputRef}
-                />
-                <button 
-                  className={`flex items-center justify-center text-blue-500 hover:text-blue-700 font-bold p-16 rounded ${uploadingVideo ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={triggerVideoInput}
-                  disabled={uploadingVideo}
-                >
-                  {uploadingVideo ? <Loading vCentered={false} /> : <VideoCameraIcon className="h-5 w-5" />}
-                </button>
-              </div>
-              <div>
-                <button 
-                  className={`bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded ${posting ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={(_e) => handleSendMessage()}
-                  disabled={posting || uploadingImage || uploadingVideo}
-                >
-                  {posting ? 'Posting...' : 'Post'}
-                </button>
-              </div>
+            <div className="border-t border-gray-300 pt-4">
+              <h3 className="text-lg font-semibold mb-2">Preview</h3>
+              <NoteCard 
+                id={previewNote.id}
+                content={previewNote.content}
+                user={previewUser}
+                created_at={previewNote.created_at}
+                hashtags={[]}
+                metadata={metadata}
+                reactions={[]}
+                replies={0}
+                reposts={0}
+                pool={props.pool}
+                nostrExists={props.nostrExists}
+                keyValue={props.keyValue} 
+                deleted={undefined} 
+                repostedEvent={null} 
+                repliedEvent={null} 
+                allReactions={null} 
+                allReplies={null} 
+                allReposts={null}              
+              />
             </div>
           </div>
         )}
