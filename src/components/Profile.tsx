@@ -9,7 +9,7 @@ import Loading from "./Loading";
 import NoteCard from "./NoteCard";
 import { UserGroupIcon, UsersIcon, UserPlusIcon } from '@heroicons/react/24/outline';
 import { showCustomToast } from "./CustomToast";
-import { fetchPostsForProfile } from "../utils/profileUtils";
+import { fetchMetadataReactionsAndReplies, fetchData } from "../utils/noteUtils";
 
 interface ProfileProps {
     npub?: string;
@@ -31,35 +31,43 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     const [pubkey, setPubkey] = useState<string>('');
     const [isFollowing, setIsFollowing] = useState(false);
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
-    const [replies, setReplies] = useState<Record<string, ExtendedEvent[]> | null>(null);
-    const [reposts, setReposts] = useState<Record<string, ExtendedEvent[]> | null>(null);
+    const [replies, setReplies] = useState<Record<string, ExtendedEvent[]>>({});
+    const [reposts, setReposts] = useState<Record<string, ExtendedEvent[]>>({});
     const location = useLocation();
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [loadingProfile, setLoadingProfile] = useState(true);
     const [loadingPosts, setLoadingPosts] = useState(true);
+    const [deletedNoteIds, setDeletedNoteIds] = useState<Set<string>>(new Set());
+    const [userPublicKey, setUserPublicKey] = useState<string | null>(null);
+    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [lastFetchedTimestamp, setLastFetchedTimestamp] = useState<number>(Math.floor(Date.now() / 1000));
+    const [repostEvents, setRepostEvents] = useState<ExtendedEvent[]>([]);
+    const [replyEvents, setReplyEvents] = useState<ExtendedEvent[]>([]);
+    const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(nostrExists || !!keyValue);
 
     useEffect(() => {
-        const queryParams = new URLSearchParams(location.search);
-        const npubFromUrl = queryParams.get("npub");
-        const isFromUrl = npubFromUrl !== null;
-        const targetNpub = npubFromUrl || npub;
-
         const fetchProfileData = async () => {
             setLoadingProfile(true);
             setProfileData(null);
             if (!pool) return;
+
+            const queryParams = new URLSearchParams(location.search);
+            const npubFromUrl = queryParams.get("npub");
+            const isFromUrl = npubFromUrl !== null;
+            const targetNpub = npubFromUrl || npub;
+
             let fetchedPubkey: string;
             let currentUserPubkey: string;
+
             if (targetNpub) {
                 if (isFromUrl) {
-                    if (targetNpub.startsWith("npub")) {
-                        fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
-                    }
-                    else {
-                        fetchedPubkey = targetNpub;
-                    }
-                }
-                else {
+                    fetchedPubkey = targetNpub.startsWith("npub")
+                        ? bech32Decoder("npub", targetNpub).toString('hex')
+                        : targetNpub;
+                } else {
                     fetchedPubkey = targetNpub;
                 }
             } else if (nostrExists) {
@@ -102,11 +110,22 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                 setProfileData(metadata);
             }
             setLoadingProfile(false);
+
+            // Fetch posts
+            const filter = { kinds: [1, 5, 6], authors: [fetchedPubkey], limit: 10 };
+            await fetchData(pool, 0, false, 0, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
+                setLoading, setLoadingMore, setError, setPosts, posts, repostEvents, replyEvents, setLastFetchedTimestamp, 
+                setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter);
         };
+
         fetchProfileData();
-        fetchPostsForProfile(pool, pubkey, targetNpub ?? null, nostrExists, keyValue,
-            setLoadingPosts, setPosts, setProfileData, setReactions, setReplies, setReposts, setMetadata, isFromUrl);
-    }, []);
+    }, [pool, npub, keyValue, nostrExists, location.search]);
+
+    useEffect(() => {
+        if (!pool || posts.length === 0) return;
+        fetchMetadataReactionsAndReplies(pool, posts, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
+        setLoadingPosts(false);
+    }, [pool, posts]);
 
     const handleFollow = async () => {
         if (!pool) return;
