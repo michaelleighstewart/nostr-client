@@ -4,7 +4,7 @@ import { useParams } from 'react-router-dom';
 import NoteCard from './NoteCard';
 import { RELAYS } from '../utils/constants';
 import { bech32Decoder } from '../utils/helperFunctions';
-import { Metadata, Reaction } from '../utils/interfaces';
+import { ExtendedEvent, Metadata, Reaction } from '../utils/interfaces';
 import Loading from './Loading';
 
 interface PostProps {
@@ -29,7 +29,11 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   const [loading, setLoading] = useState(true);
   const [replyContent, setReplyContent] = useState('');
   const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
-  const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
+  const [reactions, setReactions] = useState<Reaction[]>([]);
+  const [reposts, setReposts] = useState<Reply[]>([]);
+  const [allReactions, setAllReactions] = useState<Record<string, Reaction[]>>({});
+  const [allReplies, _setAllReplies] = useState<Record<string, ExtendedEvent[]>>({});
+  const [allReposts, _setAllReposts] = useState<Record<string, ExtendedEvent[]>>({});
 
   useEffect(() => {
     if (!pool || !id) return;
@@ -38,30 +42,60 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
       RELAYS,
       [
         { kinds: [1], ids: [id] },
-        { kinds: [1], '#e': [id] }
+        { kinds: [1], '#e': [id] },
+        { kinds: [7], '#e': [id] },
+        { kinds: [6], '#e': [id] }
       ],
       {
         onevent: (event: Event) => {
-          const newReply: Reply = {
-            id: event.id,
-            content: event.content,
-            pubkey: event.pubkey,
-            created_at: event.created_at,
-            hashtags: event.tags.filter((tag: string[]) => tag[0] === 't').map((tag: string[]) => tag[1]),
-            reactions: [],
-          };
+          if (event.kind === 1) {
+            const newReply: Reply = {
+              id: event.id,
+              content: event.content,
+              pubkey: event.pubkey,
+              created_at: event.created_at,
+              hashtags: event.tags.filter((tag: string[]) => tag[0] === 't').map((tag: string[]) => tag[1]),
+              reactions: [],
+            };
 
-          if (event.id === id) {
-            setPost(newReply);
-          } else {
-            setReplies((prevReplies) => {
-              // Check if the reply already exists
-              const replyExists = prevReplies.some(reply => reply.id === newReply.id);
-              if (!replyExists) {
-                return [...prevReplies, newReply];
+            if (event.id === id) {
+              setPost(newReply);
+            } else {
+              setReplies((prevReplies) => {
+                // Check if the reply already exists
+                const replyExists = prevReplies.some(reply => reply.id === newReply.id);
+                if (!replyExists) {
+                  return [...prevReplies, newReply];
+                }
+                return prevReplies;
+              });
+            }
+          }
+          else if (event.kind === 7) {
+            const newReaction: Reaction = {
+              id: event.id,
+              liker_pubkey: event.pubkey,
+              type: event.content,
+              sig: event.sig
+            };
+            setReactions(prevReactions => {
+              const reactionExists = prevReactions.some(reaction => reaction.id === newReaction.id);
+              if (!reactionExists) {
+                return [...prevReactions, newReaction];
               }
-              return prevReplies;
+              return prevReactions;
             });
+          }
+          else if (event.kind === 6) {
+            const reply: Reply = {
+              id: event.id,
+              content: event.content,
+              pubkey: event.pubkey,
+              created_at: event.created_at,
+              hashtags: event.tags.filter((tag: string[]) => tag[0] === 't').map((tag: string[]) => tag[1]),
+              reactions: [],
+            };  
+            setReposts(prevReposts => [...prevReposts, reply]);
           }
         },
         onclose: () => {
@@ -128,10 +162,10 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
               type: event.content,
               sig: event.sig
             };
-            setReactions(prevReactions => {
+            setAllReactions(prevReactions => {
               const existingReactions = prevReactions[postId] || [];
               const reactionExists = existingReactions.some(
-                r => r.liker_pubkey === newReaction.liker_pubkey && r.type === newReaction.type
+                (r: Reaction) => r.liker_pubkey === newReaction.liker_pubkey && r.type === newReaction.type
               );
               if (!reactionExists) {
                 return {
@@ -207,15 +241,15 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         hashtags={post.hashtags}
         pool={pool}
         nostrExists={nostrExists}
-        reactions={reactions[post.id] || []}
+        reactions={reactions}
         keyValue={keyValue}
         deleted={false}
         replies={replies.length}
         repostedEvent={null}
         metadata={metadata}
-        allReactions={reactions}
-        allReplies={null} repliedEvent={null}
-        reposts={0}
+        allReactions={allReactions}
+        allReplies={allReplies} repliedEvent={null}
+        reposts={reposts.length}
         allReposts={null}
         />
       <div className="mt-8 p-16 rounded-lg">
@@ -248,16 +282,16 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
           hashtags={reply.hashtags}
           pool={pool}
           nostrExists={nostrExists}
-          reactions={reactions[reply.id] || []}
+          reactions={allReactions[reply.id] || []}
           keyValue={keyValue}
           deleted={false}
-          replies={0}
+          replies={allReplies[reply.id]?.length || 0}
           repostedEvent={null}
           metadata={metadata}
-          allReactions={reactions}
-          allReplies={null} repliedEvent={null} 
-          reposts={0}
-          allReposts={null}
+          allReactions={allReactions}
+          allReplies={allReplies} repliedEvent={null} 
+          reposts={allReposts[reply.id]?.length || 0}
+          allReposts={allReposts}
           />
       ))}
     </div>
