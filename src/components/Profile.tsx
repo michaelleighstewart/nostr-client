@@ -153,7 +153,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                             {!isFollowing && (
                                 <button
                                     onClick={handleFollow}
-                                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-4 px-12 rounded flex items-center"
+                                    className="text-white font-bold py-4 px-12 rounded flex items-center"
                                 >
                                     <UserPlusIcon className="h-5 w-5 mr-2" />
                                     Follow

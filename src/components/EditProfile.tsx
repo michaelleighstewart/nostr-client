@@ -185,7 +185,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                     />
                     <button 
                         onClick={() => fileInputRef.current?.click()}
-                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-16 rounded"
+                        className="text-white font-bold py-2 px-16 rounded"
                         disabled={uploadingPicture}
                     >
                         {uploadingPicture ? 'Uploading...' : 'Choose File'}
@@ -208,7 +208,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                 <div className="h-64">
                     <div className="float-right">
                     <button 
-                        className={`bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`text-white font-bold p-16 rounded ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
                         onClick={saveProfile}
                         disabled={saving}
                     >

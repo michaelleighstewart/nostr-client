@@ -227,7 +227,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                             onClick={() => setSelectedHashtag(hashtag)}
                             className={`px-4 py-2 rounded ${
                                 selectedHashtag === hashtag
-                                    ? 'bg-blue-500 text-white'
+                                    ? 'text-white'
                                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                             }`}
                         >
@@ -245,7 +245,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                     />
                     <button
                         type="submit"
-                        className="px-4 py-2 bg-blue-500 text-white rounded-r hover:bg-blue-600"
+                        className="px-4 py-2 text-white rounded-r"
                     >
                         Search
                     </button>
@@ -283,7 +283,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                                             className={`ml-4 px-16 py-4 rounded ${
                                                 followingList.includes(nip19.decode(person.npub).data as string)
                                                     ? 'bg-gray-400 cursor-not-allowed'
-                                                    : 'bg-blue-500 hover:bg-blue-700 text-white'
+                                                    : 'text-white'
                                             }`}
                                             disabled={followingList.includes(nip19.decode(person.npub).data as string)}
                                         >

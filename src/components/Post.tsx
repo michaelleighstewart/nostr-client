@@ -227,7 +227,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         />
         <button
           onClick={handleReply}
-          className="mt-2 p-12 bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="mt-2 p-12 text-white rounded"
         >
           Reply
         </button>

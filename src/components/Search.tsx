@@ -100,7 +100,7 @@ const Search: React.FC<SearchProps> = ({ pool }) => {
         />
         <button
           onClick={handleSearch}
-          className="px-4 py-2 bg-blue-500 text-white rounded-r hover:bg-blue-600"
+          className="px-4 py-2 text-white rounded-r"
         >
           Search
         </button>

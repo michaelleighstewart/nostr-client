@@ -413,14 +413,14 @@ interface Props {
           <>
             <div className="p-4">
               <BoltIcon
-                className={user.nip05 ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
+                className={user.nip05 ? "h-6 w-6 text-[#535bf2] cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
                 title={user.nip05 ? "Zap " + user.name + " for this post" : user.name + " does not have zaps enabled"}
                 onClick={() => sendZap(user, id)}>
               </BoltIcon>
             </div>
             <div className="p-4 pl-32">
               <HandThumbUpIcon
-                className={!alreadyLiked ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
+                className={!alreadyLiked ? "h-6 w-6 text-[#535bf2] cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
                 title={!alreadyLiked ? "Like this post" : "You have already liked this post"}
                 onClick={!alreadyLiked ? () => handleReaction("+") : undefined}
               />
@@ -432,7 +432,7 @@ interface Props {
             </div>
             <div className="p-4 pl-32">
               <HandThumbDownIcon
-                className={!alreadyDisliked ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
+                className={!alreadyDisliked ? "h-6 w-6 text-[#535bf2] cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
                 title={!alreadyDisliked ? "Dislike this post" : "You have already disliked this post"}
                 onClick={!alreadyDisliked ? () => handleReaction("-") : undefined}
               />
@@ -444,7 +444,7 @@ interface Props {
             </div>
             <div className="p-4 pl-32">
               <ArrowPathRoundedSquareIcon
-                className="h-6 w-6 text-blue-500 cursor-pointer"
+                className="h-6 w-6 text-[#535bf2] cursor-pointer"
                 title="Repost this post"
                 onClick={handleRepost}
               />
@@ -456,7 +456,7 @@ interface Props {
             </div>
             <div className="p-4 pl-32">
               <ChatBubbleLeftIcon
-                className="h-6 w-6 text-blue-500 cursor-pointer"
+                className="h-6 w-6 text-[#535bf2] cursor-pointer"
                 title="View replies"
                 onClick={() => navigate(`/post/${id}`)}
               />
@@ -471,7 +471,7 @@ interface Props {
         {canDelete &&
           <div className={`p-4 ${!repostedEvent ? 'pl-32' : ''}`}>
             <TrashIcon
-              className={canDelete ? "h-6 w-6 text-blue-500 cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
+              className={canDelete ? "h-6 w-6 text-[#535bf2] cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
                 title={canDelete ? "Delete this post" : "You cannot delete this post"}
                 onClick={canDelete ? () => handleDelete(id) : undefined}
               />

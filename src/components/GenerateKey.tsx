@@ -168,7 +168,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
                         />
                         <button 
                             onClick={() => copyToClipboard(nsec, 'Private')}
-                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-r-lg"
+                            className="text-white font-bold py-2.5 px-4 rounded-r-lg"
                         >
                             <ClipboardDocumentIcon className="h-5 w-5" />
                         </button>
@@ -185,7 +185,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
                         />
                         <button 
                             onClick={() => copyToClipboard(npub, 'Public')}
-                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-r-lg"
+                            className="text-white font-bold py-2.5 px-4 rounded-r-lg"
                         >
                             <ClipboardDocumentIcon className="h-5 w-5" />
                         </button>
@@ -218,7 +218,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
                                     />
                                     <button
                                         onClick={() => fileInputRef.current?.click()}
-                                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded pl-16 pr-16"
+                                        className="text-white font-bold py-2 px-4 rounded pl-16 pr-16"
                                     >
                                         Choose File
                                     </button>
@@ -234,7 +234,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
                         <div className="pb-24 pt-16">
                             <button
                                 onClick={handleSignUp}
-                                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded"
+                                className="text-white font-bold py-3 px-6 rounded"
                                 disabled={isSigningUp}
                             >
                                 {isSigningUp ? 'Signing Up...' : 'Sign Up'}

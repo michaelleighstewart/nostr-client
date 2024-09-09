@@ -260,7 +260,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                     ref={imageInputRef}
                   />
                   <button 
-                    className={`flex items-center justify-center text-blue-500 hover:text-blue-700 font-bold p-16 rounded ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`flex items-center justify-center font-bold p-16 rounded bg-transparent ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
                     onClick={triggerImageInput}
                     disabled={uploadingImage}
                   >
@@ -276,7 +276,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                     ref={videoInputRef}
                   />
                   <button 
-                    className={`flex items-center justify-center text-blue-500 hover:text-blue-700 font-bold p-16 rounded ${uploadingVideo ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`flex items-center justify-center font-bold p-16 rounded bg-transparent ${uploadingVideo ? 'opacity-50 cursor-not-allowed' : ''}`}
                     onClick={triggerVideoInput}
                     disabled={uploadingVideo}
                   >
@@ -285,7 +285,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 </div>
                 <div>
                   <button 
-                    className={`bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded ${posting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`text-white font-bold p-16 rounded ${posting ? 'opacity-50 cursor-not-allowed' : ''}`}
                     onClick={(_e) => handleSendMessage()}
                     disabled={posting || uploadingImage || uploadingVideo}
                   >
@@ -335,7 +335,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                   <Loading vCentered={false} />
                 ) : (
                   <button 
-                    className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded"
+                    className="text-white font-bold py-3 px-6 rounded"
                     onClick={loadMore}
                   >
                     Load More
