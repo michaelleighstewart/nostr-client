@@ -58,6 +58,7 @@ export default function NotesList({ notes, metadata, pool, nostrExists, reaction
                     >
                         <div className="pb-32">
                             <NoteCard
+                                isPreview={false}
                                 id={note.id}
                                 created_at={note.created_at}
                                 user={{

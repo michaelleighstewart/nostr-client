@@ -235,6 +235,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   return (
     <div className="space-y-4">
       <NoteCard
+        isPreview={false}
         id={post.id}
         content={post.content}
         user={{
@@ -275,6 +276,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
       <h2 className="text-xl font-bold mt-6 mb-4">Replies</h2>
       {replies.sort((a, b) => b.created_at - a.created_at).map(reply => (
         <NoteCard
+          isPreview={false}
           key={reply.id}
           id={reply.id}
           content={reply.content}

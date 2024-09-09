@@ -29,6 +29,7 @@ interface Props {
     allReplies: Record<string, ExtendedEvent[]> | null;
     reposts: number;
     allReposts: Record<string, ExtendedEvent[]> | null;
+    isPreview: boolean;
   }
   
   export default function NoteCard({
@@ -49,7 +50,8 @@ interface Props {
     allReactions,
     allReplies,
     reposts,
-    allReposts
+    allReposts,
+    isPreview
   }: Props) {
     const [alreadyLiked, setAlreadyLiked] = useState(false);
     const [alreadyDisliked, setAlreadyDisliked] = useState(false);
@@ -339,6 +341,7 @@ interface Props {
           <div className="mt-2 border-l-2 border-gray-500">
             <p className="text-gray-400 text-sm mb-2 pl-4">Reposted</p>
             <NoteCard
+              isPreview={false}
               id={repostedEvent.id}
               content={repostedEvent.content}
               user={{
@@ -408,8 +411,8 @@ interface Props {
               </li>
             ))}
         </ul>
-        <div className="inline-flex">
-        {!repostedEvent && (
+      <div className="flex flex-wrap items-center justify-start">
+        {!repostedEvent && !isPreview && (
           <>
             <div className="p-4">
               <BoltIcon
@@ -418,7 +421,7 @@ interface Props {
                 onClick={() => sendZap(user, id)}>
               </BoltIcon>
             </div>
-            <div className="p-4 pl-32">
+            <div className="p-4 pl-8 md:pl-32">
               <HandThumbUpIcon
                 className={!alreadyLiked ? "h-6 w-6 text-[#535bf2] cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
                 title={!alreadyLiked ? "Like this post" : "You have already liked this post"}
@@ -430,7 +433,7 @@ interface Props {
                 {localReactions.filter((r) => r.type === "+").length}
               </span>
             </div>
-            <div className="p-4 pl-32">
+            <div className="p-4 pl-8 md:pl-32">
               <HandThumbDownIcon
                 className={!alreadyDisliked ? "h-6 w-6 text-[#535bf2] cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
                 title={!alreadyDisliked ? "Dislike this post" : "You have already disliked this post"}
@@ -442,7 +445,7 @@ interface Props {
                 {localReactions.filter((r) => r.type === "-").length}
               </span>
             </div>
-            <div className="p-4 pl-32">
+            <div className="p-4 pl-8 md:pl-32">
               <ArrowPathRoundedSquareIcon
                 className="h-6 w-6 text-[#535bf2] cursor-pointer"
                 title="Repost this post"
@@ -454,7 +457,7 @@ interface Props {
                 {reposts}
               </span>
             </div>
-            <div className="p-4 pl-32">
+            <div className="p-4 pl-8 md:pl-32">
               <ChatBubbleLeftIcon
                 className="h-6 w-6 text-[#535bf2] cursor-pointer"
                 title="View replies"
@@ -468,8 +471,8 @@ interface Props {
             </div>
           </>
         )}
-        {canDelete &&
-          <div className={`p-4 ${!repostedEvent ? 'pl-32' : ''}`}>
+        {canDelete && !isPreview &&
+          <div className={`p-4 ${!repostedEvent ? 'pl-8 md:pl-32' : ''}`}>
             <TrashIcon
               className={canDelete ? "h-6 w-6 text-[#535bf2] cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
                 title={canDelete ? "Delete this post" : "You cannot delete this post"}
@@ -493,6 +496,7 @@ interface Props {
         )}
         {repliedEvent ? (
                     <NoteCard
+                    isPreview={false}
                     id={repliedEvent.id}
                     content={repliedEvent.content}
                     user={{

@@ -213,6 +213,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                             {sortedPosts.map(post => (
                                 <div key={post.id} className="mb-8 pb-32">
                                     <NoteCard
+                                        isPreview={false}
                                         id={post.id}
                                         content={post.content}
                                         user={{
