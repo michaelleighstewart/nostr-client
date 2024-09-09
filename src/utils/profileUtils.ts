@@ -1,4 +1,4 @@
-import { getPublicKey, SimplePool, Event } from "nostr-tools";
+import { getPublicKey, SimplePool } from "nostr-tools";
 import { bech32Decoder } from "./helperFunctions";
 import { RELAYS } from "./constants";
 import { ExtendedEvent, Metadata, Reaction, ProfileData } from "./interfaces";

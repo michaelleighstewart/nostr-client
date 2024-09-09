@@ -56,7 +56,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
       
       try {
-        const meta = await fetchUserMetadata(props.pool, userPublicKey ?? "", setShowOstrich, setMetadata);
         const newFollowers = await getFollowers(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey);
         setFollowers(newFollowers);
 
