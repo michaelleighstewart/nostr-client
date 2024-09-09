@@ -185,10 +185,10 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                     />
                     <button 
                         onClick={() => fileInputRef.current?.click()}
-                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-16 rounded"
                         disabled={uploadingPicture}
                     >
-                        {uploadingPicture ? 'Uploading...' : 'Upload Picture'}
+                        {uploadingPicture ? 'Uploading...' : 'Choose File'}
                     </button>
                     {uploadingPicture && <Loading vCentered={false} />}
                     {picture && !uploadingPicture && (
