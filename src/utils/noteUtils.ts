@@ -274,8 +274,8 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     return cleanup;
 }
 
-export const fetchData = async (pool: SimplePool | null, since: number, append: boolean = false, until: number = 0,
-    isLoggedIn: boolean, nostrExists: boolean | null, keyValue: string | null,
+export const fetchData = async (pool: SimplePool | null, _since: number, append: boolean = false, _until: number = 0,
+    _isLoggedIn: boolean, _nostrExists: boolean | null, _keyValue: string | null,
     setLoading: React.Dispatch<React.SetStateAction<boolean>>,
     setLoadingMore: React.Dispatch<React.SetStateAction<boolean>>,
     setError: React.Dispatch<React.SetStateAction<string | null>>,
@@ -285,8 +285,9 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
     replyEvents: ExtendedEvent[],
     setLastFetchedTimestamp: React.Dispatch<React.SetStateAction<number>>,
     setDeletedNoteIds: React.Dispatch<React.SetStateAction<Set<string>>>,
-    setUserPublicKey: React.Dispatch<React.SetStateAction<string | null>>,
+    _setUserPublicKey: React.Dispatch<React.SetStateAction<string | null>>,
     setInitialLoadComplete: React.Dispatch<React.SetStateAction<boolean>>,
+    filter: any
 ) => {
     try {
       if (!append) {
@@ -295,12 +296,12 @@ export const fetchData = async (pool: SimplePool | null, since: number, append: 
         setLoadingMore(true);
       }
       setError(null);
-      let filter;
+      //let filter;
       // Always get the followers if logged in
-      const followers = isLoggedIn ? await getFollowers(pool as SimplePool, isLoggedIn, nostrExists, keyValue, setUserPublicKey) : [];
-      filter = isLoggedIn
-      ? { kinds: [1, 5, 6], since: since, authors: followers, limit: 10, ...(until !== 0 && { until }) }
-      : { kinds: [1, 5, 6], since: since, limit: 10, ...(until !== 0 && { until }) };
+      //const followers = isLoggedIn ? await getFollowers(pool as SimplePool, isLoggedIn, nostrExists, keyValue, setUserPublicKey) : [];
+      //filter = isLoggedIn
+      //? { kinds: [1, 5, 6], since: since, authors: followers, limit: 10, ...(until !== 0 && { until }) }
+      //: { kinds: [1, 5, 6], since: since, limit: 10, ...(until !== 0 && { until }) };
       let subRepostedMeta: any;
       let subReactionsReplies: any;
 

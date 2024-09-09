@@ -1,13 +1,12 @@
 import '../App.css';
 import { SimplePool } from "nostr-tools";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import NotesList from "./NotesList";
 import { useDebounce } from "use-debounce";
 import { getBase64, sendMessage } from "../utils/helperFunctions";
 import { ExtendedEvent, Metadata, Reaction, User } from "../utils/interfaces";
-import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
-import { fetchUserMetadata } from "../utils/profileUtils";
+import { fetchUserMetadata, getFollowers } from "../utils/profileUtils";
 import { fetchMetadataReactionsAndReplies, fetchData } from '../utils/noteUtils';
 import Ostrich from "./Ostrich";
 import { showCustomToast } from "./CustomToast";
@@ -40,101 +39,83 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [showOstrich, setShowOstrich] = useState(false);
     const [deletedNoteIds, setDeletedNoteIds] = useState<Set<string>>(new Set());
     const [userPublicKey, setUserPublicKey] = useState<string | null>(null);
-    const metadataFetched = useRef<Record<string, boolean>>({});
     const [uploadingImage, setUploadingImage] = useState(false);
     const [uploadingVideo, setUploadingVideo] = useState(false);
     const imageInputRef = useRef<HTMLInputElement>(null);
     const videoInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-    useEffect(() => {
-      if (!props.pool || !userPublicKey) return;
-  
-      // Fetch current user's metadata
-      let subUserMeta: any;
-
-      fetchUserMetadata(props.pool, userPublicKey, setShowOstrich, setMetadata);
-
-
-      //get authors
-      const pubkeysToFetch = events
-        .filter((event) => metadataFetched.current[event.pubkey] !== true && event.pubkey !== userPublicKey)
-        .map((event) => event.pubkey);
-
-      pubkeysToFetch.forEach(
-        (pubkey) => (metadataFetched.current[pubkey] = true)
-      );
-  
-      const subMeta = props.pool.subscribeMany(RELAYS, [
-        {
-          kinds: [0],
-          authors: pubkeysToFetch,
-        },
-      ],
-      {
-        onevent(event) {
-          const metadata = JSON.parse(event.content) as Metadata;
-  
-          setMetadata((cur) => ({
-            ...cur,
-            [event.pubkey]: metadata,
-          }));
-        },
-        oneose() {
-          subMeta.close();
-        }
-      });
-
-      return () => {
-        subUserMeta?.close();
-        subMeta.close();
-      };
-    }, [events, props.pool, userPublicKey]);
+    const [followers, setFollowers] = useState<string[]>([]);
 
     useEffect(() => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);
     }, [props.nostrExists, props.keyValue]);
 
-    useEffect(() => {
+    const fetchFollowersAndData = useCallback(async () => {
       if (!props.pool) return;
+      setLoading(true);
       const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-      const fetchDataCleanup = fetchData(props.pool, oneDayAgo, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-        setLoading, setLoadingMore, setError, setEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, 
+      
+      try {
+        const meta = await fetchUserMetadata(props.pool, userPublicKey ?? "", setShowOstrich, setMetadata);
+        const newFollowers = await getFollowers(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey);
+        setFollowers(newFollowers);
 
-        setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);
-      return () => {
-        fetchDataCleanup.then(cleanup => cleanup && cleanup());
-      };
-    }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn]);
+        let filter = isLoggedIn
+          ? { kinds: [1, 5, 6], since: oneDayAgo, authors: newFollowers, limit: 10, ...(lastFetchedTimestamp !== 0 && { until: lastFetchedTimestamp }) }
+          : { kinds: [1, 5, 6], since: oneDayAgo, limit: 10, ...(lastFetchedTimestamp !== 0 && { until: lastFetchedTimestamp }) };
+        
+        await fetchData(props.pool, oneDayAgo, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
+          setLoading, setLoadingMore, setError, setEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, 
+          setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setError("Failed to load data. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn, lastFetchedTimestamp, userPublicKey]);
 
     useEffect(() => {
-      if (!props.pool) return;
+      fetchFollowersAndData();
+    }, []);
+
+    useEffect(() => {
+      fetchUserMetadata(props.pool, userPublicKey ?? "", setShowOstrich, setMetadata);
+    }, [userPublicKey]);
+
+    useEffect(() => {
+      if (!props.pool || events.length === 0) return;
       fetchMetadataReactionsAndReplies(props.pool, events, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
-    }, [events, props.pool]);
+    }, [events]);
 
     const loadMore = async () => {
       if (!props.pool) return;
       setLoadingMore(true);
       const oneDayBeforeLastFetched = lastFetchedTimestamp - 24 * 60 * 60;
+      let filter = isLoggedIn
+        ? { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, authors: followers, limit: 10, ...(lastFetchedTimestamp !== 0 && { until: lastFetchedTimestamp }) }
+        : { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, limit: 10, ...(lastFetchedTimestamp !== 0 && { until: lastFetchedTimestamp }) };
       await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
         setLoading, setLoadingMore, setError, setEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, 
-        setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);
+        setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter);
     };
 
     const handleSendMessage = async () => {
       if (!props.pool) return;
-      const success = await sendMessage(props.pool, props.nostrExists, props.keyValue, message, setPosting, setMessage);
-      if (success) {
-        showCustomToast("Posted note successfully!");
-        // Refresh the list of posts
-        const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
-
-        await fetchData(props.pool, oneDayAgo, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-          setLoading, setLoadingMore, setError, setEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, 
-          setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete);
-      }
-      else {
-        showCustomToast("Failed to send post. Please try again.");
+      setPosting(true);
+      try {
+        const success = await sendMessage(props.pool, props.nostrExists, props.keyValue, message, setPosting, setMessage);
+        if (success) {
+          showCustomToast("Posted note successfully!");
+          await fetchFollowersAndData();
+        } else {
+          showCustomToast("Failed to send post. Please try again.");
+        }
+      } catch (error) {
+        console.error("Error sending message:", error);
+        showCustomToast("An error occurred. Please try again.");
+      } finally {
+        setPosting(false);
       }
     };
 
@@ -144,8 +125,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
 
       setUploadingImage(true);
       try {
-        const base64File = await getBase64(file); // Convert file to base64
-        const contentType = file.type; // Get the MIME type of the file
+        const base64File = await getBase64(file);
+        const contentType = file.type;
 
         const response = await fetch('https://z2wavnt1bj.execute-api.us-west-2.amazonaws.com/prod/upload', {
           method: 'POST',
@@ -173,8 +154,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
 
       setUploadingVideo(true);
       try {
-        const base64File = await getBase64(file); // Convert file to base64
-        const contentType = file.type; // Get the MIME type of the file
+        const base64File = await getBase64(file);
+        const contentType = file.type;
 
         const response = await fetch('https://z2wavnt1bj.execute-api.us-west-2.amazonaws.com/prod/upload', {
           method: 'POST',
@@ -322,8 +303,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           <Loading vCentered={false} />
         ) : error ? (
           <div className="text-red-500 text-center mt-4">{error}</div>
-        ) 
-         : (
+        ) : (
           <div className={`pt-32 relative ${!isLoggedIn ? 'pointer-events-none opacity-50' : ''}`}>
             <NotesList metadata={metadata} reactions={reactions} notes={events.filter(e => !deletedNoteIds.has(e.id))} pool={props.pool} 
               nostrExists={props.nostrExists} keyValue={props.keyValue}

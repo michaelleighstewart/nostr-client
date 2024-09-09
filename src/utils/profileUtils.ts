@@ -27,7 +27,7 @@ export const getFollowers = async (pool: SimplePool, isLoggedIn: boolean, nostrE
     }
     if (pk && !followers.includes(pk)) followers.push(pk);
     setUserPublicKey(pk);
-    return new Promise((resolve) => {
+    /*return new Promise((resolve) => {
       pool.subscribeManyEose(
         RELAYS,
         [{ authors: [pk], kinds: [3] }],
@@ -41,10 +41,17 @@ export const getFollowers = async (pool: SimplePool, isLoggedIn: boolean, nostrE
           }
         }
       );
-    });
+    });*/
+    const followersRet = await pool.querySync(RELAYS, { authors: [pk], kinds: [3] });
+    //return followersRet.map(follower => follower.pubkey);
+    if (followersRet.length > 0) {
+      const firstEvent = followersRet[0];
+      return firstEvent.tags.map(tag => tag[1]);
+    }
+    return followers;
 }
 
-export const fetchUserMetadata = async (pool: SimplePool, userPublicKey: string, 
+export const fetchUserMetadata = async (pool: SimplePool | null, userPublicKey: string, 
   setShowOstrich: (show: boolean) => void, setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>) => {
   if (!pool || !userPublicKey) return;
 
@@ -52,6 +59,7 @@ export const fetchUserMetadata = async (pool: SimplePool, userPublicKey: string,
     kinds: [0],
     authors: [userPublicKey],
   });
+  console.log("events", events);
 
   if (events.length > 0) {
     const event = events[0];
