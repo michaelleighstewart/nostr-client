@@ -194,8 +194,8 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool }) => {
                 {!isLoggedIn && (
                     <>
                         <div className="pb-24 border border-gray-300 rounded-lg p-32">
-                            <h3 className="text-lg font-medium text-white mb-4">Extra Information:</h3>
-                            <div className="mb-4">
+                            <h3 className="text-lg font-medium text-white mb-32">Extra Information:</h3>
+                            <div className="mb-8">
                                 <label htmlFor="profileName" className="block mb-2 text-sm font-medium text-white">Profile Name: </label>
                                 <input
                                     type="text"
@@ -205,7 +205,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool }) => {
                                     onChange={(e) => setProfileName(e.target.value)}
                                 />
                             </div>
-                            <div>
+                            <div className="mt-32">
                                 <label htmlFor="profilePicture" className="block mb-2 text-sm font-medium text-white">Profile Picture: </label>
                                 <div className="flex items-center">
                                     <input
