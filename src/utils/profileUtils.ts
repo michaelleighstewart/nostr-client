@@ -1,7 +1,7 @@
 import { getPublicKey, SimplePool } from "nostr-tools";
 import { bech32Decoder } from "./helperFunctions";
 import { RELAYS } from "./constants";
-import { ExtendedEvent, Metadata, Reaction, ProfileData } from "./interfaces";
+import { Metadata } from "./interfaces";
 
 export const getFollowers = async (pool: SimplePool, isLoggedIn: boolean, nostrExists: boolean | null, keyValue: string | null, 
   setUserPublicKey: (pk: string) => void): Promise<string[]> => {
@@ -27,23 +27,7 @@ export const getFollowers = async (pool: SimplePool, isLoggedIn: boolean, nostrE
     }
     if (pk && !followers.includes(pk)) followers.push(pk);
     setUserPublicKey(pk);
-    /*return new Promise((resolve) => {
-      pool.subscribeManyEose(
-        RELAYS,
-        [{ authors: [pk], kinds: [3] }],
-        {
-          onevent(event: Event) {
-            followers.push(...event.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]));
-            resolve(followers);
-          },
-          onclose() {
-            resolve(followers);
-          }
-        }
-      );
-    });*/
     const followersRet = await pool.querySync(RELAYS, { authors: [pk], kinds: [3] });
-    //return followersRet.map(follower => follower.pubkey);
     if (followersRet.length > 0) {
       const firstEvent = followersRet[0];
       return firstEvent.tags.map(tag => tag[1]);
