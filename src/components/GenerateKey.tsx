@@ -196,7 +196,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool }) => {
                         <div className="pb-24 border border-gray-300 rounded-lg p-32">
                             <h3 className="text-lg font-medium text-white mb-32">Extra Information:</h3>
                             <div className="mb-8">
-                                <label htmlFor="profileName" className="block mb-2 text-sm font-medium text-white">Profile Name: </label>
+                                <label htmlFor="profileName" className="block mb-2 text-sm font-medium text-white">Name: </label>
                                 <input
                                     type="text"
                                     id="profileName"
@@ -206,7 +206,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool }) => {
                                 />
                             </div>
                             <div className="mt-32">
-                                <label htmlFor="profilePicture" className="block mb-2 text-sm font-medium text-white">Profile Picture: </label>
+                                <label htmlFor="profilePicture" className="block mb-2 text-sm font-medium text-white">Picture: </label>
                                 <div className="flex items-center">
                                     <input
                                         type="file"
