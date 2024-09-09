@@ -9,8 +9,8 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     replyEvents: ExtendedEvent[],
     setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>, 
     setReactions: React.Dispatch<React.SetStateAction<Record<string, Reaction[]>>>, 
-    setReplies: React.Dispatch<React.SetStateAction<Record<string, Event[]>>>,
-    setReposts: React.Dispatch<React.SetStateAction<Record<string, Event[]>>>) => {
+    setReplies: React.Dispatch<React.SetStateAction<Record<string, ExtendedEvent[]>>>,
+    setReposts: React.Dispatch<React.SetStateAction<Record<string, ExtendedEvent[]>>>) => {
         
     const pubkeysToFetch = new Set(events.map(event => event.pubkey));
     const postsToFetch = events.map(event => event.id);
@@ -84,10 +84,10 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                         if (postId) {
                             if (updatedReplies[postId]) {
                                 if (!updatedReplies[postId].some(r => r.id === event.id)) {
-                                    updatedReplies[postId] = [...updatedReplies[postId], event];
+                                    updatedReplies[postId] = [...updatedReplies[postId], event as unknown as ExtendedEvent];
                                 }
                             } else {
-                                updatedReplies[postId] = [event];
+                                updatedReplies[postId] = [event as unknown as ExtendedEvent];
                             }
                         }
                         return updatedReplies;
@@ -99,10 +99,10 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                         if (postId) {
                             if (updatedReposts[postId]) {
                                 if (!updatedReposts[postId].some(r => r.id === event.id)) {
-                                    updatedReposts[postId] = [...updatedReposts[postId], event];
+                                    updatedReposts[postId] = [...updatedReposts[postId], event as unknown as ExtendedEvent  ];
                                 }
                             } else {
-                                updatedReposts[postId] = [event];
+                                updatedReposts[postId] = [event as unknown as ExtendedEvent];
                             }
                         }
                         return updatedReposts;
@@ -162,10 +162,10 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                                 const updatedReplies = { ...cur };
                                 if (updatedReplies[postId]) {
                                     if (!updatedReplies[postId].some(r => r.id === event.id)) {
-                                        updatedReplies[postId] = [...updatedReplies[postId], event];
+                                        updatedReplies[postId] = [...updatedReplies[postId], event as unknown as ExtendedEvent];
                                     }
                                 } else {
-                                    updatedReplies[postId] = [event];
+                                    updatedReplies[postId] = [event as unknown as ExtendedEvent];
                                 }
                                 return updatedReplies;
                             });
@@ -177,10 +177,10 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                                 const updatedReposts = { ...cur };
                                 if (updatedReposts[postId]) {
                                     if (!updatedReposts[postId].some(r => r.id === event.id)) {
-                                        updatedReposts[postId] = [...updatedReposts[postId], event];
+                                        updatedReposts[postId] = [...updatedReposts[postId], event as unknown as ExtendedEvent];
                                     }
                                 } else {
-                                    updatedReposts[postId] = [event];
+                                    updatedReposts[postId] = [event as unknown as ExtendedEvent];
                                 }
                                 return updatedReposts;
                             });
@@ -239,10 +239,10 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                                 const updatedReplies = { ...cur };
                                 if (updatedReplies[postId]) {
                                     if (!updatedReplies[postId].some(r => r.id === event.id)) {
-                                        updatedReplies[postId] = [...updatedReplies[postId], event];
+                                        updatedReplies[postId] = [...updatedReplies[postId], event as unknown as ExtendedEvent  ];
                                     }
                                 } else {
-                                    updatedReplies[postId] = [event];
+                                    updatedReplies[postId] = [event as unknown as ExtendedEvent];
                                 }
                                 return updatedReplies;
                             });
@@ -254,10 +254,10 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                                 const updatedReposts = { ...cur };
                                 if (updatedReposts[postId]) {
                                     if (!updatedReposts[postId].some(r => r.id === event.id)) {
-                                        updatedReposts[postId] = [...updatedReposts[postId], event];
+                                        updatedReposts[postId] = [...updatedReposts[postId], event as unknown as ExtendedEvent];
                                     }
                                 } else {
-                                    updatedReposts[postId] = [event];
+                                    updatedReposts[postId] = [event as unknown as ExtendedEvent ];
                                 }
                                 return updatedReposts;
                             });

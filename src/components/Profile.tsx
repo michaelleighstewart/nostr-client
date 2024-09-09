@@ -31,8 +31,8 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     const [pubkey, setPubkey] = useState<string>('');
     const [isFollowing, setIsFollowing] = useState(false);
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
-    const [replies, setReplies] = useState<Record<string, number>>({});
-    const [_reposts, setReposts] = useState<Record<string, number>>({});
+    const [replies, setReplies] = useState<Record<string, ExtendedEvent[]> | null>(null);
+    const [reposts, setReposts] = useState<Record<string, ExtendedEvent[]> | null>(null);
     const location = useLocation();
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [loadingProfile, setLoadingProfile] = useState(true);
@@ -52,7 +52,12 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             let currentUserPubkey: string;
             if (targetNpub) {
                 if (isFromUrl) {
-                    fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
+                    if (targetNpub.startsWith("npub")) {
+                        fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
+                    }
+                    else {
+                        fetchedPubkey = targetNpub;
+                    }
                 }
                 else {
                     fetchedPubkey = targetNpub;
@@ -204,14 +209,14 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                                         reactions={reactions[post.id] || []}
                                         keyValue={keyValue}
                                         deleted={post.deleted === true}
-                                        replies={replies[post.id] ? replies[post.id] : 0}
+                                        replies={replies?.[post.id]?.length || 0}
                                         repostedEvent={post.repostedEvent || null}
                                         metadata={metadata}
                                         allReactions={reactions}
-                                        allReplies={Object.fromEntries(Object.entries(replies).map(([key, value]) => [key, Array.isArray(value) ? value : []]))}
+                                        allReplies={replies}
                                         repliedEvent={post.repliedEvent || null}
-                                        reposts={0}
-                                        allReposts={null}
+                                        reposts={reposts?.[post.id]?.length || 0}
+                                        allReposts={reposts}
                                     />
                                 </div>
                             ))}

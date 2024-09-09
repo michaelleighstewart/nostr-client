@@ -26,9 +26,9 @@ interface Props {
     repliedEvent: ExtendedEvent | null;
     metadata: Record<string, Metadata> | null;
     allReactions: Record<string, Reaction[]> | null;
-    allReplies: Record<string, Event[]> | null;
+    allReplies: Record<string, ExtendedEvent[]> | null;
     reposts: number;
-    allReposts: Record<string, Event[]> | null;
+    allReposts: Record<string, ExtendedEvent[]> | null;
   }
   
   export default function NoteCard({

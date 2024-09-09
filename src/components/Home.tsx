@@ -28,8 +28,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [replyEvents, _setReplyEvents] = useState<ExtendedEvent[]>([]);
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
-    const [replies, setReplies] = useState<Record<string, Event[]>>({});
-    const [reposts, setReposts] = useState<Record<string, Event[]>>({});
+    const [replies, setReplies] = useState<Record<string, ExtendedEvent[]>>({});
+    const [reposts, setReposts] = useState<Record<string, ExtendedEvent[]>>({});
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);

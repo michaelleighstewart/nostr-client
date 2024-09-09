@@ -12,8 +12,8 @@ interface Props {
     nostrExists: boolean | null;
     reactions: Record<string, Reaction[]>;
     keyValue: string;
-    replies: Record<string, Event[]>;
-    reposts: Record<string, Event[]>;
+    replies: Record<string, ExtendedEvent[]>;
+    reposts: Record<string, ExtendedEvent[]>;
 }
 
 export default function NotesList({ notes, metadata, pool, nostrExists, reactions, keyValue, replies, reposts } : Props) {

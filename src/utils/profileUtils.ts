@@ -76,8 +76,8 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
   setPosts: React.Dispatch<React.SetStateAction<ExtendedEvent[]>>,
   setProfileData: React.Dispatch<React.SetStateAction<ProfileData | null>>, 
   setReactions: React.Dispatch<React.SetStateAction<Record<string, Reaction[]>>>,
-  setReplies: React.Dispatch<React.SetStateAction<Record<string, number>>>, 
-  setReposts: React.Dispatch<React.SetStateAction<Record<string, number>>>,
+  setReplies: React.Dispatch<React.SetStateAction<Record<string, ExtendedEvent[]> | null>>, 
+  setReposts: React.Dispatch<React.SetStateAction<Record<string, ExtendedEvent[]> | null>>,
   setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>, 
   isFromUrl: boolean = false) => {
   setLoadingPosts(true);
@@ -90,7 +90,12 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
   let fetchedPubkey: string;
   if (targetNpub) {
     if (isFromUrl) {
-      fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
+      if (targetNpub.startsWith("npub")) {
+        fetchedPubkey = bech32Decoder("npub", targetNpub).toString('hex');
+      }
+      else {
+        fetchedPubkey = targetNpub;
+      }
     }
     else {
       fetchedPubkey = targetNpub;
@@ -216,7 +221,7 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
               const updatedReplies = { ...cur };
               const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
               if (postId) {
-                  updatedReplies[postId] = (updatedReplies[postId] || 0) + 1;
+                  updatedReplies[postId] = (updatedReplies[postId] || []).concat(event as unknown as ExtendedEvent);
               }
               return updatedReplies;
           });
@@ -298,7 +303,7 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
               const updatedReplies = { ...cur };
               const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
               if (postId) {
-                  updatedReplies[postId] = (updatedReplies[postId] || 0) + 1;
+                  updatedReplies[postId] = (updatedReplies[postId] || []).concat(event as unknown as ExtendedEvent);
               }
               return updatedReplies;
           });
