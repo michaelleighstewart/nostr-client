@@ -1,9 +1,9 @@
 
 import { SimplePool } from "nostr-tools";
-import { bech32Decoder } from "../utils/helperFunctions";
+import { bech32Decoder, getBase64 } from "../utils/helperFunctions";
 import { getPublicKey, finalizeEvent } from 'nostr-tools';
 import { RELAYS } from "../utils/constants";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Loading from "./Loading";
 import { showCustomToast } from "./CustomToast";
 
@@ -26,6 +26,8 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
     const [lightningAddress, setLightningAddress] = useState<string|undefined>('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploadingPicture, setUploadingPicture] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         setLoading(true);
@@ -65,6 +67,36 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
         fetchData();
       }, [props.nostrExists, props.keyValue, props.pool, saving]);
 
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) {
+            console.error('No file selected');
+            return;
+        }
+    
+        setUploadingPicture(true);
+        try {
+            const base64File = await getBase64(file); // Convert file to base64
+            const contentType = file.type; // Get the MIME type of the file
+        
+            const response = await fetch('https://z2wavnt1bj.execute-api.us-west-2.amazonaws.com/prod/upload', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ file: base64File, contentType })
+            });
+          
+            const data = await response.json();
+            const dataObj = JSON.parse(data.body);
+            setPicture(dataObj.url); // Update the picture state with the S3 URL
+        } catch (error) {
+            console.error('Error uploading picture:', error);
+            showCustomToast("Failed to upload picture. Please try again.");
+        } finally {
+            setUploadingPicture(false);
+        }
+    };
 
     async function saveProfile() {
         setSaving(true);
@@ -88,6 +120,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                   content: JSON.stringify(profile),
                 }
                 const eventToSend = await (window as any).nostr.signEvent(event);
+                console.log("event from editprofile1", eventToSend);
                 await props.pool.publish(RELAYS, eventToSend);
               }
               else {
@@ -101,6 +134,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                   tags: [],
                   content: JSON.stringify(profile),
                 }
+                console.log("event from editprofile2", event);
                 let eventFinal = finalizeEvent(event, skDecoded);
                 await props.pool.publish(RELAYS, eventFinal);
               }
@@ -141,12 +175,25 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                 <div className="pb-24">
                     <label htmlFor="picture" 
                         className="block mb-2 text-sm font-medium text-white">Picture: </label>
-                    <input type="text" id="picture" 
-                        className={"text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"} 
-                        placeholder={"Location of avatar picture"}
-                        value={picture}
-                        onChange={(e) => setPicture(e.target.value)}
-                        />
+                    <input 
+                        type="file" 
+                        id="picture" 
+                        accept="image/*"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                    />
+                    <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                        disabled={uploadingPicture}
+                    >
+                        {uploadingPicture ? 'Uploading...' : 'Upload Picture'}
+                    </button>
+                    {uploadingPicture && <Loading vCentered={false} />}
+                    {picture && !uploadingPicture && (
+                        <img src={picture} alt="Profile" className="mt-2 w-80 h-80 object-cover rounded-full" />
+                    )}
                 </div>
                 <div className="pb-24">
                     <label htmlFor="lightning-address"

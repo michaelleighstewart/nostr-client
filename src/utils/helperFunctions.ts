@@ -269,3 +269,16 @@ export async function repostMessage(
     return false;
   }
 }
+
+export const getBase64 = (file: File) => {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      // Extract base64 data from Data URL
+      const base64Data = reader.result?.toString().split(',')[1] || '';
+      resolve(base64Data);
+    };
+    reader.onerror = (error) => reject(error);
+  });
+}

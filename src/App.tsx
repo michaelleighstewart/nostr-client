@@ -91,7 +91,7 @@ function App() {
             <Route path="edit-profile" element={<EditProfile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="profile" element={<Profile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="notifications" element={<Notifications keyValue={key} pool={pool} nostrExists={nostrExists} />} />
-            <Route path="generate-key" element={<GenerateKey setKeyValue={handleSetKey} keyValue={key} />} />
+            <Route path="generate-key" element={<GenerateKey setKeyValue={handleSetKey} keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="people-to-follow" element={<PeopleToFollow keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="followers/:pubkey" element={<Followers keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="following/:pubkey" element={<Following pool={pool} />} />
