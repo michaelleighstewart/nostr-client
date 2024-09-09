@@ -57,12 +57,13 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       
       try {
         const newFollowers = await getFollowers(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey);
-        if (props.keyValue) {
-          let skDecoded = bech32Decoder('nsec', props.keyValue);
-          let pk = getPublicKey(skDecoded);
-          if (!newFollowers.includes(pk)) newFollowers.push(pk);
-        }
-        console.log("newFollowers", newFollowers);
+        try {
+          if (props.keyValue) {
+            let skDecoded = bech32Decoder('nsec', props.keyValue);
+            let pk = getPublicKey(skDecoded);
+            if (!newFollowers.includes(pk)) newFollowers.push(pk);
+          }
+        } catch (error) {}
         setFollowers(newFollowers);
 
         let filter = isLoggedIn
