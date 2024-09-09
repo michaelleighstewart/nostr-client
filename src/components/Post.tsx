@@ -95,7 +95,13 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
               hashtags: event.tags.filter((tag: string[]) => tag[0] === 't').map((tag: string[]) => tag[1]),
               reactions: [],
             };  
-            setReposts(prevReposts => [...prevReposts, reply]);
+            setReposts(prevReposts => {
+              const repostExists = prevReposts.some(repost => repost.id === reply.id);
+              if (!repostExists) {
+                return [...prevReposts, reply];
+              }
+              return prevReposts;
+            });
           }
         },
         onclose: () => {

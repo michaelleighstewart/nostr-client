@@ -517,7 +517,7 @@ interface Props {
                     metadata={metadata}
                     allReactions={allReactions}
                     allReplies={allReplies}
-                    reposts={reposts}
+                    reposts={allReposts?.[repliedEvent.id]?.length ?? 0}
                     allReposts={allReposts}
                   />
       ) : <></>}

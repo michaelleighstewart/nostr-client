@@ -108,7 +108,7 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
   } else {
       throw new Error("Unable to fetch public key");
   }
-  const posts = await pool.querySync(RELAYS, { kinds: [1, 6], authors: [fetchedPubkey], limit: 20 });
+  const posts = await pool.querySync(RELAYS, { kinds: [1, 6], authors: [fetchedPubkey], limit: 5 });
   if (posts.length === 0) {
     setPosts([]);
     setLoadingPosts(false);
@@ -228,6 +228,8 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
           }
       }
   );
+
+  //************** start reposts **************
   const filteredPostsRepostsToSearch: string[] = [];
   const filteredPostsRepostsPubkeys: string[] = [];
   filteredPostsReposts.forEach(post => {
@@ -255,8 +257,8 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
           }
       }
   );  
-
-  const reactionsPostsReposts = pool.subscribeManyEose(
+  //reposts - reactions
+  const reactionsPostsForReposts = pool.subscribeManyEose(
       RELAYS,
       [
           {
@@ -289,7 +291,30 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
       
   );
 
-  const repliesPostsReposts = pool.subscribeManyEose(
+  //reposts - reposts
+  const repostsPostsForReposts = pool.subscribeManyEose(
+      RELAYS,
+      [
+          {
+              kinds: [6],
+              '#e': filteredPostsRepostsToSearch,
+          }
+      ],
+      {
+        onevent(event) {
+          setReposts(cur => {
+            const updatedReposts = { ...cur };
+            const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+            if (postId) {
+                updatedReposts[postId] = (updatedReposts[postId] || []).concat(event as unknown as ExtendedEvent);
+            } 
+            return updatedReposts;
+          });
+        }
+      }
+  );
+
+  const repliesPostsForReposts = pool.subscribeManyEose(
       RELAYS,
       [
           {
@@ -298,19 +323,26 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
           }
       ],
       {
-          onevent(event) {
-            setReplies(cur => {
-              const updatedReplies = { ...cur };
-              const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
-              if (postId) {
-                  updatedReplies[postId] = (updatedReplies[postId] || []).concat(event as unknown as ExtendedEvent);
-              }
-              return updatedReplies;
+        onevent(event) {
+          setReplies(cur => {
+            const updatedReplies = { ...cur };
+            const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+            if (postId) {
+                updatedReplies[postId] = (updatedReplies[postId] || []).concat(event as unknown as ExtendedEvent);
+            }
+            return updatedReplies;
           });
-          }
+        }
       }
   );
 
+
+  //************** end reposts **************
+
+
+
+
+  //************** start replies **************
   const filteredPostsRepliesToSearch: string[] = [];
   const filteredPostsRepliesPubkeys: string[] = [];
   filteredPostsReplies.forEach(post => {
@@ -322,9 +354,94 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
       filteredPostsRepliesPubkeys.push(post.pubkey);
     }
   });
+ 
 
-  // Add this new subscription for metadata of replied posts
-  const metadataRepliedPosts = pool.subscribeManyEose(
+  //replies - reactions
+  const reactionsPostsForReplies = pool.subscribeManyEose(
+      RELAYS,
+      [
+          {
+              kinds: [7],
+              '#e': filteredPostsRepliesToSearch,
+          }
+      ],  
+      {
+          onevent(event) {
+              const reaction: Reaction = {
+                  id: event.id, 
+                  liker_pubkey: event.pubkey,
+                  type: event.content,
+                  sig: event.sig
+              };    
+              setReactions(prevReactions => {
+                  const existingReactions = prevReactions[event.tags.find(tag => tag[0] === 'e')?.[1] || ''] || [];
+                  const eventId = event.tags.find(tag => tag[0] === 'e')?.[1] || '';
+                  if (eventId && !existingReactions.some(r => r.liker_pubkey === reaction.liker_pubkey)) {
+                      return {
+                          ...prevReactions,
+                          [eventId]: [...existingReactions, reaction]
+                      };
+                  }
+                  return prevReactions;
+              });
+          }
+      }
+  );
+  
+  //replies - reposts
+  const repostsPostsForReplies = pool.subscribeManyEose(
+      RELAYS,
+      [
+          {
+              kinds: [6],
+              '#e': filteredPostsRepliesToSearch,
+          }
+      ],
+      {
+        onevent(event) {
+          setReposts(cur => {
+            if (!cur) return null;
+            const updatedReposts = { ...cur };
+            const content = event.content ? JSON.parse(event.content) : "";
+            const postId = event.tags.find(tag => tag[0] === 'e')?.[1] || content.id;
+            if (postId) {
+              if (!updatedReposts[postId] || !updatedReposts[postId].some(repost => repost.id === event.id)) {
+                updatedReposts[postId] = [...(updatedReposts[postId] || []), event as unknown as ExtendedEvent];
+              }
+            }
+            return updatedReposts;
+          });
+        }
+      }
+  );
+
+  //replies - replies
+  const repliesPostsForReplies = pool.subscribeManyEose(
+      RELAYS,
+      [
+          {
+              kinds: [1],
+              '#e': filteredPostsRepliesToSearch,
+          }
+      ],
+      {
+        onevent(event) {
+          setReplies(cur => {
+            const updatedReplies = { ...cur };
+            const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+            if (postId) {
+                updatedReplies[postId] = (updatedReplies[postId] || []).concat(event as unknown as ExtendedEvent);
+            }
+            return updatedReplies;
+          });
+        }
+      }
+  );
+  //************* end replies **************
+
+
+    // Add this new subscription for metadata of replied posts
+    const metadataRepliedPosts = pool.subscribeManyEose(
       RELAYS,
       [
           {
@@ -360,48 +477,25 @@ export const fetchPostsForProfile = async (pool: SimplePool | null, _userPublicK
               }));
           }
       } 
-  );  
-
-  const reactionsPostsReplies = pool.subscribeManyEose(
-      RELAYS,
-      [
-          {
-              kinds: [7],
-              '#e': filteredPostsRepliesToSearch,
-          }
-      ],  
-      {
-          onevent(event) {
-              const reaction: Reaction = {
-                  id: event.id, 
-                  liker_pubkey: event.pubkey,
-                  type: event.content,
-                  sig: event.sig
-              };    
-              setReactions(prevReactions => {
-                  const existingReactions = prevReactions[event.tags.find(tag => tag[0] === 'e')?.[1] || ''] || [];
-                  const eventId = event.tags.find(tag => tag[0] === 'e')?.[1] || '';
-                  if (eventId && !existingReactions.some(r => r.liker_pubkey === reaction.liker_pubkey)) {
-                      return {
-                          ...prevReactions,
-                          [eventId]: [...existingReactions, reaction]
-                      };
-                  }
-                  return prevReactions;
-              });
-          }
-      }
-  );  
+  ); 
 
   return () => {
       reactionsPostsOG?.close();
-      reactionsPostsReposts?.close();
-      reactionsPostsReplies?.close();
+
+
+      reactionsPostsForReplies?.close();
+      repostsPostsForReplies?.close();
+      repliesPostsForReplies?.close();
+
       replySubscription?.close();
       metadataPostsReposts?.close();
-      repliesPostsReposts?.close();
+
+      reactionsPostsForReposts?.close();
+      repostsPostsForReposts?.close();
+      repliesPostsForReposts?.close();
+
       metadataPostsReplies?.close();
-      metadataRepliedPosts?.close(); // Don't forget to close the new subscription
+      metadataRepliedPosts?.close();
       setLoadingPosts(false);
   };
 }
