@@ -12,7 +12,7 @@ import { fetchMetadataReactionsAndReplies, fetchData } from '../utils/noteUtils'
 import Ostrich from "./Ostrich";
 import { showCustomToast } from "./CustomToast";
 import { Event } from "nostr-tools";
-import { PhotoIcon } from '@heroicons/react/24/solid';
+import { PhotoIcon, VideoCameraIcon } from '@heroicons/react/24/solid';
 
 interface HomeProps {
   keyValue: string;
@@ -42,7 +42,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [userPublicKey, setUserPublicKey] = useState<string | null>(null);
     const metadataFetched = useRef<Record<string, boolean>>({});
     const [uploadingImage, setUploadingImage] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [uploadingVideo, setUploadingVideo] = useState(false);
+    const imageInputRef = useRef<HTMLInputElement>(null);
+    const videoInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
@@ -165,8 +167,41 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       }
     };
 
-    const triggerFileInput = () => {
-      fileInputRef.current?.click();
+    const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      setUploadingVideo(true);
+      try {
+        const base64File = await getBase64(file); // Convert file to base64
+        const contentType = file.type; // Get the MIME type of the file
+
+        const response = await fetch('https://z2wavnt1bj.execute-api.us-west-2.amazonaws.com/prod/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ file: base64File, contentType })
+        });
+
+        const data = await response.json();
+        const videoUrl = JSON.parse(data.body).url;
+
+        setMessage(prevMessage => prevMessage + ' ' + videoUrl);
+      } catch (error) {
+        console.error('Error uploading video:', error);
+        showCustomToast("Failed to upload video. Please try again.");
+      } finally {
+        setUploadingVideo(false);
+      }
+    };
+
+    const triggerImageInput = () => {
+      imageInputRef.current?.click();
+    };
+
+    const triggerVideoInput = () => {
+      videoInputRef.current?.click();
     };
 
     const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -194,7 +229,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               />
             </div>
             <div className="h-64 flex justify-between items-center">
-              <div>
+              <div className="flex">
                 <input
                   type="file"
                   accept="image/*"
@@ -202,21 +237,37 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                   disabled={uploadingImage}
                   className="hidden"
                   id="image-upload"
-                  ref={fileInputRef}
+                  ref={imageInputRef}
                 />
                 <button 
                   className={`flex items-center justify-center text-blue-500 hover:text-blue-700 font-bold p-16 rounded ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={triggerFileInput}
+                  onClick={triggerImageInput}
                   disabled={uploadingImage}
                 >
                   {uploadingImage ? <Loading vCentered={false} /> : <PhotoIcon className="h-5 w-5" />}
+                </button>
+                <input
+                  type="file"
+                  accept="video/*"
+                  onChange={handleVideoUpload}
+                  disabled={uploadingVideo}
+                  className="hidden"
+                  id="video-upload"
+                  ref={videoInputRef}
+                />
+                <button 
+                  className={`flex items-center justify-center text-blue-500 hover:text-blue-700 font-bold p-16 rounded ${uploadingVideo ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={triggerVideoInput}
+                  disabled={uploadingVideo}
+                >
+                  {uploadingVideo ? <Loading vCentered={false} /> : <VideoCameraIcon className="h-5 w-5" />}
                 </button>
               </div>
               <div>
                 <button 
                   className={`bg-blue-500 hover:bg-blue-700 text-white font-bold p-16 rounded ${posting ? 'opacity-50 cursor-not-allowed' : ''}`}
                   onClick={(_e) => handleSendMessage()}
-                  disabled={posting || uploadingImage}
+                  disabled={posting || uploadingImage || uploadingVideo}
                 >
                   {posting ? 'Posting...' : 'Post'}
                 </button>
