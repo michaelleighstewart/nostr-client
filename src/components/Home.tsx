@@ -43,6 +43,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const metadataFetched = useRef<Record<string, boolean>>({});
     const [uploadingImage, setUploadingImage] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
       if (!props.pool || !userPublicKey) return;
@@ -168,16 +169,29 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       fileInputRef.current?.click();
     };
 
+    const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setMessage(e.target.value);
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+        textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      }
+    };
+
     return (
       <div className="py-16 pt-150">
         {isLoggedIn && (
           <div>
             <div className="pb-2">
-              <input type="text" id="message" 
-                className="w-full text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                placeholder="What is happening?!" required
+              <textarea
+                ref={textareaRef}
+                id="message" 
+                className="w-full text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 resize-none overflow-hidden"
+                placeholder="What is happening?!" 
+                required
                 value={message}
-                onChange={(e) => setMessage(e.target.value)} />
+                onChange={handleTextareaChange}
+                rows={1}
+              />
             </div>
             <div className="h-64 flex justify-between items-center">
               <div>
