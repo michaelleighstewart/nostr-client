@@ -11,7 +11,6 @@ import { fetchUserMetadata } from "../utils/profileUtils";
 import { fetchMetadataReactionsAndReplies, fetchData } from '../utils/noteUtils';
 import Ostrich from "./Ostrich";
 import { showCustomToast } from "./CustomToast";
-import { Event } from "nostr-tools";
 import { PhotoIcon, VideoCameraIcon } from '@heroicons/react/24/solid';
 import NoteCard from "./NoteCard";
 

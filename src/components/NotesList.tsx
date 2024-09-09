@@ -1,4 +1,4 @@
-import { nip19, Event } from "nostr-tools";
+import { nip19 } from "nostr-tools";
 import NoteCard from "./NoteCard";
 import { SimplePool } from "nostr-tools";
 import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";

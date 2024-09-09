@@ -1,6 +1,6 @@
 import { BoltIcon, HandThumbUpIcon, HandThumbDownIcon, TrashIcon, ChatBubbleLeftIcon, ArrowPathRoundedSquareIcon } from "@heroicons/react/16/solid";
 import { sendZap, reactToPost, deletePost, bech32Decoder, repostMessage } from "../utils/helperFunctions";
-import { SimplePool, getPublicKey, Event } from "nostr-tools";
+import { SimplePool, getPublicKey } from "nostr-tools";
 import { useState, useEffect } from "react";
 import { showCustomToast } from './CustomToast';
 import { Link, useNavigate } from 'react-router-dom';
