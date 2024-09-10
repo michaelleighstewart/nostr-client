@@ -271,9 +271,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 </div>
                 <div>
                   <button 
-                    className={`text-white font-bold p-16 rounded ${posting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`text-white font-bold p-16 rounded ${(posting || uploadingImage || uploadingVideo || !message.trim()) ? 'opacity-50 cursor-not-allowed' : ''}`}
                     onClick={(_e) => handleSendMessage()}
-                    disabled={posting || uploadingImage || uploadingVideo}
+                    disabled={posting || uploadingImage || uploadingVideo || !message.trim()}
                   >
                     {posting ? 'Posting...' : 'Post'}
                   </button>
