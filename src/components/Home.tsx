@@ -34,7 +34,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [posting, setPosting] = useState(false);
     const [message, setMessage] = useState('');
     const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(props.nostrExists || !!props.keyValue);
-    const [lastFetchedTimestamp, setLastFetchedTimestamp] = useState<number>(0);
+    const [lastFetchedTimestamp, setLastFetchedTimestamp] = useState<number>(Math.floor(Date.now() / 1000));
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
     const [showOstrich, setShowOstrich] = useState(false);
     const [deletedNoteIds, setDeletedNoteIds] = useState<Set<string>>(new Set());
@@ -67,19 +67,23 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         setFollowers(newFollowers);
 
         let filter = isLoggedIn
-          ? { kinds: [1, 5, 6], since: oneDayAgo, authors: newFollowers, limit: 10, ...(lastFetchedTimestamp !== 0 && { until: lastFetchedTimestamp }) }
-          : { kinds: [1, 5, 6], since: oneDayAgo, limit: 10, ...(lastFetchedTimestamp !== 0 && { until: lastFetchedTimestamp }) };
+          ? { kinds: [1, 5, 6], since: oneDayAgo, authors: newFollowers, limit: 10 }
+          : { kinds: [1, 5, 6], since: oneDayAgo, limit: 10 };
         
-        await fetchData(props.pool, oneDayAgo, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-          setLoading, setLoadingMore, setError, setEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, 
-          setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter);
+        const fetchedEvents = await fetchData(props.pool, oneDayAgo, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
+          setLoading, setLoadingMore, setError, setEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter);
+        
+        if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
+          const newLastFetchedTimestamp = Math.min(...fetchedEvents.map(event => event.created_at));
+          setLastFetchedTimestamp(newLastFetchedTimestamp);
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
         setError("Failed to load data. Please try again.");
       } finally {
         setLoading(false);
       }
-    }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn, lastFetchedTimestamp, userPublicKey]);
+    }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn, userPublicKey]);
 
     useEffect(() => {
       fetchFollowersAndData();
@@ -99,11 +103,17 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       setLoadingMore(true);
       const oneDayBeforeLastFetched = lastFetchedTimestamp - 24 * 60 * 60;
       let filter = isLoggedIn
-        ? { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, authors: followers, limit: 10, ...(lastFetchedTimestamp !== 0 && { until: lastFetchedTimestamp }) }
-        : { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, limit: 10, ...(lastFetchedTimestamp !== 0 && { until: lastFetchedTimestamp }) };
-      await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-        setLoading, setLoadingMore, setError, setEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, 
-        setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter);
+        ? { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, authors: followers, limit: 10, until: lastFetchedTimestamp }
+        : { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, limit: 10, until: lastFetchedTimestamp };
+
+      const fetchedEvents = await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
+        setLoading, setLoadingMore, setError, setEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, 
+        setInitialLoadComplete, filter);
+      if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
+        const newLastFetchedTimestamp = Math.min(...fetchedEvents.map((event) => event.created_at));
+        setLastFetchedTimestamp(newLastFetchedTimestamp);
+      }
+      setLoadingMore(false);
     };
 
     const handleSendMessage = async () => {
