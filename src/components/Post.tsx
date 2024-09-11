@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { SimplePool, Event, getPublicKey } from 'nostr-tools';
+import { SimplePool, Event, getPublicKey, finalizeEvent } from 'nostr-tools';
 import { useParams } from 'react-router-dom';
 import NoteCard from './NoteCard';
 import { RELAYS } from '../utils/constants';
 import { bech32Decoder } from '../utils/helperFunctions';
 import { ExtendedEvent, Metadata, Reaction } from '../utils/interfaces';
 import Loading from './Loading';
+import { showCustomToast } from './CustomToast';
 
 interface PostProps {
   pool: SimplePool | null;
@@ -207,18 +208,24 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         signedEvent = await (window as any).nostr.signEvent(replyEvent);
       } else {
         const skDecoded = bech32Decoder('nsec', keyValue);
-        const publicKey = getPublicKey(skDecoded);
-        signedEvent = {
-          ...replyEvent,
-          pubkey: publicKey,
-          id: '',
-          sig: '',
-        };
+        signedEvent = finalizeEvent(replyEvent, skDecoded);
       }
 
       await pool.publish(RELAYS, signedEvent);
+      
+      // Add the new reply to the replies state
+      const newReply: Reply = {
+        id: signedEvent.id,
+        content: replyContent,
+        pubkey: signedEvent.pubkey,
+        created_at: signedEvent.created_at,
+        hashtags: [],
+        reactions: [],
+      };
+      setReplies(prevReplies => [newReply, ...prevReplies]);
+      
       setReplyContent('');
-      // Optionally, you can add the new reply to the replies state here
+      showCustomToast('Reply posted successfully!');
     } catch (error) {
       console.error('Failed to post reply:', error);
     }
