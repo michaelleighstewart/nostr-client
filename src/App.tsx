@@ -83,7 +83,7 @@ function App() {
     return (
       <>
         <div className={`relative ${!isLoggedIn && isHomePage ? 'z-50' : ''}`}>
-          <NavBar keyValue={key} setKey={setKey} nostrExists={nostrExists} />
+          <NavBar keyValue={key} setKey={setKey} nostrExists={nostrExists} pool={pool} />
         </div>
         <div className={`${!isLoggedIn ? 'pointer-events-none' : ''}`}>
           <Routes>
