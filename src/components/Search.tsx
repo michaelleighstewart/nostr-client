@@ -28,53 +28,71 @@ const Search: React.FC<SearchProps> = ({ pool }) => {
     setHasSearched(true);
 
     try {
-      let pubkey: string | null = null;
+      let results: ProfileResult[] = [];
 
-      // Check if the search term is an npub
-      try {
-        const { type, data } = nip19.decode(searchTerm);
-        if (type === 'npub') {
-          pubkey = data;
+      if (searchTerm.startsWith('npub')) {
+        // Search by npub
+        let pubkey: string | null = null;
+        try {
+          const { type, data } = nip19.decode(searchTerm);
+          if (type === 'npub') {
+            pubkey = data;
+          }
+        } catch (error) {
+          console.log('Not a valid npub');
+          setIsLoading(false);
+          setSearchResults([]);
+          return;
         }
-      } catch (error) {
-        console.log('Not a valid npub');
-        setIsLoading(false);
-        setSearchResults([]);
-        return;
-      }
 
-      if (!pubkey) {
-        setIsLoading(false);
-        setSearchResults([]);
-        return;
-      }
+        if (!pubkey) {
+          setIsLoading(false);
+          setSearchResults([]);
+          return;
+        }
 
-      const results: ProfileResult[] = [];
-
-      const sub = pool.subscribeMany(
-        RELAYS,
-        [
+        const sub = pool.subscribeMany(
+          RELAYS,
+          [
+            {
+              kinds: [0],
+              authors: [pubkey],
+            },
+          ],
           {
-            kinds: [0],
-            authors: [pubkey],
-          },
-        ],
-        {
-          onevent(event) {
-            const profile = JSON.parse(event.content);
-            results.push({
-              npub: nip19.npubEncode(event.pubkey),
-              name: profile.display_name || profile.name,
-              picture: profile.picture,
-            });
-          },
-          oneose() {
-            setSearchResults(results);
-            setIsLoading(false);
-            sub.close();
-          },
+            onevent(event) {
+              const profile = JSON.parse(event.content);
+              results.push({
+                npub: nip19.npubEncode(event.pubkey),
+                name: profile.display_name || profile.name,
+                picture: profile.picture,
+              });
+            },
+            oneose() {
+              setSearchResults(results);
+              setIsLoading(false);
+              sub.close();
+            },
+          }
+        );
+      } else {
+        // Search by term using the API
+        const response = await fetch(`https://api.nostr.wine/search?query=${encodeURIComponent(searchTerm)}&kind=0`);
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
         }
-      );
+        const data = await response.json();
+        results = data.data.map((profile: any) => {
+          const content = JSON.parse(profile.content);
+          return {
+            npub: nip19.npubEncode(profile.pubkey),
+            name: content.display_name || content.name,
+            picture: content.picture,
+          };
+        });
+        setSearchResults(results);
+        setIsLoading(false);
+      }
     } catch (error) {
       console.error('Error searching for profile:', error);
       setIsLoading(false);
@@ -95,7 +113,7 @@ const Search: React.FC<SearchProps> = ({ pool }) => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Enter npub"
+          placeholder="Enter npub or username"
           className="flex-grow p-2 border rounded-l text-black"
         />
         <button
