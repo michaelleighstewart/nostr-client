@@ -96,7 +96,7 @@ interface Props {
       }
 
       const linkRegex = /(https?:\/\/[^\s]+)/g;
-      const nostrBech32Regex = /(nostr:(naddr|npub|note|nsec|nprofile)1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]+)\b/;
+      const nostrBech32Regex = /(nostr:(naddr|npub|note|nsec|nprofile)1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]+)\b/g;
       const hashtagRegex = /#(\w+)/g;
       const parts: string[] = content.split(linkRegex);
       const processed = parts.map((part, index) => {
@@ -108,9 +108,15 @@ interface Props {
           }
           return null;
         }
-        const nostrMatch = part.match(nostrBech32Regex);
-        if (nostrMatch) {
-          const [fullMatch, nostrEntity] = nostrMatch;
+        let result = [];
+        let lastIndex = 0;
+        let match;
+        while ((match = nostrBech32Regex.exec(part)) !== null) {
+          const [fullMatch, nostrEntity] = match;
+          const beforeText = part.slice(lastIndex, match.index);
+          if (beforeText) {
+            result.push(beforeText);
+          }
           try {
             const decoded = nip19.decode(nostrEntity.slice(6));
             if (decoded.type === 'naddr' && decoded.data.kind === 30023) {
@@ -147,56 +153,72 @@ interface Props {
                 }
               });
             }
-            return (
-              <React.Fragment key={index}>
-                {part.substring(0, nostrMatch.index).split('\n').map((line, lineIndex) => (
-                  <React.Fragment key={`before-${lineIndex}`}>
-                    {lineIndex > 0 && <br />}
-                    {line}
-                  </React.Fragment>
-                ))}
-                {part.substring(nostrMatch.index !== undefined ? nostrMatch.index + fullMatch.length : 0).split('\n').map((line, lineIndex) => (
-                  <React.Fragment key={`after-${lineIndex}`}>
-                    {lineIndex > 0 && <br />}
-                    {line}
-                  </React.Fragment>
-                ))}
-              </React.Fragment>
-            );
+            if (decoded.type === 'npub') {
+              const npub = nostrEntity.slice(6);
+              result.push(
+                <Link 
+                  key={`npub-${index}-${match.index}`}
+                  to={`/profile?npub=${npub}`}
+                  className="text-blue-500 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {metadata?.[decoded.data]?.name || npub}
+                </Link>
+              );
+            } else {
+              result.push(
+                <Link 
+                  key={`nostr-${index}-${match.index}`}
+                  to={`/profile?npub=${nostrEntity.slice(6)}`}
+                  className="text-blue-500 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {nostrEntity}
+                </Link>
+              );
+            }
           } catch (error) {
             console.error("Error decoding Nostr entity:", error);
-            return part;
+            result.push(fullMatch);
           }
+          lastIndex = match.index + fullMatch.length;
         }
-
-        const lines = part.split('\n');
-        return (
-          <span key={index}>
-            {lines.map((line, lineIndex) => (
-              <React.Fragment key={lineIndex}>
-                {lineIndex > 0 && <br />}
-                {line.split(hashtagRegex).map((segment, segmentIndex) => {
-                  if (segmentIndex % 2 === 1) { // This is a hashtag
-                    return (
-                      <Link 
-                        key={segmentIndex} 
-                        to={`/people-to-follow?hashtag=${segment}`}
-                        className="text-blue-500 hover:underline"
-                        onClick={(e) => e.stopPropagation()} // Prevent the post click event from triggering
-                      >
-                        #{segment}
-                      </Link>
-                    );
-                  }
-                  return segment;
-                })}
-              </React.Fragment>
-            ))}
-          </span>
-        );
+        if (lastIndex < part.length) {
+          result.push(part.slice(lastIndex));
+        }
+        return result.map((item, i) => {
+          if (typeof item === 'string') {
+            const lines = item.split('\n');
+            return (
+              <span key={`${index}-${i}`}>
+                {lines.map((line, lineIndex) => (
+                  <React.Fragment key={lineIndex}>
+                    {lineIndex > 0 && <br />}
+                    {line.split(hashtagRegex).map((segment, segmentIndex) => {
+                      if (segmentIndex % 2 === 1) { // This is a hashtag
+                        return (
+                          <Link 
+                            key={segmentIndex} 
+                            to={`/people-to-follow?hashtag=${segment}`}
+                            className="text-blue-500 hover:underline"
+                            onClick={(e) => e.stopPropagation()} // Prevent the post click event from triggering
+                          >
+                            #{segment}
+                          </Link>
+                        );
+                      }
+                      return segment;
+                    })}
+                  </React.Fragment>
+                ))}
+              </span>
+            );
+          }
+          return item;
+        });
       });
-      setProcessedContent(processed.filter(Boolean));
-    }, [content]);
+      setProcessedContent(processed.flat().filter(Boolean));
+    }, [content, metadata]);
   
     useEffect(() => {
       async function fetchPublicKey() {
