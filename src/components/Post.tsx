@@ -30,15 +30,16 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   const [loading, setLoading] = useState(true);
   const [replyContent, setReplyContent] = useState('');
   const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
-  const [reactions, setReactions] = useState<Reaction[]>([]);
-  const [reposts, setReposts] = useState<Reply[]>([]);
+  const [_reactions, _setReactions] = useState<Reaction[]>([]);
+  const [_reposts, _setReposts] = useState<Reply[]>([]);
   const [allReactions, setAllReactions] = useState<Record<string, Reaction[]>>({});
-  const [allReplies, _setAllReplies] = useState<Record<string, ExtendedEvent[]>>({});
-  const [allReposts, _setAllReposts] = useState<Record<string, ExtendedEvent[]>>({});
+  const [allReplies, setAllReplies] = useState<Record<string, ExtendedEvent[]>>({});
+  const [allReposts, setAllReposts] = useState<Record<string, ExtendedEvent[]>>({});
 
   useEffect(() => {
     if (!pool || !id) return;
-
+    console.log('id', id);
+    //get for the original post
     const sub = pool.subscribeManyEose(
       RELAYS,
       [
@@ -58,6 +59,16 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
               hashtags: event.tags.filter((tag: string[]) => tag[0] === 't').map((tag: string[]) => tag[1]),
               reactions: [],
             };
+            const newExtendedEvent: ExtendedEvent = {
+              id: event.id,
+              content: event.content,
+              pubkey: event.pubkey,
+              created_at: event.created_at,
+              deleted: false,
+              tags: event.tags,
+              repostedEvent: null,
+              repliedEvent: null
+            };
 
             if (event.id === id) {
               setPost(newReply);
@@ -70,6 +81,20 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
                 }
                 return prevReplies;
               });
+              setAllReplies(prevReplies => {
+                if (!newReply.id) return prevReplies;
+                const existingReplies = prevReplies[id] || [];
+                const replyExists = existingReplies.some(
+                  (r: ExtendedEvent) => r.id === newExtendedEvent.id
+                );
+                if (!replyExists) {
+                  return {
+                    ...prevReplies,
+                    [id]: [...existingReplies, newExtendedEvent]
+                  };
+                }
+                return prevReplies;
+              });
             }
           }
           else if (event.kind === 7) {
@@ -79,27 +104,45 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
               type: event.content,
               sig: event.sig
             };
-            setReactions(prevReactions => {
-              const reactionExists = prevReactions.some(reaction => reaction.id === newReaction.id);
+            const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+            setAllReactions(prevReactions => {
+              if (!postId) return prevReactions;
+              const existingReactions = prevReactions[postId] || [];
+              const reactionExists = existingReactions.some(
+                (r: Reaction) => r.liker_pubkey === newReaction.liker_pubkey && r.type === newReaction.type
+              );
               if (!reactionExists) {
-                return [...prevReactions, newReaction];
+                return {
+                  ...prevReactions,
+                  [postId as string]: [...existingReactions, newReaction]
+                };
               }
               return prevReactions;
             });
           }
           else if (event.kind === 6) {
-            const reply: Reply = {
+            const newExtendedEvent: ExtendedEvent = {
               id: event.id,
               content: event.content,
               pubkey: event.pubkey,
               created_at: event.created_at,
-              hashtags: event.tags.filter((tag: string[]) => tag[0] === 't').map((tag: string[]) => tag[1]),
-              reactions: [],
-            };  
-            setReposts(prevReposts => {
-              const repostExists = prevReposts.some(repost => repost.id === reply.id);
+              deleted: false,
+              tags: event.tags,
+              repostedEvent: null,
+              repliedEvent: null
+            };
+            console.log('newExtendedEvent', newExtendedEvent);
+            setAllReposts((prevReposts: Record<string, ExtendedEvent[]>) => {
+              if (!newExtendedEvent.id) return prevReposts;
+              const existingReposts = prevReposts[id] || [];
+              const repostExists = existingReposts.some(
+                (r: ExtendedEvent) => r.id === newExtendedEvent.id
+              );
               if (!repostExists) {
-                return [...prevReposts, reply];
+                return {
+                  ...prevReposts,
+                  [id]: [...existingReposts, newExtendedEvent]
+                };
               }
               return prevReposts;
             });
@@ -117,6 +160,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   }, [id, pool]);
 
   useEffect(() => {
+    //get for the replies
     if (!pool || !post) return;
 
     const authors = new Set<string>([post.pubkey]);
@@ -143,46 +187,130 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
             console.error('Error parsing metadata:', error);
           }
         },
+        onclose: () => {
+          setLoading(false);
+        }
       }
     );
 
     return () => {
       sub.close();
     };
-  }, [pool, post, replies]);
+  }, [pool, id, post, replies]);
 
   useEffect(() => {
+    //get all reactions, replies, reposts for replies
     if (!pool || !post) return;
 
-    const postIds = [post.id, ...replies.map(reply => reply.id)];
+    //const postIds = [post.id, ...replies.map(reply => reply.id)];
+    const postIds = replies.map(reply => reply.id);
 
     const sub = pool.subscribeManyEose(
       RELAYS,
-      postIds.map(postId => ({ kinds: [7], '#e': [postId] })),
+      [
+        { kinds: [7], '#e': [post.id] },
+        ...postIds.map(postId => ({ kinds: [7, 6, 1], '#e': [postId] }))
+      ],
       {
         onevent: (event: Event) => {
-          const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
-          if (postId) {
-            const newReaction: Reaction = { 
+          if (event.kind === 7) {
+            const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+            if (postId) {
+              const newReaction: Reaction = { 
+                id: event.id,
+                liker_pubkey: event.pubkey,
+                type: event.content,
+                sig: event.sig
+              };
+              setAllReactions(prevReactions => {
+                const existingReactions = prevReactions[postId] || [];
+                const reactionExists = existingReactions.some(
+                  (r: Reaction) => r.liker_pubkey === newReaction.liker_pubkey && r.type === newReaction.type
+                );
+                if (!reactionExists) {
+                  return {
+                    ...prevReactions,
+                    [postId]: [...existingReactions, newReaction]
+                  };
+                }
+                return prevReactions;
+              });
+            }
+          }
+          else if (event.kind === 6) {
+            const reply: Reply = {
               id: event.id,
-              liker_pubkey: event.pubkey,
-              type: event.content,
-              sig: event.sig
+              content: event.content,
+              pubkey: event.pubkey,
+              created_at: event.created_at,
+              hashtags: event.tags.filter((tag: string[]) => tag[0] === 't').map((tag: string[]) => tag[1]),
+              reactions: [],
             };
-            setAllReactions(prevReactions => {
-              const existingReactions = prevReactions[postId] || [];
-              const reactionExists = existingReactions.some(
-                (r: Reaction) => r.liker_pubkey === newReaction.liker_pubkey && r.type === newReaction.type
+            const newExtendedEvent: ExtendedEvent = {
+              id: event.id,
+              content: event.content,
+              pubkey: event.pubkey,
+              created_at: event.created_at,
+              deleted: false,
+              tags: event.tags,
+              repostedEvent: null,
+              repliedEvent: null
+            };
+            const contentObj = JSON.parse(event.content);
+            const postId = contentObj.id;
+            setAllReposts(prevReposts => {
+              if (!reply.id) return prevReposts;
+              const existingReposts = prevReposts[postId] || [];
+              const repostExists = existingReposts.some(
+                (r: ExtendedEvent) => r.id === newExtendedEvent.id
               );
-              if (!reactionExists) {
+              if (!repostExists) {
                 return {
-                  ...prevReactions,
-                  [postId]: [...existingReactions, newReaction]
+                  ...prevReposts,
+                  [postId]: [...existingReposts, newExtendedEvent]
                 };
               }
-              return prevReactions;
+              return prevReposts;
             });
           }
+          else if (event.kind === 1) {
+            console.log("got a reply to a reply", event);
+            const newReply: Reply = {
+              id: event.id,
+              content: event.content,
+              pubkey: event.pubkey,
+              created_at: event.created_at,
+              hashtags: event.tags.filter((tag: string[]) => tag[0] === 't').map((tag: string[]) => tag[1]),
+              reactions: [],
+            };
+            const newExtendedEvent: ExtendedEvent = {
+              id: event.id,
+              content: event.content,
+              pubkey: event.pubkey,
+              created_at: event.created_at,
+              deleted: false,
+              tags: event.tags,
+              repostedEvent: null,
+              repliedEvent: null
+            };
+            const postIdsRepliedTo = event.tags.filter(tag => tag[0] === 'e').map(tag => tag[1]);
+            for (const replyPostId of postIdsRepliedTo) {
+            setAllReplies(prevReplies => {
+              if (!newReply.id) return prevReplies;
+              const existingReplies = prevReplies[replyPostId] || [];
+              const replyExists = existingReplies.some(
+                (r: ExtendedEvent) => r.id === newExtendedEvent.id
+              );
+              if (!replyExists) {
+                return {
+                  ...prevReplies,
+                  [replyPostId]: [...existingReplies, newExtendedEvent]
+                };
+              }
+              return prevReplies;
+            });
+          }
+        }
         },
       }
     );
@@ -255,16 +383,16 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         hashtags={post.hashtags}
         pool={pool}
         nostrExists={nostrExists}
-        reactions={reactions}
+        reactions={allReactions[post.id] || []}
         keyValue={keyValue}
         deleted={false}
-        replies={replies.length}
+        replies={allReplies[post.id]?.length || 0}
         repostedEvent={null}
         metadata={metadata}
         allReactions={allReactions}
         allReplies={allReplies} repliedEvent={null}
-        reposts={reposts.length}
-        allReposts={null}
+        reposts={allReposts[post.id]?.length || 0}
+        allReposts={allReposts}
         setMetadata={setMetadata}
         />
       <div className="mt-8 p-16 rounded-lg">
