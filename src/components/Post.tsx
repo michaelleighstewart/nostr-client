@@ -38,7 +38,6 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
 
   useEffect(() => {
     if (!pool || !id) return;
-    console.log('id', id);
     //get for the original post
     const sub = pool.subscribeManyEose(
       RELAYS,
@@ -131,7 +130,6 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
               repostedEvent: null,
               repliedEvent: null
             };
-            console.log('newExtendedEvent', newExtendedEvent);
             setAllReposts((prevReposts: Record<string, ExtendedEvent[]>) => {
               if (!newExtendedEvent.id) return prevReposts;
               const existingReposts = prevReposts[id] || [];
@@ -274,7 +272,6 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
             });
           }
           else if (event.kind === 1) {
-            console.log("got a reply to a reply", event);
             const newReply: Reply = {
               id: event.id,
               content: event.content,
@@ -319,6 +316,11 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
       sub.close();
     };
   }, [pool, post, replies]);
+
+  const handleReplyClick = (replyId: string) => {
+    // Use window.location.href instead of navigate
+    window.location.href = `/post/${replyId}`;
+  };
 
   const handleReply = async () => {
     if (!pool || !id || !replyContent.trim()) return;
@@ -411,6 +413,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
       </div>
       <h2 className="text-xl font-bold mt-6 mb-4">Replies</h2>
       {replies.sort((a, b) => b.created_at - a.created_at).map(reply => (
+        <div onClick={() => handleReplyClick(reply.id)}>
         <NoteCard
           isPreview={false}
           key={reply.id}
@@ -438,6 +441,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
           allReposts={allReposts}
           setMetadata={setMetadata}
           />
+          </div>
       ))}
     </div>
   );

@@ -476,7 +476,7 @@ interface Props {
             </div>
             <div className="p-4">
               <span className="text-body5 text-gray-400">
-                {localReactions.filter((r) => r.type === "+").length}
+                {localReactions.filter((r) => r.type !== "-").length}
               </span>
             </div>
             <div className="p-4 pl-8 md:pl-32">
