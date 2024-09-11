@@ -21,6 +21,11 @@ interface Person {
     content?: string;
 }
 
+interface Metadata {
+    name: string;
+    picture?: string;
+}
+
 const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowProps) => {
     const [peopleToFollow, setPeopleToFollow] = useState<Person[]>([]);
     const [loading, setLoading] = useState(true);
@@ -34,6 +39,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     const contentRefs = useRef<(HTMLDivElement | null)[]>([]);
     const [showOstrich, setShowOstrich] = useState(false);
     const location = useLocation();
+    const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -85,52 +91,85 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
         };
     }
 
+    useEffect(() => { 
+        if (!props.pool || peopleToFollow.length === 0) return;
+        
+        const authors = peopleToFollow.map(person => nip19.decode(person.npub).data as string);
+        const newAuthors = authors.filter(author => !metadata[author]);
+        
+        if (newAuthors.length === 0) return;
+
+        props.pool.subscribeManyEose(RELAYS,     
+            [{ kinds: [0], authors: newAuthors }],
+            {
+                onevent(event) {
+                    const pubkey = event.pubkey;
+                    const eventMetadata = JSON.parse(event.content);
+                    setMetadata(prev => ({
+                        ...prev,
+                        [pubkey]: {
+                            name: eventMetadata.name || 'Unknown',
+                            picture: eventMetadata.picture
+                        }
+                    }));
+                },
+                onclose() {
+                    setLoading(false);
+                }
+            }
+        );
+    }, [peopleToFollow, props.pool]);
+
+    useEffect(() => {
+        setPeopleToFollow(prev => prev.map(person => {
+            const pubkey = nip19.decode(person.npub).data as string;
+            const personMetadata = metadata[pubkey];
+            return personMetadata ? {
+                ...person,
+                name: personMetadata.name,
+                picture: personMetadata.picture
+            } : person;
+        }));
+    }, [metadata]);
+
     async function setupFollowingList() {
-        if (!props.pool || !props.keyValue) return;
+        if (!props.pool) return;
 
         setPeopleToFollow([]);
         setSearchingPeople(true);
-        const people = await props.pool.querySync(RELAYS, { kinds: [1], limit: 5, '#t': [selectedHashtag] });
-        const peopleToFollow: { name: any; npub: `npub1${string}`; picture: any; content: string; }[] = [];
-        const pubkeys = Array.from(new Set(people.map(person => person.pubkey)));
-        const meta = await props.pool?.querySync(RELAYS, { kinds: [0], authors: pubkeys });
-        try {
-            if (meta && meta.length > 0) {
-                for (const metaEvent of meta) {
-                    const metadata = JSON.parse(metaEvent.content);
-                    const pubkey = metaEvent.pubkey;
-                    const npub = nip19.npubEncode(pubkey);
-                    const name = metadata.name || 'Unknown';
-                    const picture = metadata.picture;
-                    const content = people.find(p => p.pubkey === pubkey)?.content || '';
-                    if (!peopleToFollow.some(person => person.npub === npub)) {
-                        peopleToFollow.push({ name, npub, picture, content });
-                    }
+        
+        const peopleSubscription = props.pool.subscribeManyEose(RELAYS, 
+            [{ kinds: [1], limit: 5, '#t': [selectedHashtag] }],
+            {
+                onevent(event) {
+                    const npub = nip19.npubEncode(event.pubkey);
+                    setPeopleToFollow(prev => {
+                        if (!prev.some(p => p.npub === npub)) {
+                            return [...prev, {
+                                name: 'Unknown',
+                                npub: npub,
+                                loadingFollowing: false,
+                                content: event.content
+                            }];
+                        }
+                        return prev;
+                    });
+                },
+                onclose() {
+                    setSearchingPeople(false);
                 }
             }
-        } catch (error) {
-            console.error("Error fetching metadata:", error);
-        }
-        setPeopleToFollow(peopleToFollow.map(person => ({
-            ...person,
-            loadingFollowing: false
-        })));
-        setSearchingPeople(false);
+        );
+
         return () => {
-            //peopleSubscription?.close();
-            //metadataSubscription?.close();
+            peopleSubscription?.close();
         };
     }
 
     useEffect(() => {
         setupFollowingList();
         fetchFollowingList();
-    }, [selectedHashtag]);
-
-    useEffect(() => {
-        setupFollowingList();
-        fetchFollowingList();
-    }, [props.pool, props.keyValue, props.nostrExists]);
+    }, [selectedHashtag, props.pool, props.keyValue, props.nostrExists]);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -270,6 +309,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                                                 onError={(e) => {
                                                     const target = e.target as HTMLImageElement;
                                                     target.onerror = null;
+                                                    target.src = 'default-profile-picture.jpg'; // Replace with your default image path
                                                 }}
                                             />
                                         ) : (
@@ -303,7 +343,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                 </div>
             )}
             <Ostrich show={showOstrich} onClose={() => setShowOstrich(false)} 
-                text="Congratulatons on following your first user! Now, go " linkText="publish your first note!" 
+                text="Congratulations on following your first user! Now, go " linkText="publish your first note!" 
                 linkUrl="/" />
         </div>
     );
