@@ -37,16 +37,16 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [loadingProfile, setLoadingProfile] = useState(true);
     const [loadingPosts, setLoadingPosts] = useState(true);
-    const [_deletedNoteIds, setDeletedNoteIds] = useState<Set<string>>(new Set());
-    const [_userPublicKey, setUserPublicKey] = useState<string | null>(null);
-    const [_initialLoadComplete, setInitialLoadComplete] = useState(false);
-    const [_loading, setLoading] = useState(true);
-    const [_loadingMore, setLoadingMore] = useState(false);
-    const [_error, setError] = useState<string | null>(null);
-    const [_lastFetchedTimestamp, setLastFetchedTimestamp] = useState<number>(Math.floor(Date.now() / 1000));
-    const [repostEvents, _setRepostEvents] = useState<ExtendedEvent[]>([]);
-    const [replyEvents, _setReplyEvents] = useState<ExtendedEvent[]>([]);
-    const [isLoggedIn, _setIsLoggedIn] = useState<boolean | null>(nostrExists || !!keyValue);
+    const [deletedNoteIds, setDeletedNoteIds] = useState<Set<string>>(new Set());
+    const [userPublicKey, setUserPublicKey] = useState<string | null>(null);
+    const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [lastFetchedTimestamp, setLastFetchedTimestamp] = useState<number>(Math.floor(Date.now() / 1000));
+    const [repostEvents, setRepostEvents] = useState<ExtendedEvent[]>([]);
+    const [replyEvents, setReplyEvents] = useState<ExtendedEvent[]>([]);
+    const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(nostrExists || !!keyValue);
 
     useEffect(() => {
         const fetchProfileData = async () => {
@@ -155,6 +155,15 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
         }
     };
 
+    const handleLoadMore = async () => {
+        if (!pool) return;
+        setLoadingMore(true);
+        const filter = { kinds: [1, 5, 6], authors: [pubkey], limit: 10, until: lastFetchedTimestamp };
+        await fetchData(pool, 0, true, lastFetchedTimestamp, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
+            setLoading, setLoadingMore, setError, setPosts, posts, repostEvents, replyEvents, setLastFetchedTimestamp, 
+            setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter);
+    };
+
     // Sort posts and reposts by date
     const sortedPosts = [...posts].sort((a, b) => {
         const dateA = a.repostedEvent ? a.repostedEvent.created_at : a.created_at;
@@ -241,6 +250,17 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                                     />
                                 </div>
                             ))}
+                            {!loadingMore && (
+                                <div className="mt-8 mb-8 text-center">
+                                <button
+                                    onClick={handleLoadMore}
+                                    className="text-white font-bold py-3 px-6 rounded"
+                                >
+                                        Load More
+                                    </button>
+                                </div>
+                            )}
+                            {loadingMore && <Loading vCentered={false} />}
                         </div>
                     )}
                 </div>
