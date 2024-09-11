@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SimplePool, Event, getPublicKey, finalizeEvent } from 'nostr-tools';
+import { SimplePool, Event, finalizeEvent } from 'nostr-tools';
 import { useParams } from 'react-router-dom';
 import NoteCard from './NoteCard';
 import { RELAYS } from '../utils/constants';
