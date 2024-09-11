@@ -98,7 +98,7 @@ function App() {
             <Route path="following/:pubkey" element={<Following pool={pool} />} />
             <Route path="conversation/:id" element={<Conversation pool={pool} nostrExists={nostrExists} keyValue={key} />} />
             <Route path="post/:id" element={<Post pool={pool} nostrExists={nostrExists} keyValue={key} />} />
-            <Route path="search" element={<Search pool={pool} />} />
+            <Route path="search" element={<Search pool={pool} nostrExists={nostrExists} keyValue={key} />} />
           </Routes>
         </div>
       </>
