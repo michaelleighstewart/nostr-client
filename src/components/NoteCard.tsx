@@ -164,7 +164,6 @@ interface Props {
                 }], 
                 {
                   onevent(event) {
-                    console.log("Received metadata for", decoded.data);
                     const eventMetadata = JSON.parse(event.content);
                     setMetadata((prev: any) => ({
                       ...prev,
