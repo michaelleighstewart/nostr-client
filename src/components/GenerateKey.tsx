@@ -216,7 +216,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
                         <Ostrich
                             show={true}
                             onClose={() => {}}
-                            text="Your private key (nsec) is your password, make sure to keep it safe"
+                            text="Your private key (nsec) is like your password, it is your self-sovereign identity on the Nostr network. Make sure to keep it safe"
                         />
                     )}
                 </div>
