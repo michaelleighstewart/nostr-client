@@ -258,6 +258,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         allReplies={allReplies} repliedEvent={null}
         reposts={reposts.length}
         allReposts={null}
+        setMetadata={setMetadata}
         />
       <div className="mt-8 p-16 rounded-lg">
         <textarea
@@ -300,6 +301,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
           allReplies={allReplies} repliedEvent={null} 
           reposts={allReposts[reply.id]?.length || 0}
           allReposts={allReposts}
+          setMetadata={setMetadata}
           />
       ))}
     </div>

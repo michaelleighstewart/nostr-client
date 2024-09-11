@@ -237,6 +237,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                                         repliedEvent={post.repliedEvent || null}
                                         reposts={reposts?.[post.id]?.length || 0}
                                         allReposts={reposts}
+                                        setMetadata={setMetadata}
                                     />
                                 </div>
                             ))}

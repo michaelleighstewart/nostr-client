@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 interface Props {
     notes: ExtendedEvent[];
     metadata: Record<string, Metadata>;
+    setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>;
     pool: SimplePool | null;
     nostrExists: boolean | null;
     reactions: Record<string, Reaction[]>;
@@ -16,7 +17,7 @@ interface Props {
     reposts: Record<string, ExtendedEvent[]>;
 }
 
-export default function NotesList({ notes, metadata, pool, nostrExists, reactions, keyValue, replies, reposts } : Props) {
+export default function NotesList({ notes, metadata, setMetadata, pool, nostrExists, reactions, keyValue, replies, reposts } : Props) {
     const [visibleNotes, setVisibleNotes] = useState<ExtendedEvent[]>([]);
     const isLoggedIn = nostrExists || !!keyValue;
 
@@ -85,6 +86,7 @@ export default function NotesList({ notes, metadata, pool, nostrExists, reaction
                                 metadata={metadata}
                                 reposts={reposts?.[note.id]?.length ?? 0}
                                 allReposts={reposts}
+                                setMetadata={setMetadata}
                             />
                         </div>
                     </motion.div>

@@ -30,6 +30,7 @@ interface Props {
     reposts: number;
     allReposts: Record<string, ExtendedEvent[]> | null;
     isPreview: boolean;
+    setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>;
   }
   
   export default function NoteCard({
@@ -51,7 +52,8 @@ interface Props {
     allReplies,
     reposts,
     allReposts,
-    isPreview
+    isPreview, 
+    setMetadata
   }: Props) {
     const [alreadyLiked, setAlreadyLiked] = useState(false);
     const [alreadyDisliked, setAlreadyDisliked] = useState(false);
@@ -154,7 +156,28 @@ interface Props {
               });
             }
             if (decoded.type === 'npub') {
+              if (!metadata?.[decoded.data]) {
+                console.log("Subscribing to metadata for", decoded.data);
+                pool?.subscribeManyEose(RELAYS, [{
+                  kinds: [0],
+                  authors: [decoded.data]
+                }], 
+                {
+                  onevent(event) {
+                    console.log("Received metadata for", decoded.data);
+                    const eventMetadata = JSON.parse(event.content);
+                    setMetadata((prev: any) => ({
+                      ...prev,
+                      [decoded.data]: {
+                          name: eventMetadata.name || 'Unknown',
+                          picture: eventMetadata.picture
+                      }
+                    }));
+                  }
+                });
+              }
               const npub = nostrEntity.slice(6);
+              const name = metadata?.[decoded.data]?.name || npub;
               result.push(
                 <Link 
                   key={`npub-${index}-${match.index}`}
@@ -162,7 +185,7 @@ interface Props {
                   className="text-blue-500 hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {metadata?.[decoded.data]?.name || npub}
+                  {name}
                 </Link>
               );
             } else {
@@ -390,6 +413,7 @@ interface Props {
               allReplies={allReplies}
               reposts={allReposts?.[repostedEvent.id]?.length ?? 0}
               allReposts={allReposts}
+              setMetadata={setMetadata}
             />
           </div>
         )}
@@ -545,6 +569,7 @@ interface Props {
                     allReplies={allReplies}
                     reposts={allReposts?.[repliedEvent.id]?.length ?? 0}
                     allReposts={allReposts}
+                    setMetadata={setMetadata}
                   />
       ) : <></>}
       </div>

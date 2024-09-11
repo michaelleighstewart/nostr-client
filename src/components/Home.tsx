@@ -311,7 +311,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 repliedEvent={null} 
                 allReactions={null} 
                 allReplies={null} 
-                allReposts={null}              
+                allReposts={null}
+                setMetadata={setMetadata}              
               />
             </div>
           </div>
@@ -324,7 +325,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           <div className={`pt-32 relative ${!isLoggedIn ? 'pointer-events-none opacity-50' : ''}`}>
             <NotesList metadata={metadata} reactions={reactions} notes={events.filter(e => !deletedNoteIds.has(e.id))} pool={props.pool} 
               nostrExists={props.nostrExists} keyValue={props.keyValue}
-              replies={replies} reposts={reposts} />
+              replies={replies} reposts={reposts} setMetadata={setMetadata} />
             {initialLoadComplete && events.length > 0 && isLoggedIn && (
               <div className="mt-8 mb-8 text-center">
                 {loadingMore ? (
