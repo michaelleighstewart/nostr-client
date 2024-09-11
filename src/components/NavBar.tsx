@@ -17,7 +17,7 @@ interface NavBarProps {
 const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(true);
   const [isValidKey, setIsValidKey] = useState<boolean>(false);
-  const [publicKey, setPublicKey] = useState<string>('');
+  const [_publicKey, setPublicKey] = useState<string>('');
   const location = useLocation();
   const [newNotifications, setNewNotifications] = useState<boolean>(false);
 
