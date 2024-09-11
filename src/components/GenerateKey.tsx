@@ -25,6 +25,8 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isSigningUp, setIsSigningUp] = useState<boolean>(false);
+    const [showNpubDialog, setShowNpubDialog] = useState<boolean>(false);
+    const [showNsecDialog, setShowNsecDialog] = useState<boolean>(false);
 
     const generateKeys = useCallback((pool: SimplePool | null) => {
         const storedPrivateKey = localStorage.getItem('privateKey');
@@ -74,6 +76,22 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
         generateKeys(pool);
     }, [generateKeys, pool]);
 
+    useEffect(() => {
+        if (!isLoading && !isLoggedIn) {
+            setTimeout(() => {
+                setShowNpubDialog(true);
+            }, 1000);
+
+            setTimeout(() => {
+                setShowNpubDialog(false);
+                setShowNsecDialog(true);
+            }, 6000);
+
+            setTimeout(() => {
+                setShowNsecDialog(false);
+            }, 11000);
+        }
+    }, [isLoading, isLoggedIn]);
 
     const handleSignUp = async () => {
         setIsSigningUp(true);
@@ -98,7 +116,6 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
         const _signedEvent = finalizeEvent(event, privateKeyBytes);
         
         try {
-            //michael - hacked - need to revisit
             await pool?.querySync(RELAYS, {
                 kinds: [0],
                 authors: [pk],
@@ -108,9 +125,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
                 await pool?.publish(RELAYS, _signedEvent);
 
                 setKeyValue(nsec);
-                //setIsLoggedIn(true);
                 localStorage.setItem('privateKey', nsec);
-                //setShowOstrich(true);
             }
             else {
                 console.error("Event verification failed");
@@ -157,24 +172,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
     return (
         <div className="py-64 relative" style={{ pointerEvents: 'auto' }} onClick={handleScreenClick}>
             <div>
-                <div className="pb-24">
-                    <label htmlFor="nsec" className="block mb-2 text-sm font-medium text-white">Private Key (nsec): </label>
-                    <div className="flex">
-                        <input type="text" id="nsec" 
-                            className="text-gray-900 text-sm rounded-l-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" 
-                            value={nsec}
-                            readOnly
-                            disabled={!!nsec}
-                        />
-                        <button 
-                            onClick={() => copyToClipboard(nsec, 'Private')}
-                            className="text-white font-bold py-2.5 px-4 rounded-r-lg"
-                        >
-                            <ClipboardDocumentIcon className="h-5 w-5" />
-                        </button>
-                    </div>
-                </div>
-                <div className="pb-24">
+                <div className="pb-24 relative">
                     <label htmlFor="npub" className="block mb-2 text-sm font-medium text-white">Public Key (npub): </label>
                     <div className="flex">
                         <input type="text" id="npub" 
@@ -190,6 +188,37 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
                             <ClipboardDocumentIcon className="h-5 w-5" />
                         </button>
                     </div>
+                    {showNpubDialog && (
+                        <Ostrich
+                            show={true}
+                            onClose={() => {}}
+                            text="Your public key (npub) is your username that other users on Nostr can identify you with"
+                        />
+                    )}
+                </div>
+                <div className="pb-24 relative">
+                    <label htmlFor="nsec" className="block mb-2 text-sm font-medium text-white">Private Key (nsec): </label>
+                    <div className="flex">
+                        <input type="text" id="nsec" 
+                            className="text-gray-900 text-sm rounded-l-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" 
+                            value={nsec}
+                            readOnly
+                            disabled={!!nsec}
+                        />
+                        <button 
+                            onClick={() => copyToClipboard(nsec, 'Private')}
+                            className="text-white font-bold py-2.5 px-4 rounded-r-lg"
+                        >
+                            <ClipboardDocumentIcon className="h-5 w-5" />
+                        </button>
+                    </div>
+                    {showNsecDialog && (
+                        <Ostrich
+                            show={true}
+                            onClose={() => {}}
+                            text="Your private key (nsec) is your password, make sure to keep it safe"
+                        />
+                    )}
                 </div>
                 {!isLoggedIn && keyValue === "" && (
                     <>
