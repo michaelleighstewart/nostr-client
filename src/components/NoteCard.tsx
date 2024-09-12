@@ -328,7 +328,7 @@ interface Props {
     }
 
     const handleContentClick = () => {
-      navigate(`/post/${id}`);
+      navigate(`/note/${id}`);
     };
 
     const handleImageClick = (url: string) => {
@@ -505,7 +505,7 @@ interface Props {
               <ChatBubbleLeftIcon
                 className="h-6 w-6 text-[#535bf2] cursor-pointer"
                 title="View replies"
-                onClick={() => navigate(`/post/${id}`)}
+                onClick={() => navigate(`/note/${id}`)}
               />
             </div>
             <div className="p-4">

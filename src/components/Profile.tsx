@@ -49,6 +49,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     const [replyEvents, _setReplyEvents] = useState<ExtendedEvent[]>([]);
     const [isLoggedIn, _setIsLoggedIn] = useState<boolean | null>(nostrExists || !!keyValue);
     const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
+    const [hasOlderPosts, setHasOlderPosts] = useState(true);
 
     useEffect(() => {
         const fetchProfileData = async () => {
@@ -113,7 +114,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             }
             setLoadingProfile(false);
 
-            // Fetch posts
+            // Fetch notes
             const filter = { kinds: [1, 5, 6], authors: [fetchedPubkey], limit: 10 };
             await fetchData(pool, 0, false, 0, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
                 setLoading, setLoadingMore, setError, setPosts, posts, repostEvents, replyEvents, setLastFetchedTimestamp, 
@@ -161,9 +162,15 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
         if (!pool) return;
         setLoadingMore(true);
         const filter = { kinds: [1, 5, 6], authors: [pubkey], limit: 10, until: lastFetchedTimestamp };
+        const oldPostsCount = posts.length;
         await fetchData(pool, 0, true, lastFetchedTimestamp, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
             setLoading, setLoadingMore, setError, setPosts, posts, repostEvents, replyEvents, setLastFetchedTimestamp, 
             setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter);
+        
+        // Check if any new posts were loaded
+        if (posts.length === oldPostsCount) {
+            setHasOlderPosts(false);
+        }
     };
 
     // Sort posts and reposts by date
@@ -223,7 +230,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                 <Loading vCentered={false} />
             ) : (
                 <div>
-                    <h2 className="text-2xl font-bold mt-8 mb-4 pb-16">Recent Posts</h2>
+                    <h2 className="text-2xl font-bold mt-8 mb-4 pb-16">Recent Notes</h2>
                     {sortedPosts.length === 0 ? (
                         <p>No posts found.</p>
                     ) : (
@@ -259,14 +266,19 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                                     />
                                 </div>
                             ))}
-                            {!loadingMore && sortedPosts.length > 0 && (
+                            {!loadingMore && hasOlderPosts && (
                                 <div className="mt-8 mb-8 text-center">
-                                <button
-                                    onClick={handleLoadMore}
-                                    className="text-white font-bold py-3 px-6 rounded"
-                                >
+                                    <button
+                                        onClick={handleLoadMore}
+                                        className="text-white font-bold py-3 px-6 rounded"
+                                    >
                                         Load More
                                     </button>
+                                </div>
+                            )}
+                            {!loadingMore && !hasOlderPosts && (
+                                <div className="mt-8 mb-8 text-center text-gray-500">
+                                    No older notes available
                                 </div>
                             )}
                             {loadingMore && <Loading vCentered={false} />}

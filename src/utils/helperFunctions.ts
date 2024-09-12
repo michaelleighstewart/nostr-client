@@ -61,7 +61,7 @@ export async function sendZap(user: User, id: string) {
     await ln.fetch();
     const event = {
         satoshi: 10,
-        comment: "Awesome post!",
+        comment: "Awesome note!",
         relays: RELAYS,
         e: id
     };
@@ -91,7 +91,7 @@ export async function reactToPost(user: User, id: string, pool: SimplePool | nul
         sig: signedEvent.sig,
       };
     } catch {
-      console.log("Unable to react to post");
+      console.log("Unable to react to note");
     }
   }
   else {
@@ -108,7 +108,7 @@ export async function reactToPost(user: User, id: string, pool: SimplePool | nul
         sig: eventFinal.sig,
       };
     } catch {
-      console.log("Unable to react to post");
+      console.log("Unable to react to note");
     }
   }
   return null;
@@ -119,7 +119,7 @@ export async function deletePost(id: string, pool: SimplePool | null, nostrExist
   const event = {
     kind: 5,
     created_at: Math.floor(Date.now() / 1000),
-    content: "Post deleted",
+    content: "Note deleted",
     tags: [
       ['e', id],
       ['k', '1']
@@ -207,11 +207,9 @@ export async function sendMessage(
       await pool?.publish(RELAYS, eventFinal);
     }
     setMessage('');
-    //toast.success("Post sent successfully!");
     return true;
   } catch (error) {
     console.error("Error sending message: ", error);
-    //toast.error("Failed to send post. Please try again.");
     return false;
   } finally {
     setPosting(false);
@@ -260,12 +258,9 @@ export async function repostMessage(
       const eventFinal = finalizeEvent(eventWithPubkey, skDecoded);
       await pool.publish(RELAYS, eventFinal);
     }
-
-    //toast.success("Repost sent successfully!");
     return true;
   } catch (error) {
     console.error("Error reposting message: ", error);
-    //toast.error("Failed to repost. Please try again.");
     return false;
   }
 }

@@ -142,9 +142,9 @@ const Notifications: React.FC<NotificationsProps> = ({ pool, nostrExists, keyVal
                     {userData.name || notification.pubkey.slice(0, 8) + '...'}
                   </Link>
                   {notification.kind === 1 ? (
-                    <span> mentioned you in a post: </span>
+                    <span> mentioned you in a note: </span>
                   ) : (
-                    <span> reacted to your post </span>
+                    <span> reacted to your note </span>
                   )}
                   <p className="mt-2">{notification.content}</p>
                   <span className="text-sm text-gray-400">

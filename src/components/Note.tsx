@@ -23,7 +23,7 @@ interface Reply {
   reactions: Reaction[];
 }
 
-const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
+const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   const { id } = useParams<{ id: string }>();
   const [post, setPost] = useState<Reply | null>(null);
   const [replies, setReplies] = useState<Reply[]>([]);
@@ -318,8 +318,7 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   }, [pool, post, replies]);
 
   const handleReplyClick = (replyId: string) => {
-    // Use window.location.href instead of navigate
-    window.location.href = `/post/${replyId}`;
+    window.location.href = `/note/${replyId}`;
   };
 
   const handleReply = async () => {
@@ -447,4 +446,4 @@ const Post: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   );
 };
 
-export default Post;
+export default Note;

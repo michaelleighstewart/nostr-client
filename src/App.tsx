@@ -11,7 +11,7 @@ import Following from "./components/Following";
 import Notifications from "./components/Notifications";
 import Messages from "./components/Messages";
 import Conversation from "./components/Conversation";
-import Post from "./components/Post";
+import Note from "./components/Note";
 import Search from "./components/Search";
 import NavBar from "./components/NavBar";
 import { SimplePool } from "nostr-tools";
@@ -98,7 +98,7 @@ function App() {
             <Route path="followers/:pubkey" element={<Followers keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="following/:pubkey" element={<Following pool={pool} />} />
             <Route path="conversation/:id" element={<Conversation pool={pool} nostrExists={nostrExists} keyValue={key} />} />
-            <Route path="post/:id" element={<Post pool={pool} nostrExists={nostrExists} keyValue={key} />} />
+            <Route path="note/:id" element={<Note pool={pool} nostrExists={nostrExists} keyValue={key} />} />
             <Route path="search" element={<Search pool={pool} nostrExists={nostrExists} keyValue={key} />} />
           </Routes>
         </div>
