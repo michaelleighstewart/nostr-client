@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { SimplePool, Event, getPublicKey, nip04, finalizeEvent } from 'nostr-tools';
 import { RELAYS } from '../utils/constants';
 import { bech32Decoder } from '../utils/helperFunctions';
 import Loading from './Loading';
 import { toast } from 'react-toastify';
+import VideoEmbed from './VideoEmbed';
 
 interface ConversationProps {
   keyValue: string;
@@ -34,6 +35,8 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
   const [oldestMessageTimestamp, setOldestMessageTimestamp] = useState<number>(Math.floor(Date.now() / 1000));
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [userMetadata, setUserMetadata] = useState<Record<string, UserMetadata>>({});
+  const [hasOlderMessages, setHasOlderMessages] = useState(true);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const fetchUserPubkey = async () => {
@@ -53,7 +56,7 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
 
   const fetchMessages = async (until: number) => {
     if (!pool || !id || !userPubkey) return;
-
+    let gotAnyMessages = false;
     const sub = pool.subscribeMany(
       RELAYS,
       [
@@ -102,17 +105,22 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
             pubkey: event.pubkey,
           };
 
-          console.log("new message", newMessage);
-
           setMessages(prevMessages => {
             const updatedMessages = [...prevMessages, newMessage]
               .sort((a, b) => b.created_at - a.created_at);
+            if (updatedMessages.length > 0) {
+              gotAnyMessages = true;
+              setHasOlderMessages(true);
+            }
             return updatedMessages;
           });
 
           setOldestMessageTimestamp(prevTimestamp => Math.min(prevTimestamp, event.created_at));
         },
         oneose() {
+          if (!gotAnyMessages) {
+            setHasOlderMessages(false);
+          }
           setLoading(false);
           setLoadingOlderMessages(false);
         },
@@ -204,6 +212,39 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
     fetchMessages(oldestMessageTimestamp - 1);
   };
 
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNewMessage(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  };
+
+  const renderMessageContent = (content: string) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const imageRegex = /\.(jpeg|jpg|gif|png)$/i;
+    const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?(.+)/g;
+    const videoRegex = /\.(mp4|webm|ogg)$/i;
+
+    const parts = content.split(urlRegex);
+
+    return parts.map((part, index) => {
+      if (part.match(urlRegex)) {
+        if (part.match(imageRegex)) {
+          return <img key={index} src={part} alt="Embedded content" className="max-w-full h-auto" />;
+        } else if (part.match(youtubeRegex)) {
+          return <VideoEmbed key={index} url={part} />;
+        } else if (part.match(videoRegex)) {
+          return <video key={index} src={part} controls className="max-w-full h-auto" />;
+        } else {
+          return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{part}</a>;
+        }
+      } else {
+        return part;
+      }
+    });
+  };
+
   if (loading) return <Loading vCentered={false} />;
 
   const conversationPartner = id && userMetadata[id]?.name || id?.slice(0, 8) || 'Unknown';
@@ -212,12 +253,14 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
     <div className="container mx-auto px-4">
       <h1 className="text-2xl font-bold mb-4 pb-4">Conversation with {conversationPartner}</h1>
       <div className="flex mb-4 pb-64">
-        <input
-          type="text"
+        <textarea
+          ref={textareaRef}
           value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          className="flex-grow border rounded-l px-4 py-2 text-black"
+          onChange={handleTextareaChange}
+          className="flex-grow border rounded-l px-4 py-2 text-black resize-none overflow-hidden"
           placeholder="Type your message..."
+          rows={1}
+          style={{ minHeight: '40px' }}
         />
         <button
           onClick={handleSendMessage}
@@ -240,7 +283,7 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
               className="w-32 h-32 rounded-full mr-16"
             />
             <div>
-              <p>{message.content}</p>
+              <p>{renderMessageContent(message.content)}</p>
               <span className="text-xs text-gray-500">
                 {new Date(message.created_at * 1000).toLocaleString()}
               </span>
@@ -251,9 +294,9 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
       <button
         onClick={handleLoadOlderMessages}
         className="w-full bg-gray-200 text-gray-800 py-2 rounded"
-        disabled={loadingOlderMessages}
+        disabled={loadingOlderMessages || !hasOlderMessages}
       >
-        {loadingOlderMessages ? 'Loading...' : 'Load Older Messages'}
+        {loadingOlderMessages ? 'Loading...' : hasOlderMessages ? 'Load Older Messages' : 'No Older Messages'}
       </button>
     </div>
   );
