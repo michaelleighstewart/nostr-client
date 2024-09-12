@@ -82,12 +82,10 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
           notificationSub.close();
         }
       });
-
       const lastViewedMessageTimestamp = localStorage.getItem(`lastViewedMessage_${pubKey}`);
       const since = lastViewedMessageTimestamp 
-        ? parseInt(lastViewedMessageTimestamp, 10) 
+        ? parseInt(lastViewedMessageTimestamp)
         : Math.floor(Date.now() / 1000) - 24 * 60 * 60; // Last 24 hours if no timestamp
-
       const messageSub = props.pool.subscribeMany(RELAYS, [
         {
           kinds: [4], // Direct messages

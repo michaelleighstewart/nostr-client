@@ -111,7 +111,8 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
               gotAnyMessages = true;
               setHasOlderMessages(true);
               // Store the timestamp of the latest message
-              localStorage.setItem(`lastViewedMessage_${userPubkey}_${id}`, String(Math.max(...updatedMessages.map(m => m.created_at))));
+              console.log("storing timestamp", Math.max(...updatedMessages.map(m => m.created_at)));
+              localStorage.setItem(`lastViewedMessage_${userPubkey}`, String(Math.max(...updatedMessages.map(m => m.created_at))));
             }
             return updatedMessages;
           });
@@ -174,7 +175,7 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
           setMessages(prevMessages => {
             const updatedMessages = [newMessage, ...prevMessages];
             // Store the timestamp of the latest message
-            localStorage.setItem(`lastViewedMessage_${userPubkey}_${id}`, String(Math.max(...updatedMessages.map(m => m.created_at))));
+            localStorage.setItem(`lastViewedMessage_${userPubkey}`, String(Math.max(...updatedMessages.map(m => m.created_at))));
             return updatedMessages;
           });
         },
@@ -265,7 +266,7 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
     setMessages(prevMessages => {
       const updatedMessages = [newMessageObj, ...prevMessages];
       // Store the timestamp of the latest message
-      localStorage.setItem(`lastViewedMessage_${userPubkey}_${id}`, String(Math.max(...updatedMessages.map(m => m.created_at))));
+      localStorage.setItem(`lastViewedMessage_${userPubkey}`, String(Math.max(...updatedMessages.map(m => m.created_at))));
       return updatedMessages;
     });
     setNewMessage('');
