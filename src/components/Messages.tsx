@@ -31,7 +31,7 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [recipientNpub, setRecipientNpub] = useState('');
   const [messageContent, setMessageContent] = useState('');
-  const [isSending, setIsSending] = useState(false);
+  const [_isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -123,56 +123,6 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
         }
         return prevGroups;
       });
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!pool || !recipientNpub || !messageContent.trim()) return;
-
-    setIsSending(true);
-
-    try {
-      const recipientPubkey = nip19.decode(recipientNpub).data as string;
-      let userPubkey: string;
-      let encryptedContent: string;
-
-      if (nostrExists) {
-        userPubkey = await (window as any).nostr.getPublicKey();
-        encryptedContent = await (window as any).nostr.nip04.encrypt(recipientPubkey, messageContent);
-      } else {
-        const skDecoded = bech32Decoder('nsec', keyValue);
-        userPubkey = getPublicKey(skDecoded);
-        encryptedContent = await nip04.encrypt(skDecoded.toString('hex'), recipientPubkey, messageContent);
-      }
-
-      let event = {
-        kind: 4,
-        pubkey: userPubkey,
-        created_at: Math.floor(Date.now() / 1000),
-        tags: [['p', recipientPubkey]],
-        content: encryptedContent,
-      };
-
-      if (nostrExists) {
-        await (window as any).nostr.signEvent(event).then(async (eventToSend: any) => {
-          await pool?.publish(RELAYS, eventToSend);
-        });
-      } else {
-        let sk = keyValue;
-        let skDecoded = bech32Decoder('nsec', sk);
-        let eventFinal = finalizeEvent(event, skDecoded);
-        await pool?.publish(RELAYS, eventFinal);
-      }
-
-      showCustomToast("Message sent successfully!", "success");
-      setIsDialogOpen(false);
-      setRecipientNpub('');
-      setMessageContent('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-      showCustomToast("Failed to send message", "error");
-    } finally {
-      setIsSending(false);
     }
   };
 
