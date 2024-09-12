@@ -48,7 +48,6 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
       try {
         const pubKey = getPublicKey(new TextEncoder().encode(props.keyValue));
         setPublicKey(pubKey);
-        console.log("Public key set:", pubKey);
       } catch (error) {
         console.error("Error generating public key:", error);
       }
@@ -63,12 +62,10 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
           const skDecoded = bech32Decoder('nsec', props.keyValue);
           pubKey = getPublicKey(skDecoded);
           setPublicKey(pubKey);
-          console.log("Public key set:", pubKey);
         } catch (error) {
           console.error("Error decoding key or getting public key:", error);
         }
       }
-      console.log("Subscribing to notifications for public key:", pubKey);
       const sub = props.pool.subscribeMany(RELAYS, [
         {
           kinds: [1, 7], // Text notes and reactions
@@ -77,18 +74,15 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
         }
       ],
       {
-        onevent(event) {
-          console.log("Received a notification:", event);
+        onevent() {
           setNewNotifications(true);
         },
         oneose() {
-          console.log("Subscription completed");
           sub.close();
         }
       });
 
       return () => {
-        console.log("Closing subscription");
         sub.close();
       };
     }

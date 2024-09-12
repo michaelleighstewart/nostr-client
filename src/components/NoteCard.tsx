@@ -157,7 +157,6 @@ interface Props {
             }
             if (decoded.type === 'npub') {
               if (!metadata?.[decoded.data]) {
-                console.log("Subscribing to metadata for", decoded.data);
                 pool?.subscribeManyEose(RELAYS, [{
                   kinds: [0],
                   authors: [decoded.data]
