@@ -185,7 +185,7 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
     }
   };
 
-  const showFollowFunctionality = false;
+  const showFollowFunctionality = true;
 
   return (
     <div className="p-4">

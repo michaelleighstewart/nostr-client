@@ -116,6 +116,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             await fetchData(pool, 0, false, 0, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
                 setLoading, setLoadingMore, setError, setPosts, posts, repostEvents, replyEvents, setLastFetchedTimestamp, 
                 setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter);
+            setLoadingPosts(false);
         };
 
         fetchProfileData();
@@ -124,7 +125,6 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     useEffect(() => {
         if (!pool || posts.length === 0) return;
         fetchMetadataReactionsAndReplies(pool, posts, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
-        setLoadingPosts(false);
     }, [pool, posts]);
 
     const handleFollow = async () => {
@@ -250,7 +250,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                                     />
                                 </div>
                             ))}
-                            {!loadingMore && (
+                            {!loadingMore && sortedPosts.length > 0 && (
                                 <div className="mt-8 mb-8 text-center">
                                 <button
                                     onClick={handleLoadMore}
