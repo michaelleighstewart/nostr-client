@@ -65,15 +65,25 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
         ],
         {
           async onevent(event: Event) {
+            console.log("message event", event);
             let decryptedContent: string;
-            if (event.pubkey === userPubkey) {
-              decryptedContent = await (window as any).nostr.nip04.decrypt(event.tags[0][1], event.content);
-            } else {
+            try {
+              if (event.pubkey === userPubkey) {
                 if (nostrExists) {
-                    decryptedContent = await (window as any).nostr.nip04.decrypt(event.pubkey, event.content);
+                  decryptedContent = await (window as any).nostr.nip04.decrypt(id, event.content);
                 } else {
-                    decryptedContent = await nip04.decrypt(privateKey, event.pubkey, event.content);
+                  decryptedContent = await nip04.decrypt(privateKey, id, event.content);
                 }
+              } else {
+                if (nostrExists) {
+                  decryptedContent = await (window as any).nostr.nip04.decrypt(event.pubkey, event.content);
+                } else {
+                  decryptedContent = await nip04.decrypt(privateKey, event.pubkey, event.content);
+                }
+              }
+            } catch (error) {
+              console.error("Error decrypting message:", error);
+              decryptedContent = "Error decrypting message";
             }
 
             const newMessage: Message = {
@@ -82,6 +92,8 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
               created_at: event.created_at,
               pubkey: event.pubkey,
             };
+
+            console.log("new message", newMessage);
 
             setMessages(prevMessages => {
               const updatedMessages = [...prevMessages, newMessage]
@@ -161,10 +173,10 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
           <div
             key={message.id}
             className={`p-4 rounded-lg ${
-              message.pubkey === userPubkey ? 'bg-blue-100 ml-auto' : 'bg-gray-100'
+              message.pubkey === userPubkey ? 'bg-[#535bf2] bg-opacity-20 ml-auto text-white' : 'bg-gray-100 text-black'
             } max-w-[70%]`}
           >
-            <p className="text-black">{message.content}</p>
+            <p>{message.content}</p>
             <span className="text-xs text-gray-500">
               {new Date(message.created_at * 1000).toLocaleString()}
             </span>

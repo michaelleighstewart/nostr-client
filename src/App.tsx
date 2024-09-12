@@ -9,7 +9,7 @@ import PeopleToFollow from "./components/PeopleToFollow";
 import Followers from "./components/Followers";
 import Following from "./components/Following";
 import Notifications from "./components/Notifications";
-//import Messages from "./components/Messages";
+import Messages from "./components/Messages";
 import Conversation from "./components/Conversation";
 import Post from "./components/Post";
 import Search from "./components/Search";
@@ -92,6 +92,7 @@ function App() {
             <Route path="edit-profile" element={<EditProfile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="profile" element={<Profile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="notifications" element={<Notifications keyValue={key} pool={pool} nostrExists={nostrExists} />} />
+            <Route path="messages" element={<Messages keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="generate-key" element={<GenerateKey setKeyValue={handleSetKey} keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="people-to-follow" element={<PeopleToFollow keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="followers/:pubkey" element={<Followers keyValue={key} pool={pool} nostrExists={nostrExists} />} />

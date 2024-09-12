@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import * as React from 'react';
-import { HomeIcon, UserIcon, CogIcon, KeyIcon, UserGroupIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon, BellIcon } from '@heroicons/react/24/outline';
+import { HomeIcon, UserIcon, CogIcon, KeyIcon, UserGroupIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon, BellIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
 import { bech32Decoder, validatePrivateKey } from '../utils/helperFunctions';
 import { getPublicKey, SimplePool } from 'nostr-tools';
 import Ostrich from "./Ostrich";
@@ -20,6 +20,7 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
   const [_publicKey, setPublicKey] = useState<string>('');
   const location = useLocation();
   const [newNotifications, setNewNotifications] = useState<boolean>(false);
+  const [newMessages, setNewMessages] = useState<boolean>(false);
 
   useEffect(() => {
     const storedPrivateKey = localStorage.getItem('privateKey');
@@ -66,7 +67,7 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
           console.error("Error decoding key or getting public key:", error);
         }
       }
-      const sub = props.pool.subscribeMany(RELAYS, [
+      const notificationSub = props.pool.subscribeMany(RELAYS, [
         {
           kinds: [1, 7], // Text notes and reactions
           '#p': [pubKey ?? ""],
@@ -78,12 +79,29 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
           setNewNotifications(true);
         },
         oneose() {
-          sub.close();
+          notificationSub.close();
+        }
+      });
+
+      const messageSub = props.pool.subscribeMany(RELAYS, [
+        {
+          kinds: [4], // Direct messages
+          '#p': [pubKey ?? ""],
+          since: Math.floor(Date.now() / 1000) - 24 * 60 * 60 // Last 24 hours
+        }
+      ],
+      {
+        onevent() {
+          setNewMessages(true);
+        },
+        oneose() {
+          messageSub.close();
         }
       });
 
       return () => {
-        sub.close();
+        notificationSub.close();
+        messageSub.close();
       };
     }
   }, [props.pool, props.keyValue]);
@@ -148,6 +166,16 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
                 <div className="relative">
                   <BellIcon className="h-6 w-6 my-3" />
                   {newNotifications && (
+                    <div className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></div>
+                  )}
+                </div>
+              </Link>
+            </li>
+            <li className="inline-block mx-4 text-center pr-2">
+              <Link to="/messages" className={`flex flex-col items-center ${isActive("/messages")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
+                <div className="relative">
+                  <EnvelopeIcon className="h-6 w-6 my-3" />
+                  {newMessages && (
                     <div className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></div>
                   )}
                 </div>
