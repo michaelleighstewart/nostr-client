@@ -183,7 +183,7 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
       <div>
       <button
         onClick={() => setIsDialogOpen(true)}
-        className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-16 rounded mt-16 mb-16"
+        className="mb-4 bg-[#535bf2] hover:bg-[#535bf2]-700 text-white font-bold py-2 px-16 rounded mt-16 mb-16"
       >
           Send New Message
         </button>
@@ -217,9 +217,9 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
       </div>
       {isDialogOpen && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-gray-800">
             <div className="mt-3 text-center">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Send New Message</h3>
+              <h3 className="text-lg leading-6 font-medium text-white">Send New Message</h3>
               <div className="mt-2 px-7 py-3">
                 <input
                   type="text"
@@ -240,7 +240,7 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
                 <button
                   onClick={handleSendMessage}
                   disabled={isSending}
-                  className="px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  className="px-4 py-2 bg-[#535bf2]-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-[#535bf2]-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 >
                   {isSending ? 'Sending...' : 'Send'}
                 </button>

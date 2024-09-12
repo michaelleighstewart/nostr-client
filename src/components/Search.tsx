@@ -234,7 +234,7 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
               <button
                 onClick={() => handleFollow(result.npub, result.name || 'Unknown')}
                 className={`mt-4 flex items-center justify-center px-8 py-2 text-white rounded ${
-                  result.isFollowing ? 'bg-green-500' : 'bg-blue-500'
+                  result.isFollowing ? 'bg-green-500' : 'bg-[#535bf2]-500'
                 }`}
                 disabled={result.isFollowing}
               >
