@@ -4,8 +4,8 @@ import { SimplePool, Event, getPublicKey, nip04, finalizeEvent } from 'nostr-too
 import { RELAYS } from '../utils/constants';
 import { bech32Decoder } from '../utils/helperFunctions';
 import Loading from './Loading';
-import { toast } from 'react-toastify';
 import VideoEmbed from './VideoEmbed';
+import { showCustomToast } from './CustomToast';
 
 interface ConversationProps {
   keyValue: string;
@@ -118,6 +118,7 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
           setOldestMessageTimestamp(prevTimestamp => Math.min(prevTimestamp, event.created_at));
         },
         oneose() {
+          console.log("oneose");
           if (!gotAnyMessages) {
             setHasOlderMessages(false);
           }
@@ -133,7 +134,50 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
   };
 
   useEffect(() => {
-    fetchMessages(Math.floor(Date.now() / 1000));
+    const initialFetch = fetchMessages(Math.floor(Date.now() / 1000));
+    
+    // Set up a subscription for new messages
+    const newMessagesSub = pool?.subscribeMany(
+      RELAYS,
+      [
+        {
+          kinds: [4],
+          authors: [id ?? ''],
+          '#p': [userPubkey ?? ''],
+          since: Math.floor(Date.now() / 1000),
+        }
+      ],
+      {
+        async onevent(event: Event) {
+          console.log("New message event", event);
+          let decryptedContent: string;
+          try {
+            if (nostrExists) {
+              decryptedContent = await (window as any).nostr.nip04.decrypt(event.pubkey, event.content);
+            } else {
+              decryptedContent = await nip04.decrypt(privateKey, event.pubkey, event.content);
+            }
+          } catch (error) {
+            console.error("Error decrypting new message:", error);
+            decryptedContent = "Error decrypting message";
+          }
+
+          const newMessage: Message = {
+            id: event.id,
+            content: decryptedContent,
+            created_at: event.created_at,
+            pubkey: event.pubkey,
+          };
+
+          setMessages(prevMessages => [newMessage, ...prevMessages]);
+        },
+      }
+    );
+
+    return () => {
+      initialFetch.then(unsubscribe => unsubscribe?.());
+      newMessagesSub?.close();
+    };
   }, [pool, id, userPubkey, nostrExists, privateKey]);
 
   useEffect(() => {
@@ -192,18 +236,29 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
       content: encryptedContent,
     };
 
+    let signedEvent;
     if (nostrExists) {
-        await (window as any).nostr.signEvent(event).then(async (eventToSend: any) => {
-            await pool?.publish(RELAYS, eventToSend);
-        });
-    }
-    else {
+        signedEvent = await (window as any).nostr.signEvent(event);
+    } else {
         let sk = keyValue;
         let skDecoded = bech32Decoder('nsec', sk);
-        let eventFinal = finalizeEvent(event, skDecoded);
-        await pool?.publish(RELAYS, eventFinal);
+        signedEvent = finalizeEvent(event, skDecoded);
     }
-    toast.success("Message sent successfully!");
+
+    await pool?.publish(RELAYS, signedEvent);
+
+    // Add the new message to the messages state
+    const newMessageObj: Message = {
+      id: signedEvent.id,
+      content: newMessage,
+      created_at: signedEvent.created_at,
+      pubkey: userPubkey,
+    };
+
+    setMessages(prevMessages => [newMessageObj, ...prevMessages]);
+
+    //toast.success("Message sent successfully!");
+    showCustomToast("Message sent successfully!", "success");
     setNewMessage('');
   };
 
