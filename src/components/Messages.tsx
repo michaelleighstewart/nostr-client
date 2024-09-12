@@ -3,9 +3,7 @@ import { Link } from 'react-router-dom';
 import { RELAYS } from '../utils/constants';
 import { bech32Decoder } from '../utils/helperFunctions';
 import Loading from './Loading';
-import { SimplePool, Event, getPublicKey, nip04, finalizeEvent } from 'nostr-tools';
-import { showCustomToast } from './CustomToast';
-import { nip19 } from 'nostr-tools';
+import { SimplePool, Event, getPublicKey } from 'nostr-tools';
 import NewMessageDialog from './NewMessageDialog';
 
 interface MessagesProps {
@@ -29,9 +27,6 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
   const [messageGroups, setMessageGroups] = useState<MessageGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [recipientNpub, setRecipientNpub] = useState('');
-  const [messageContent, setMessageContent] = useState('');
-  const [_isSending, setIsSending] = useState(false);
 
   useEffect(() => {
     const fetchMessages = async () => {

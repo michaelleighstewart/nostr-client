@@ -5,7 +5,6 @@ import { RELAYS } from '../utils/constants';
 import { bech32Decoder } from '../utils/helperFunctions';
 import Loading from './Loading';
 import VideoEmbed from './VideoEmbed';
-import { showCustomToast } from './CustomToast';
 
 interface ConversationProps {
   keyValue: string;
@@ -256,9 +255,6 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
     };
 
     setMessages(prevMessages => [newMessageObj, ...prevMessages]);
-
-    //toast.success("Message sent successfully!");
-    showCustomToast("Message sent successfully!", "success");
     setNewMessage('');
   };
 
