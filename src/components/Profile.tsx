@@ -3,13 +3,14 @@ import { SimplePool } from "nostr-tools";
 import { useLocation, Link } from "react-router-dom";
 import { bech32Decoder } from "../utils/helperFunctions";
 import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";
-import { getPublicKey, finalizeEvent } from "nostr-tools";
+import { getPublicKey, finalizeEvent, nip19 } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import NoteCard from "./NoteCard";
-import { UserGroupIcon, UsersIcon, UserPlusIcon } from '@heroicons/react/24/outline';
+import { UserGroupIcon, UsersIcon, UserPlusIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { showCustomToast } from "./CustomToast";
 import { fetchMetadataReactionsAndReplies, fetchData } from "../utils/noteUtils";
+import NewMessageDialog from "./NewMessageDialog";
 
 interface ProfileProps {
     npub?: string;
@@ -47,6 +48,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     const [repostEvents, _setRepostEvents] = useState<ExtendedEvent[]>([]);
     const [replyEvents, _setReplyEvents] = useState<ExtendedEvent[]>([]);
     const [isLoggedIn, _setIsLoggedIn] = useState<boolean | null>(nostrExists || !!keyValue);
+    const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
 
     useEffect(() => {
         const fetchProfileData = async () => {
@@ -186,12 +188,19 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                             {!isFollowing && (
                                 <button
                                     onClick={handleFollow}
-                                    className="text-white font-bold py-4 px-12 rounded flex items-center"
+                                    className="text-white font-bold py-4 px-12 rounded flex items-center mr-2"
                                 >
                                     <UserPlusIcon className="h-5 w-5 mr-2" />
                                     Follow
                                 </button>
                             )}
+                            <button
+                                onClick={() => setIsMessageDialogOpen(true)}
+                                className="text-white font-bold py-4 px-12 rounded flex items-center"
+                            >
+                                <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
+                                Message
+                            </button>
                         </div>
                     </div>
                     <p className="text-gray-600 mb-4">{profileData?.about}</p>
@@ -265,6 +274,14 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                     )}
                 </div>
             )}
+            <NewMessageDialog
+                isOpen={isMessageDialogOpen}
+                onClose={() => setIsMessageDialogOpen(false)}
+                pool={pool}
+                nostrExists={nostrExists}
+                keyValue={keyValue}
+                initialRecipientNpub={nip19.npubEncode(pubkey)}
+            />
         </div>
     );
 };
