@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { SimplePool, Event, getPublicKey, nip04, finalizeEvent } from 'nostr-tools';
 import { RELAYS } from '../utils/constants';
 import { bech32Decoder } from '../utils/helperFunctions';
@@ -328,11 +328,13 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
               message.pubkey === userPubkey ? 'bg-[#535bf2] bg-opacity-20 ml-auto text-white' : 'bg-gray-100 text-black'
             } max-w-[70%]`}
           >
-            <img
-              src={userMetadata[message.pubkey]?.picture || 'default-avatar.png'}
-              alt={userMetadata[message.pubkey]?.name || 'User'}
-              className="w-32 h-32 rounded-full mr-16"
-            />
+            <Link to={`/profile?npub=${message.pubkey}`}>
+              <img
+                src={userMetadata[message.pubkey]?.picture || 'default-avatar.png'}
+                alt={userMetadata[message.pubkey]?.name || 'User'}
+                className="w-32 h-32 rounded-full mr-16"
+              />
+            </Link>
             <div>
               <p>{renderMessageContent(message.content)}</p>
               <span className="text-xs text-gray-500">
