@@ -83,16 +83,23 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
         }
       });
 
+      const lastViewedMessageTimestamp = localStorage.getItem(`lastViewedMessage_${pubKey}`);
+      const since = lastViewedMessageTimestamp 
+        ? parseInt(lastViewedMessageTimestamp, 10) 
+        : Math.floor(Date.now() / 1000) - 24 * 60 * 60; // Last 24 hours if no timestamp
+
       const messageSub = props.pool.subscribeMany(RELAYS, [
         {
           kinds: [4], // Direct messages
           '#p': [pubKey ?? ""],
-          since: Math.floor(Date.now() / 1000) - 24 * 60 * 60 // Last 24 hours
+          since
         }
       ],
       {
-        onevent() {
-          setNewMessages(true);
+        onevent(event) {
+          if (event.created_at > since) {
+            setNewMessages(true);
+          }
         },
         oneose() {
           messageSub.close();
@@ -115,6 +122,7 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
 
   const handleLogout = () => {
     localStorage.removeItem('privateKey');
+    localStorage.removeItem(`lastViewedMessage_${_publicKey}`);
     props.setKey('');
     setPublicKey('');
   };
