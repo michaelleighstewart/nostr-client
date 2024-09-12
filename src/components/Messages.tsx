@@ -183,29 +183,38 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
       <div>
       <button
         onClick={() => setIsDialogOpen(true)}
-        className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-16 rounded mt-16"
+        className="mb-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-16 rounded mt-16 mb-16"
       >
           Send New Message
         </button>
       </div>
-      {messageGroups.map((group) => (
-        <Link
-          key={group.pubkey}
-          to={`/conversation/${group.pubkey}`}
-          className="block border-b border-gray-200 py-4 hover:bg-gray-50"
-        >
-          <div className="flex items-center">
-            <div className="flex-grow">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold">{group.userInfo?.name || group.pubkey.slice(0, 8)}</span>
-                <span className="text-sm text-gray-500">
-                  {new Date(group.messages[group.messages.length - 1].created_at * 1000).toLocaleString()}
-                </span>
+      <div className="p-16">
+        {messageGroups.map((group) => (
+          <Link
+            key={group.pubkey}
+            to={`/conversation/${group.pubkey}`}
+            className="block border-b border-gray-200 py-32 hover:bg-gray-50"
+          >
+            <div className="flex items-center pl-16 pr-16">
+              {group.userInfo?.picture && (
+                <img
+                  src={group.userInfo.picture}
+                  alt={group.userInfo.name || "User"}
+                  className="w-64 h-64 rounded-full mr-4"
+                />
+              )}
+              <div className="flex-grow">
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold">{group.userInfo?.name || group.pubkey.slice(0, 8)}</span>
+                  <span className="text-sm text-gray-500">
+                    {new Date(group.messages[group.messages.length - 1].created_at * 1000).toLocaleString()}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        </Link>
-      ))}
+          </Link>
+        ))}
+      </div>
       {isDialogOpen && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
