@@ -50,6 +50,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     const [isLoggedIn, _setIsLoggedIn] = useState<boolean | null>(nostrExists || !!keyValue);
     const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
     const [hasOlderPosts, setHasOlderPosts] = useState(true);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchProfileData = async () => {
@@ -189,9 +190,16 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             {profileData ? (
                 <div className="flex flex-col items-center">
                     <div className="flex items-center mb-4">
-                        {profileData?.picture && <img src={profileData.picture} alt="Profile" className="w-32 h-32 rounded-full mr-4" />}
+                        {profileData?.picture && (
+                            <img 
+                                src={profileData.picture} 
+                                alt="Profile" 
+                                className="w-64 h-64 rounded-full mr-4 cursor-pointer" 
+                                onClick={() => setSelectedImage(profileData.picture ?? null)}
+                            />
+                        )}
                         <div className="flex items-center">
-                            <h1 className="text-3xl font-bold mr-4 pr-12">{profileData?.name}</h1>
+                            <h1 className="text-3xl font-bold mr-4 pr-12 pl-12">{profileData?.name}</h1>
                             {!isFollowing && (
                                 <button
                                     onClick={handleFollow}
@@ -294,6 +302,19 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                 keyValue={keyValue}
                 initialRecipientNpub={nip19.npubEncode(pubkey)}
             />
+            {selectedImage && (
+                <div 
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+                    onClick={() => setSelectedImage(null)}
+                >
+                    <img 
+                        src={selectedImage} 
+                        alt="Full size profile" 
+                        className="max-w-full max-h-full object-contain"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
         </div>
     );
 };
