@@ -189,36 +189,38 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
         <div className="py-64">
             {profileData ? (
                 <div className="flex flex-col items-center">
-                    <div className="flex items-center mb-4">
+                    <div className="flex flex-col sm:flex-row items-center mb-4">
                         {profileData?.picture && (
                             <img 
                                 src={profileData.picture} 
                                 alt="Profile" 
-                                className="w-64 h-64 rounded-full mr-4 cursor-pointer" 
+                                className="w-64 h-64 rounded-full mb-4 sm:mb-0 sm:mr-4 cursor-pointer" 
                                 onClick={() => setSelectedImage(profileData.picture ?? null)}
                             />
                         )}
-                        <div className="flex items-center">
-                            <h1 className="text-3xl font-bold mr-4 pr-12 pl-12">{profileData?.name}</h1>
-                            {!isFollowing && (
+                        <div className="flex flex-col items-center sm:items-start">
+                            <h1 className="text-3xl font-bold mb-4 sm:mb-2">{profileData?.name}</h1>
+                            <div className="flex flex-col sm:flex-row items-center">
+                                {!isFollowing && (
+                                    <button
+                                        onClick={handleFollow}
+                                        className="text-white font-bold py-2 px-6 rounded flex items-center mb-2 sm:mb-0 sm:mr-2"
+                                    >
+                                        <UserPlusIcon className="h-5 w-5 mr-2" />
+                                        Follow
+                                    </button>
+                                )}
                                 <button
-                                    onClick={handleFollow}
-                                    className="text-white font-bold py-4 px-12 rounded flex items-center mr-2"
+                                    onClick={() => setIsMessageDialogOpen(true)}
+                                    className="text-white font-bold py-2 px-6 rounded flex items-center"
                                 >
-                                    <UserPlusIcon className="h-5 w-5 mr-2" />
-                                    Follow
+                                    <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
+                                    Message
                                 </button>
-                            )}
-                            <button
-                                onClick={() => setIsMessageDialogOpen(true)}
-                                className="text-white font-bold py-4 px-12 rounded flex items-center"
-                            >
-                                <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
-                                Message
-                            </button>
+                            </div>
                         </div>
                     </div>
-                    <p className="text-gray-600 mb-4">{profileData?.about}</p>
+                    <p className="text-gray-600 mb-4 text-center sm:text-left">{profileData?.about}</p>
                     <div className="flex items-center space-x-8 mb-4">
                         <Link to={`/followers/${pubkey}`} className="flex items-center">
                             <UserGroupIcon className="h-6 w-6 mr-2" />
