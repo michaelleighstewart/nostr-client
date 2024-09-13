@@ -447,12 +447,14 @@ interface Props {
           {hashtags
             .filter((t) => hashtags.indexOf(t) === hashtags.lastIndexOf(t))
             .map((hashtag) => (
-              <li
+              <Link
                 key={hashtag}
-                className="bg-gray-300 text-body5 text-gray-900 font-medium rounded-24 px-12 py-4"
+                to={`/people-to-follow?hashtag=${hashtag}`}
+                className="bg-gray-300 text-body5 text-gray-900 font-medium rounded-24 px-12 py-4 hover:underline"
+                onClick={(e) => e.stopPropagation()}
               >
                 #{hashtag}
-              </li>
+              </Link>
             ))}
         </ul>
       <div className="flex flex-wrap items-center justify-start">
