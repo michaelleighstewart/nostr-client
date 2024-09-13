@@ -76,7 +76,7 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
     }, [pool, pubkey]);
 
     if (loading) {
-        return <Loading vCentered={false} />;
+        return <div className="h-screen"><Loading vCentered={false} /></div>;
     }
 
     return (

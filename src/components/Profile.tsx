@@ -182,7 +182,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     });
 
     if (loadingProfile) {
-        return <Loading vCentered={false} />;
+        return <div className="h-screen"><Loading vCentered={false} /></div>;
     }
 
     return (
@@ -237,7 +237,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             )}
 
             {loadingPosts ? (
-                <Loading vCentered={false} />
+                <div className="h-screen"><Loading vCentered={false} /></div>
             ) : (
                 <div>
                     <h2 className="text-2xl font-bold mt-8 mb-4 pb-16">Recent Notes</h2>

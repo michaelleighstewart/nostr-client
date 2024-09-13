@@ -166,7 +166,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
     };
 
     if (isLoading) {
-        return <Loading vCentered={true} />;
+        return <div className="h-screen"><Loading vCentered={true} /></div>;
     }
 
     return (

@@ -361,7 +361,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   };
 
   if (loading) {
-    return <Loading vCentered={false} />;
+    return <div className="h-screen"><Loading vCentered={false} /></div>;
   }
 
   if (!post) {

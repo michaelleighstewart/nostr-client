@@ -126,6 +126,8 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
   };
 
   return (
+    <div className="w-full overflow-hidden">
+      <nav className="w-full max-w-4xl mx-auto">
     <div className="inset-0 flex flex-col items-center">
       <nav className="w-full max-w-4xl">
         <ul className="flex flex-col items-center">
@@ -220,7 +222,9 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
         )}
       </nav>
 
-      <Outlet />
+          <Outlet />
+        </div>
+      </nav>
     </div>
   );
 };

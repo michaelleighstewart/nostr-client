@@ -124,7 +124,7 @@ const Notifications: React.FC<NotificationsProps> = ({ pool, nostrExists, keyVal
     fetchUserMetadata();
   }, [pool, notifications]);
 
-  if (loading) return <Loading vCentered={false} />;
+  if (loading) return <div className="h-screen"><Loading vCentered={false} /></div>;
 
   return (
     <div className="p-4">

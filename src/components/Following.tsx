@@ -79,7 +79,7 @@ const Following: React.FC<FollowingProps> = ({ pool }) => {
     }, [pool, pubkey]);
 
     if (loading) {
-        return <Loading vCentered={false} />;
+        return <div className="h-screen"><Loading vCentered={false} /></div>;
     }
 
     return (

@@ -206,7 +206,7 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
         </button>
       </div>
       {isLoading ? (
-        <Loading vCentered={false} />
+          <div className="h-screen"><Loading vCentered={false} /></div>
       ) : hasSearched && searchResults.length === 0 ? (
         <p className="text-center">No results found</p>
       ) : (

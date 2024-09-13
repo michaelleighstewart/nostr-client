@@ -253,11 +253,11 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     };
 
     if (loading) {
-        return <Loading vCentered={false} />
+        return (<div className="h-screen"><Loading vCentered={false} /></div>);
     }
 
     return (
-        <div className="py-64">
+        <div className="py-64 overflow-x-hidden">
             <div className="flex flex-col items-center mb-8">
                 <div className="flex flex-wrap justify-center gap-2 mb-6 px-4">
                     {hashtags.map((hashtag) => (

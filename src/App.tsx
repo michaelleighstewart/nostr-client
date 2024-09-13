@@ -82,7 +82,7 @@ function App() {
 
     return (
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 overflow-x-hidden">
-        <div className={`relative ${!isLoggedIn && isHomePage ? 'z-50' : ''}`}>
+        <div className={`relative ${!isLoggedIn && isHomePage ? 'z-50' : ''} overflow-y-hidden`}>
           <NavBar keyValue={key} setKey={setKey} nostrExists={nostrExists} pool={pool} />
         </div>
         <div className={`${!isLoggedIn ? 'pointer-events-none' : ''}`}>

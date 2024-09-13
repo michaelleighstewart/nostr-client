@@ -310,7 +310,7 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
     });
   };
 
-  if (loading) return <Loading vCentered={false} />;
+  if (loading) return <div className="h-screen"><Loading vCentered={false} /></div>;
 
   const conversationPartner = id && userMetadata[id]?.name || id?.slice(0, 8) || 'Unknown';
 

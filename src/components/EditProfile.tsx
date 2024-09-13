@@ -147,7 +147,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
         }
     }
 
-    if (loading || saving) return <Loading vCentered={false}></Loading>
+    if (loading || saving) return <div className="h-screen"><Loading vCentered={false}></Loading></div>
 
     return (
         <div className="py-64">
@@ -190,7 +190,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                     >
                         {uploadingPicture ? 'Uploading...' : 'Choose File'}
                     </button>
-                    {uploadingPicture && <Loading vCentered={false} />}
+                    {uploadingPicture && <div className="h-screen"><Loading vCentered={false} /></div>}
                     {picture && !uploadingPicture && (
                         <img src={picture} alt="Profile" className="mt-2 w-80 h-80 object-cover rounded-full" />
                     )}

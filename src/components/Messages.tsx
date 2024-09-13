@@ -141,7 +141,7 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
     }
   };
 
-  if (loading) return <Loading vCentered={false} />;
+  if (loading) return <div className="h-screen"><Loading vCentered={false} /></div>;
 
   return (
     <div className="container mx-auto px-4">
