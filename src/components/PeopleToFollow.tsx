@@ -30,7 +30,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     const [peopleToFollow, setPeopleToFollow] = useState<Person[]>([]);
     const [loading, setLoading] = useState(true);
     const [followingList, setFollowingList] = useState<string[]>([]);
-    const [selectedHashtag, setSelectedHashtag] = useState<string>("bitcoin");
+    const [selectedHashtag, setSelectedHashtag] = useState<string>("");
     const [customHashtag, setCustomHashtag] = useState<string>("");
     const [searchingPeople, setSearchingPeople] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -52,6 +52,8 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                 return prevHashtags;
             });
             setSelectedHashtag(hashtagParam);
+        } else if (selectedHashtag === "") {
+            setSelectedHashtag("bitcoin");
         }
     }, [location]);
 
