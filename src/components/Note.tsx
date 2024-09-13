@@ -376,7 +376,6 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   return (
     <div className="space-y-4">
       <Helmet>
-        <title>{ogTitle}</title>
         <meta name="description" content={ogDescription} />
         <meta property="og:title" content={ogTitle} />
         <meta property="og:description" content={ogDescription} />
