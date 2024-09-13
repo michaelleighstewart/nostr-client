@@ -259,12 +259,12 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     return (
         <div className="py-64">
             <div className="flex flex-col items-center mb-8">
-                <div className="flex justify-center space-x-4 mb-6 px-4">
+                <div className="flex flex-wrap justify-center gap-2 mb-6 px-4">
                     {hashtags.map((hashtag) => (
                         <button
                             key={hashtag}
                             onClick={() => setSelectedHashtag(hashtag)}
-                            className={`px-16 py-2 rounded ${
+                            className={`px-4 py-2 rounded text-sm ${
                                 selectedHashtag === hashtag
                                     ? 'text-white'
                                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -274,17 +274,17 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                         </button>
                     ))}
                 </div>
-                <form onSubmit={handleCustomHashtagSubmit} className="flex pb-32">
+                <form onSubmit={handleCustomHashtagSubmit} className="flex pb-32 w-full max-w-md px-4">
                     <input
                         type="text"
                         value={customHashtag}
                         onChange={(e) => setCustomHashtag(e.target.value)}
                         placeholder="Enter custom hashtag"
-                        className="px-4 py-2 w-96 border rounded-l focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                        className="px-4 py-2 flex-grow border rounded-l focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
                     />
                     <button
                         type="submit"
-                        className="px-4 py-2 text-white rounded-r"
+                        className="px-4 py-2 text-white rounded-r whitespace-nowrap"
                     >
                         Search
                     </button>
@@ -316,11 +316,11 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                                             <UserCircleIcon className="w-16 h-16 text-gray-300 mr-4" />
                                         )}
                                     </Link>
-                                    <div>
-                                        <span className="font-semibold pr-16">{person.name}</span>
+                                    <div className="flex-grow">
+                                        <span className="font-semibold block mb-2">{person.name}</span>
                                         <button 
                                             onClick={() => handleFollow(person)}
-                                            className={`ml-4 px-16 py-2 rounded ${
+                                            className={`px-4 py-2 rounded ${
                                                 followingList.includes(nip19.decode(person.npub).data as string)
                                                     ? 'bg-gray-400 cursor-not-allowed'
                                                     : 'text-white'
