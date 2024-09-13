@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { RELAYS } from '../utils/constants';
 import { bech32Decoder } from '../utils/helperFunctions';
 import Loading from './Loading';
-import { SimplePool, Event, getPublicKey } from 'nostr-tools';
+import { SimplePool, Event, getPublicKey, SubCloser } from 'nostr-tools';
 import NewMessageDialog from './NewMessageDialog';
 
 interface MessagesProps {
@@ -27,7 +27,7 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
   const [messageGroups, setMessageGroups] = useState<MessageGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const subscriptionMap = new Map<string, Sub>(); // To store subscriptions
+  const subscriptionMap = new Map<string, SubCloser>(); // To store subscriptions
 
   useEffect(() => {
     const fetchMessages = async () => {
