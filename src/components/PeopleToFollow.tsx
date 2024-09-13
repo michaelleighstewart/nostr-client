@@ -4,7 +4,7 @@ import { RELAYS } from "../utils/constants";
 import { bech32Decoder } from "../utils/helperFunctions";
 import Loading from "./Loading";
 import { Link, useLocation } from "react-router-dom";
-import { UserCircleIcon } from '@heroicons/react/24/solid';
+import { UserCircleIcon, UserPlusIcon, CheckIcon } from '@heroicons/react/24/solid';
 import Ostrich from "./Ostrich";
 
 interface PeopleToFollowProps {
@@ -259,12 +259,12 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     return (
         <div className="py-64">
             <div className="flex flex-col items-center mb-8">
-                <div className="flex justify-center space-x-4 mb-4">
+                <div className="flex justify-center space-x-4 mb-6 px-4">
                     {hashtags.map((hashtag) => (
                         <button
                             key={hashtag}
                             onClick={() => setSelectedHashtag(hashtag)}
-                            className={`px-4 py-2 rounded ${
+                            className={`px-16 py-2 rounded ${
                                 selectedHashtag === hashtag
                                     ? 'text-white'
                                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -274,13 +274,13 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                         </button>
                     ))}
                 </div>
-                <form onSubmit={handleCustomHashtagSubmit} className="flex">
+                <form onSubmit={handleCustomHashtagSubmit} className="flex pb-32">
                     <input
                         type="text"
                         value={customHashtag}
                         onChange={(e) => setCustomHashtag(e.target.value)}
                         placeholder="Enter custom hashtag"
-                        className="px-4 py-2 border rounded-l focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                        className="px-4 py-2 w-96 border rounded-l focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
                     />
                     <button
                         type="submit"
@@ -320,14 +320,24 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                                         <span className="font-semibold pr-16">{person.name}</span>
                                         <button 
                                             onClick={() => handleFollow(person)}
-                                            className={`ml-4 px-16 py-4 rounded ${
+                                            className={`ml-4 px-16 py-2 rounded ${
                                                 followingList.includes(nip19.decode(person.npub).data as string)
                                                     ? 'bg-gray-400 cursor-not-allowed'
                                                     : 'text-white'
                                             }`}
                                             disabled={followingList.includes(nip19.decode(person.npub).data as string)}
                                         >
-                                            {followingList.includes(nip19.decode(person.npub).data as string) ? 'Following' : 'Follow'}
+                                            {followingList.includes(nip19.decode(person.npub).data as string) ? (
+                                                <>
+                                                    <CheckIcon className="h-5 w-5 inline-block mr-2" />
+                                                    Following
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <UserPlusIcon className="h-5 w-5 inline-block mr-2" />
+                                                    Follow
+                                                </>
+                                            )}
                                         </button>
                                     </div>
                                 </div>
