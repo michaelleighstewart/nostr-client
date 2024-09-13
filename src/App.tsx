@@ -81,7 +81,7 @@ function App() {
     const isHomePage = location.pathname === '/';
 
     return (
-      <>
+      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 overflow-x-hidden">
         <div className={`relative ${!isLoggedIn && isHomePage ? 'z-50' : ''}`}>
           <NavBar keyValue={key} setKey={setKey} nostrExists={nostrExists} pool={pool} />
         </div>
@@ -102,7 +102,7 @@ function App() {
             <Route path="search" element={<Search pool={pool} nostrExists={nostrExists} keyValue={key} />} />
           </Routes>
         </div>
-      </>
+      </div>
     );
   }
 
