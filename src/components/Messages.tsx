@@ -27,6 +27,7 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
   const [messageGroups, setMessageGroups] = useState<MessageGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const subscriptionMap = new Map<string, Sub>(); // To store subscriptions
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -64,6 +65,14 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
                   ...prevGroups[groupIndex],
                   messages: [...prevGroups[groupIndex].messages, event].sort((a, b) => a.created_at - b.created_at),
                 };
+                
+                // Unsubscribe after receiving the first message
+                if (subscriptionMap.has(otherPubkey)) {
+                  const userSub = subscriptionMap.get(otherPubkey);
+                  userSub?.close();
+                  subscriptionMap.delete(otherPubkey);
+                }
+
                 return [
                   ...prevGroups.slice(0, groupIndex),
                   updatedGroup,
@@ -71,6 +80,14 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
                 ];
               } else {
                 const newGroup = { pubkey: otherPubkey, messages: [event], userInfo: null };
+                
+                // Unsubscribe after receiving the first message
+                if (subscriptionMap.has(otherPubkey)) {
+                  const userSub = subscriptionMap.get(otherPubkey);
+                  userSub?.close();
+                  subscriptionMap.delete(otherPubkey);
+                }
+                
                 fetchUserMetadata(otherPubkey);
                 return [...prevGroups, newGroup];
               }
@@ -81,6 +98,9 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
           },
         }
       );
+
+      // Track subscription for the user
+      subscriptionMap.set(userPubkey, sub);
 
       return () => {
         sub.close();
