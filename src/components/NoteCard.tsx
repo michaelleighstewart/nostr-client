@@ -186,6 +186,17 @@ interface Props {
                   {name}
                 </Link>
               );
+            } else if (decoded.type === 'note') {
+              result.push(
+                <Link 
+                  key={`note-${index}-${match.index}`}
+                  to={`/note/${decoded.data}`}
+                  className="text-blue-500 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {nostrEntity}
+                </Link>
+              );
             } else {
               result.push(
                 <Link 
