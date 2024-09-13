@@ -81,7 +81,7 @@ function App() {
     const isHomePage = location.pathname === '/';
 
     return (
-      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 overflow-x-hidden">
+      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 overflow-x-hidden overflow-y-hidden">
         <div className={`relative ${!isLoggedIn && isHomePage ? 'z-50' : ''} overflow-y-hidden`}>
           <NavBar keyValue={key} setKey={setKey} nostrExists={nostrExists} pool={pool} />
         </div>
@@ -107,7 +107,7 @@ function App() {
   }
 
   return (
-    <div className="h-full">
+    <div className="h-full overflow-y-hidden">
       <Router>
         <AppContent />
       </Router>
