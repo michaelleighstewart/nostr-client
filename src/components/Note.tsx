@@ -369,18 +369,22 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
     return <div>Post not found</div>;
   }
 
+  const ogTitle = `Note by ${metadata[post.pubkey]?.name || 'Unknown'}`;
+  const ogDescription = post.content.slice(0, 200);
+  const ogImage = metadata[post.pubkey]?.picture || 'https://ghostcopywrite.com/ostrich.png';
+
   return (
     <div className="space-y-4">
       <Helmet>
-      <title>{`Note by ${metadata[post.pubkey]?.name || 'Unknown'}`}</title>
-      <meta property="og:title" content={`Note by ${metadata[post.pubkey]?.name || 'Unknown'}`} />
-      <meta property="og:description" content={post.content.slice(0, 200)} />
-      <meta property="og:url" content={`https://ghostcopywrite.com/note/${id}`} />
-      <meta property="og:type" content="article" />
-      {metadata[post.pubkey]?.picture && (
-        <meta property="og:image" content={metadata[post.pubkey].picture} />
-      )}
-    </Helmet>
+        <title>{ogTitle}</title>
+        <meta name="description" content={ogDescription} />
+        <meta property="og:title" content={ogTitle} />
+        <meta property="og:description" content={ogDescription} />
+        <meta property="og:image" content={`https://ogp.vercel.app/api/ogp?title=${encodeURIComponent(ogTitle)}&description=${encodeURIComponent(ogDescription)}&image=${encodeURIComponent(ogImage)}`} />
+        <meta property="og:url" content={`https://ghostcopywrite.com/note/${id}`} />
+        <meta property="og:type" content="article" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       <NoteCard
         isPreview={false}
         id={post.id}
