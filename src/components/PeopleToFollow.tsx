@@ -295,60 +295,74 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
             ) : peopleToFollow.length === 0 ? (
                 <p className="text-center">No people to follow for #{selectedHashtag}</p>
             ) : (
-                <div ref={carouselRef} className="relative w-full max-w-3xl mx-auto overflow-hidden">
-                    <div className="flex transition-transform duration-300 ease-in-out" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
-                        {peopleToFollow.map((person, index) => (
-                            <div key={index} className="w-full flex-shrink-0 p-4">
-                                <div className="flex items-center mb-4 pb-16">
-                                    <Link to={`/profile?npub=${person.npub}`}>
-                                        {person.picture ? (
-                                            <img 
-                                                src={person.picture} 
-                                                alt={`${person.name}'s profile`} 
-                                                className="w-16 h-16 rounded-full mr-4"
-                                                onError={(e) => {
-                                                    const target = e.target as HTMLImageElement;
-                                                    target.onerror = null;
-                                                    target.src = 'default-profile-picture.jpg'; // Replace with your default image path
-                                                }}
-                                            />
-                                        ) : (
-                                            <UserCircleIcon className="w-16 h-16 text-gray-300 mr-4" />
-                                        )}
-                                    </Link>
-                                    <div className="flex-grow">
-                                        <span className="font-semibold block mb-2">{person.name}</span>
-                                        <button 
-                                            onClick={() => handleFollow(person)}
-                                            className={`px-4 py-2 rounded ${
-                                                followingList.includes(nip19.decode(person.npub).data as string)
-                                                    ? 'bg-gray-400 cursor-not-allowed'
-                                                    : 'text-white'
-                                            }`}
-                                            disabled={followingList.includes(nip19.decode(person.npub).data as string)}
-                                        >
-                                            {followingList.includes(nip19.decode(person.npub).data as string) ? (
-                                                <>
-                                                    <CheckIcon className="h-5 w-5 inline-block mr-2" />
-                                                    Following
-                                                </>
+                <div className="relative w-full max-w-3xl mx-auto">
+                    <div className="flex justify-center mb-4">
+                        {peopleToFollow.map((_, index) => (
+                            <button
+                                key={index}
+                                onClick={() => setCurrentIndex(index)}
+                                className={`h-3 w-3 rounded-full mx-1 ${
+                                    currentIndex === index ? 'bg-blue-500' : 'bg-gray-300'
+                                }`}
+                                aria-label={`Go to slide ${index + 1}`}
+                            />
+                        ))}
+                    </div>
+                    <div ref={carouselRef} className="overflow-hidden">
+                        <div className="flex transition-transform duration-300 ease-in-out" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
+                            {peopleToFollow.map((person, index) => (
+                                <div key={index} className="w-full flex-shrink-0 p-4">
+                                    <div className="flex items-center mb-4 pb-16">
+                                        <Link to={`/profile?npub=${person.npub}`}>
+                                            {person.picture ? (
+                                                <img 
+                                                    src={person.picture} 
+                                                    alt={`${person.name}'s profile`} 
+                                                    className="w-64 h-64 rounded-full mr-4"
+                                                    onError={(e) => {
+                                                        const target = e.target as HTMLImageElement;
+                                                        target.onerror = null;
+                                                        target.src = 'default-profile-picture.jpg'; // Replace with your default image path
+                                                    }}
+                                                />
                                             ) : (
-                                                <>
-                                                    <UserPlusIcon className="h-5 w-5 inline-block mr-2" />
-                                                    Follow
-                                                </>
+                                                <UserCircleIcon className="w-64 h-64 text-gray-300 mr-4" />
                                             )}
-                                        </button>
+                                        </Link>
+                                        <div className="flex-grow flex items-center justify-between">
+                                            <span className="font-semibold">{person.name}</span>
+                                            <button 
+                                                onClick={() => handleFollow(person)}
+                                                className={`px-6 py-3 rounded ${
+                                                    followingList.includes(nip19.decode(person.npub).data as string)
+                                                        ? 'bg-gray-400 cursor-not-allowed'
+                                                        : 'text-white'
+                                                }`}
+                                                disabled={followingList.includes(nip19.decode(person.npub).data as string)}
+                                            >
+                                                {followingList.includes(nip19.decode(person.npub).data as string) ? (
+                                                    <>
+                                                        <CheckIcon className="h-5 w-5 inline-block mr-2" />
+                                                        Following
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <UserPlusIcon className="h-5 w-5 inline-block mr-2" />
+                                                        Follow
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div 
+                                        ref={el => contentRefs.current[index] = el} 
+                                        className="overflow-y-auto transition-height duration-300 ease-in-out"
+                                    >
+                                        <p className="text-gray-500">{renderContent(person.content || '')}</p>
                                     </div>
                                 </div>
-                                <div 
-                                    ref={el => contentRefs.current[index] = el} 
-                                    className="overflow-y-auto transition-height duration-300 ease-in-out"
-                                >
-                                    <p className="text-gray-500">{renderContent(person.content || '')}</p>
-                                </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
                 </div>
             )}
