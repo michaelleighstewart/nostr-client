@@ -9,7 +9,7 @@ export class NostrClientPipelineStack extends Stack {
     super(scope, id, {
         env: {
             account: "183725167303",
-            region: "us-east-1"
+            region: "us-west-2"
         }
     });
 
@@ -48,7 +48,7 @@ export class NostrClientPipelineStack extends Stack {
 
     //Approval
     pipeline.addStage(new NostrClientPipelineProd(this, 'Prod', {
-        env: { account: props?.env?.account, region: 'us-east-1' },
+        env: { account: props?.env?.account, region: 'us-west-1' },
       }), {
         pre: [ new ManualApprovalStep('PromoteToProd', {comment: 'Production Deployment is awaiting approval'}) ],
     });

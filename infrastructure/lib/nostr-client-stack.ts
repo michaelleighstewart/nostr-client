@@ -1,4 +1,4 @@
-import { Duration, Stack, StackProps } from 'aws-cdk-lib';
+import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import {RemovalPolicy} from 'aws-cdk-lib';
 import {Bucket} from 'aws-cdk-lib/aws-s3';
@@ -47,18 +47,17 @@ export class NostrClientStack extends Stack {
 
 
     // Create a Lambda@Edge function for prerendering
-    const prerenderFunction = new NodejsFunction(this, 'PrerenderFunction', {
-      entry: '../lambda/prerender.js',
-      handler: 'handler',
-      runtime: Runtime.NODEJS_18_X,
-      //environment: {
-      //  PRERENDER_TOKEN: prerenderToken,
-      //},
-      functionName: `PrerenderFunction`,
-      description: 'Lambda@Edge function for prerendering',
-      memorySize: 128,
-      timeout: Duration.seconds(5)
-    });
+    //const prerenderFunction = new NodejsFunction(this, 'PrerenderFunction', {
+    //  entry: '../lambda/prerender.js',
+  //    handler: 'handler',
+  //    runtime: Runtime.NODEJS_18_X,
+    //});
+    // Get the Lambda@Edge function by ARN
+    const prerenderFunctionArn = StringParameter.valueForStringParameter(this, '/prerenderLambdaArn');
+    const prerenderFunction = NodejsFunction.fromFunctionArn(this, 'PrerenderFunction', prerenderFunctionArn);
+
+    const latestVersion = prerenderFunction.latestVersion;
+    
   
     const siteDistribution = new CloudFrontWebDistribution(this, "GhostcopywriteSiteDistribution_" + props!.environmentName!, {
       originConfigs: [{
@@ -70,7 +69,7 @@ export class NostrClientStack extends Stack {
               isDefaultBehavior: true,
               lambdaFunctionAssociations: [{
                 eventType: LambdaEdgeEventType.VIEWER_REQUEST,
-                lambdaFunction: prerenderFunction.currentVersion
+                lambdaFunction: latestVersion
               }]
           }]
       }],
