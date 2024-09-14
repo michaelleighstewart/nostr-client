@@ -14,6 +14,7 @@ import Conversation from "./components/Conversation";
 import Note from "./components/Note";
 import Search from "./components/Search";
 import NavBar from "./components/NavBar";
+import Test from "./components/Test";
 import { SimplePool } from "nostr-tools";
 import { useState, useEffect } from "react";
 import { RELAYS } from "./utils/constants";
@@ -100,6 +101,7 @@ function App() {
             <Route path="conversation/:id" element={<Conversation pool={pool} nostrExists={nostrExists} keyValue={key} />} />
             <Route path="note/:id" element={<Note pool={pool} nostrExists={nostrExists} keyValue={key} />} />
             <Route path="search" element={<Search pool={pool} nostrExists={nostrExists} keyValue={key} />} />
+            <Route path="test" element={<Test />} />
           </Routes>
         </div>
       </div>
