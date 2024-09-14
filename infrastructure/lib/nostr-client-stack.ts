@@ -2,7 +2,7 @@ import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import {RemovalPolicy} from 'aws-cdk-lib';
 import {Bucket} from 'aws-cdk-lib/aws-s3';
-import {CloudFrontWebDistribution, OriginProtocolPolicy, ViewerProtocolPolicy, ViewerCertificate} from 'aws-cdk-lib/aws-cloudfront';
+import {CloudFrontWebDistribution, OriginProtocolPolicy, ViewerProtocolPolicy, ViewerCertificate, LambdaEdgeEventType} from 'aws-cdk-lib/aws-cloudfront';
 import {BucketDeployment, Source} from 'aws-cdk-lib/aws-s3-deployment';
 import {HostedZone, ARecord, RecordTarget} from "aws-cdk-lib/aws-route53";
 import {CloudFrontTarget} from 'aws-cdk-lib/aws-route53-targets';
@@ -63,7 +63,11 @@ export class NostrClientStack extends Stack {
               originProtocolPolicy: OriginProtocolPolicy.HTTP_ONLY
           },
           behaviors: [{
-              isDefaultBehavior: true
+              isDefaultBehavior: true,
+              lambdaFunctionAssociations: [{
+                eventType: LambdaEdgeEventType.VIEWER_REQUEST,
+                lambdaFunction: prerenderFunction.currentVersion
+              }]
           }]
       }],
       viewerCertificate: ViewerCertificate.fromAcmCertificate(certificate, {
