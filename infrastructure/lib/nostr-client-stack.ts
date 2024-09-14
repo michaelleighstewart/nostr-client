@@ -10,6 +10,8 @@ import {Certificate} from "aws-cdk-lib/aws-certificatemanager";
 import {StringParameter} from 'aws-cdk-lib/aws-ssm';
 import {NodejsFunction} from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
+
 interface NostrClientStackProps extends StackProps {
   readonly environmentName: string;
 }
@@ -38,11 +40,17 @@ export class NostrClientStack extends Stack {
       removalPolicy: RemovalPolicy.DESTROY
     });
 
+    // Retrieve the secret
+    const prerenderSecret = Secret.fromSecretNameV2(this, 'PrerenderSecret', 'prerenderToken');
+
     // Create a Lambda@Edge function for prerendering
     const prerenderFunction = new NodejsFunction(this, 'PrerenderFunction', {
-      entry: '../lambda/prerender.js', // Create this file in your project
+      entry: '../lambda/prerender.js',
       handler: 'handler',
       runtime: Runtime.NODEJS_18_X,
+      environment: {
+        PRERENDER_TOKEN: prerenderSecret.secretValueFromJson('prerenderToken').toString(),
+      },
     });
   
     const siteDistribution = new CloudFrontWebDistribution(this, "GhostcopywriteSiteDistribution_" + props!.environmentName!, {

@@ -6,7 +6,7 @@ export const handler = async (event) => {
     const request = event.Records[0].cf.request;
     const headers = request.headers;
 
-    prerendercloud.set('prerenderToken', '6SinNLg9ZXfGWafJuoen');
+    prerendercloud.set('prerenderToken', process.env.PRERENDER_TOKEN);
 
     const userAgent = headers['user-agent'] && headers['user-agent'][0] ? headers['user-agent'][0].value : '';
     const shouldPrerender = prerendercloud.shouldPrerender(request.uri, userAgent);
@@ -28,7 +28,7 @@ export const handler = async (event) => {
                 customHeaders: {}
             }
         };
-        request.headers['x-prerender-token'] = [{ key: 'X-Prerender-Token', value: 'YOUR_PRERENDER_TOKEN' }];
+        request.headers['x-prerender-token'] = [{ key: 'X-Prerender-Token', value: process.env.PRERENDER_TOKEN }];
         request.headers['x-original-host'] = [{ key: 'X-Original-Host', value: host }];
         request.uri = '/https%3A%2F%2F' + host + request.uri;
         request.querystring = '';
