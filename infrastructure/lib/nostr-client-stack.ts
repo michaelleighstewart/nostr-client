@@ -41,9 +41,9 @@ export class NostrClientStack extends Stack {
 
     // Retrieve the secret
     const preRenderSecretKey = StringParameter.valueForStringParameter(this, '/prerenderToken');
+    console.log(preRenderSecretKey.toString());
     
-    const prerenderTokenObject = JSON.parse(preRenderSecretKey.toString());
-    const prerenderToken = prerenderTokenObject.prerenderToken;
+    const prerenderToken = preRenderSecretKey.toString();
 
 
     // Create a Lambda@Edge function for prerendering
