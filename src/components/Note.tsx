@@ -425,6 +425,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         </button>
       </div>
       <h2 className="text-xl font-bold mt-6 mb-4">Replies</h2>
+      {replies.length === 0 && <p>No replies yet</p>}
       {replies.sort((a, b) => b.created_at - a.created_at).map(reply => (
         <div onClick={() => handleReplyClick(reply.id)}>
         <NoteCard
