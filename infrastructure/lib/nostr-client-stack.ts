@@ -40,7 +40,7 @@ export class NostrClientStack extends Stack {
 
     // Create a Lambda@Edge function for prerendering
     const prerenderFunction = new NodejsFunction(this, 'PrerenderFunction', {
-      entry: 'lambda/prerender.js', // Create this file in your project
+      entry: '../lambda/prerender.js', // Create this file in your project
       handler: 'handler',
       runtime: Runtime.NODEJS_18_X,
     });
