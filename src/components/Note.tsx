@@ -7,7 +7,6 @@ import { bech32Decoder } from '../utils/helperFunctions';
 import { ExtendedEvent, Metadata, Reaction } from '../utils/interfaces';
 import Loading from './Loading';
 import { showCustomToast } from './CustomToast';
-import { Helmet } from 'react-helmet';
 
 interface PostProps {
   pool: SimplePool | null;
@@ -369,21 +368,8 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
     return <div>Post not found</div>;
   }
 
-  const ogTitle = `Note by ${metadata[post.pubkey]?.name || 'Unknown'}`;
-  const ogDescription = post.content.slice(0, 200);
-  const ogImage = metadata[post.pubkey]?.picture || 'https://ghostcopywrite.com/ostrich.png';
-
   return (
     <div className="space-y-4">
-      <Helmet>
-        <meta name="description" content={ogDescription} />
-        <meta property="og:title" content={ogTitle} />
-        <meta property="og:description" content={ogDescription} />
-        <meta property="og:image" content={`https://ogp.vercel.app/api/ogp?title=${encodeURIComponent(ogTitle)}&description=${encodeURIComponent(ogDescription)}&image=${encodeURIComponent(ogImage)}`} />
-        <meta property="og:url" content={`https://ghostcopywrite.com/note/${id}`} />
-        <meta property="og:type" content="article" />
-        <meta name="twitter:card" content="summary_large_image" />
-      </Helmet>
       <NoteCard
         isPreview={false}
         id={post.id}
