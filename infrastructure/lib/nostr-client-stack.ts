@@ -10,7 +10,6 @@ import {Certificate} from "aws-cdk-lib/aws-certificatemanager";
 import {StringParameter} from 'aws-cdk-lib/aws-ssm';
 import {NodejsFunction} from 'aws-cdk-lib/aws-lambda-nodejs';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
-import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 
 interface NostrClientStackProps extends StackProps {
   readonly environmentName: string;
@@ -41,7 +40,11 @@ export class NostrClientStack extends Stack {
     });
 
     // Retrieve the secret
-    const prerenderSecret = Secret.fromSecretNameV2(this, 'PrerenderSecret', 'prerenderToken');
+    const preRenderSecretKey = StringParameter.valueForStringParameter(this, '/prerenderToken');
+    
+    const prerenderTokenObject = JSON.parse(preRenderSecretKey.toString());
+    const prerenderToken = prerenderTokenObject.prerenderToken;
+
 
     // Create a Lambda@Edge function for prerendering
     const prerenderFunction = new NodejsFunction(this, 'PrerenderFunction', {
@@ -49,7 +52,7 @@ export class NostrClientStack extends Stack {
       handler: 'handler',
       runtime: Runtime.NODEJS_18_X,
       environment: {
-        PRERENDER_TOKEN: prerenderSecret.secretValueFromJson('prerenderToken').toString(),
+        PRERENDER_TOKEN: prerenderToken,
       },
     });
   
