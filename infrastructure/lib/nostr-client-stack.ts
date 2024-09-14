@@ -44,17 +44,7 @@ export class NostrClientStack extends Stack {
     console.log(preRenderSecretKey.toString());
     
     const prerenderToken = preRenderSecretKey.toString();
-
-
-    // Create a Lambda@Edge function for prerendering
-    //const prerenderFunction = new NodejsFunction(this, 'PrerenderFunction', {
-    //  entry: '../lambda/prerender.js',
-  //    handler: 'handler',
-  //    runtime: Runtime.NODEJS_18_X,
-    //});
-    // Get the Lambda@Edge function by ARN
     const prerenderFunctionArn = StringParameter.valueForStringParameter(this, '/prerenderLambdaArn');
-    //const prerenderFunction = NodejsFunction.fromFunctionArn(this, 'PrerenderFunction', prerenderFunctionArn);
 
     const functionVersion = Version.fromVersionArn(this, 'Version', prerenderFunctionArn);
     
