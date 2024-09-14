@@ -9,7 +9,7 @@ import {CloudFrontTarget} from 'aws-cdk-lib/aws-route53-targets';
 import {Certificate} from "aws-cdk-lib/aws-certificatemanager";
 import {StringParameter} from 'aws-cdk-lib/aws-ssm';
 import {NodejsFunction} from 'aws-cdk-lib/aws-lambda-nodejs';
-import { Runtime } from 'aws-cdk-lib/aws-lambda';
+import { Runtime, Version } from 'aws-cdk-lib/aws-lambda';
 
 interface NostrClientStackProps extends StackProps {
   readonly environmentName: string;
@@ -54,9 +54,9 @@ export class NostrClientStack extends Stack {
     //});
     // Get the Lambda@Edge function by ARN
     const prerenderFunctionArn = StringParameter.valueForStringParameter(this, '/prerenderLambdaArn');
-    const prerenderFunction = NodejsFunction.fromFunctionArn(this, 'PrerenderFunction', prerenderFunctionArn);
+    //const prerenderFunction = NodejsFunction.fromFunctionArn(this, 'PrerenderFunction', prerenderFunctionArn);
 
-    const latestVersion = prerenderFunction.latestVersion;
+    const functionVersion = Version.fromVersionArn(this, 'Version', prerenderFunctionArn);
     
   
     const siteDistribution = new CloudFrontWebDistribution(this, "GhostcopywriteSiteDistribution_" + props!.environmentName!, {
@@ -66,11 +66,11 @@ export class NostrClientStack extends Stack {
               originProtocolPolicy: OriginProtocolPolicy.HTTP_ONLY
           },
           behaviors: [{
-              isDefaultBehavior: true,
-              lambdaFunctionAssociations: [{
-                eventType: LambdaEdgeEventType.VIEWER_REQUEST,
-                lambdaFunction: latestVersion
-              }]
+            isDefaultBehavior: true,
+            lambdaFunctionAssociations: [{
+              eventType: LambdaEdgeEventType.ORIGIN_REQUEST,
+              lambdaFunction: functionVersion
+            }]
           }]
       }],
       viewerCertificate: ViewerCertificate.fromAcmCertificate(certificate, {
