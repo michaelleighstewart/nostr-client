@@ -53,7 +53,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const fetchFollowersAndData = useCallback(async () => {
       if (!props.pool) return;
       setLoading(true);
-      const oneDayAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
       
       try {
         const newFollowers = await getFollowers(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey);
@@ -67,10 +66,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         setFollowers(newFollowers);
 
         let filter = isLoggedIn
-          ? { kinds: [1, 5, 6], since: oneDayAgo, authors: newFollowers, limit: 10 }
-          : { kinds: [1, 5, 6], since: oneDayAgo, limit: 10 };
+          ? { kinds: [1, 5, 6], authors: newFollowers, limit: 10 }
+          : { kinds: [1, 5, 6], limit: 10 };
         
-        const fetchedEvents = await fetchData(props.pool, oneDayAgo, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
+        const fetchedEvents = await fetchData(props.pool, 0, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
           setLoading, setLoadingMore, setError, setEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter);
         
         if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
