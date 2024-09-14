@@ -51,9 +51,9 @@ export class NostrClientStack extends Stack {
       entry: '../lambda/prerender.js',
       handler: 'handler',
       runtime: Runtime.NODEJS_18_X,
-      environment: {
-        PRERENDER_TOKEN: prerenderToken,
-      },
+      //environment: {
+      //  PRERENDER_TOKEN: prerenderToken,
+      //},
     });
   
     const siteDistribution = new CloudFrontWebDistribution(this, "GhostcopywriteSiteDistribution_" + props!.environmentName!, {
