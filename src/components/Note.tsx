@@ -7,6 +7,7 @@ import { bech32Decoder } from '../utils/helperFunctions';
 import { ExtendedEvent, Metadata, Reaction } from '../utils/interfaces';
 import Loading from './Loading';
 import { showCustomToast } from './CustomToast';
+import { Helmet } from 'react-helmet';
 
 interface PostProps {
   pool: SimplePool | null;
@@ -368,8 +369,21 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
     return <div>Post not found</div>;
   }
 
+  const title = `Note by ${post.pubkey.slice(0, 8)}...`;
+  const description = post.content.slice(0, 200) + (post.content.length > 200 ? '...' : '');
+  const url = `https://ghostcopywrite.com/note/${id}`;
+
   return (
     <div className="space-y-4">
+        <Helmet>
+        <meta name="description" content={description} />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
+        <meta property="og:url" content={url} />
+        <meta property="og:type" content="article" />
+        <meta property="og:image" content="https://ghostcopywrite.com/ostrich.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Helmet>
       <NoteCard
         isPreview={false}
         id={post.id}

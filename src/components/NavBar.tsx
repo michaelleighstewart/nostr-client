@@ -67,6 +67,7 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
           console.error("Error decoding key or getting public key:", error);
         }
       }
+
       const notificationSub = props.pool.subscribeMany(RELAYS, [
         {
           kinds: [1, 7], // Text notes and reactions

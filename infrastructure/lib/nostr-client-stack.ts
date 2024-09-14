@@ -8,7 +8,8 @@ import {HostedZone, ARecord, RecordTarget} from "aws-cdk-lib/aws-route53";
 import {CloudFrontTarget} from 'aws-cdk-lib/aws-route53-targets';
 import {Certificate} from "aws-cdk-lib/aws-certificatemanager";
 import {StringParameter} from 'aws-cdk-lib/aws-ssm';
-
+import {NodejsFunction} from 'aws-cdk-lib/aws-lambda-nodejs';
+import { Runtime } from 'aws-cdk-lib/aws-lambda';
 interface NostrClientStackProps extends StackProps {
   readonly environmentName: string;
 }
@@ -35,6 +36,13 @@ export class NostrClientStack extends Stack {
       websiteErrorDocument: "index.html",
       publicReadAccess: true,
       removalPolicy: RemovalPolicy.DESTROY
+    });
+
+    // Create a Lambda@Edge function for prerendering
+    const prerenderFunction = new NodejsFunction(this, 'PrerenderFunction', {
+      entry: 'lambda/prerender.js', // Create this file in your project
+      handler: 'handler',
+      runtime: Runtime.NODEJS_18_X,
     });
   
     const siteDistribution = new CloudFrontWebDistribution(this, "GhostcopywriteSiteDistribution_" + props!.environmentName!, {

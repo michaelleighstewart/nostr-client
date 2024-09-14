@@ -94,6 +94,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
     }, [isLoading, isLoggedIn]);
 
     const handleSignUp = async () => {
+
         setIsSigningUp(true);
         let skDecoded = bech32Decoder('nsec', nsec);
         let pk = getPublicKey(skDecoded);
