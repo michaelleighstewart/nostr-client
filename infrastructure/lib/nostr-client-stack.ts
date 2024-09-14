@@ -1,4 +1,4 @@
-import { Stack, StackProps } from 'aws-cdk-lib';
+import { Duration, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import {RemovalPolicy} from 'aws-cdk-lib';
 import {Bucket} from 'aws-cdk-lib/aws-s3';
@@ -54,6 +54,10 @@ export class NostrClientStack extends Stack {
       //environment: {
       //  PRERENDER_TOKEN: prerenderToken,
       //},
+      functionName: `PrerenderFunction`,
+      description: 'Lambda@Edge function for prerendering',
+      memorySize: 128,
+      timeout: Duration.seconds(5)
     });
   
     const siteDistribution = new CloudFrontWebDistribution(this, "GhostcopywriteSiteDistribution_" + props!.environmentName!, {

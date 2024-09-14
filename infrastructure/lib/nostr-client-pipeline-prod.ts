@@ -7,10 +7,10 @@ export class NostrClientPipelineProd extends Stage {
         super(scope, id, {
             env: {
                 account: "183725167303",
-                region: "us-west-2"
+                region: "us-east-1"
             }
         });
 
-        new NostrClientStack(this, 'NostrClientWebServiceProd', {env: {account: "183725167303", region: "us-west-2"}, environmentName: 'prod'});
+        new NostrClientStack(this, 'NostrClientWebServiceProd', {env: {account: "183725167303", region: "us-east-1"}, environmentName: 'prod'});
     }
 }
