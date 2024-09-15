@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SimplePool, Event, nip19 } from 'nostr-tools';
 import { Link } from 'react-router-dom';
-import { XMarkIcon, UserCircleIcon } from '@heroicons/react/24/solid';
+import { UserCircleIcon } from '@heroicons/react/24/solid';
 import { RELAYS } from '../utils/constants';
 import Loading from './Loading';
 
