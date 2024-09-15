@@ -4,30 +4,46 @@ import { RELAYS } from "./constants";
 import { Metadata } from "./interfaces";
 
 export const getFollowers = async (pool: SimplePool, isLoggedIn: boolean, nostrExists: boolean | null, keyValue: string | null, 
-  setUserPublicKey: (pk: string) => void): Promise<string[]> => {
+  setUserPublicKey: (pk: string) => void, publicKeyOverride: string | null): Promise<string[]> => {
     if (!isLoggedIn) return [];
       
-    let pk: string = "";
+    let pk: string = publicKeyOverride ?? "";
     let followers: string[] = [];
-    if (nostrExists) { 
-      try {
-        pk = await (window as any).nostr.getPublicKey();
+    if (!publicKeyOverride) {
+      if (nostrExists) { 
+        try {
+          pk = await (window as any).nostr.getPublicKey();
+        }
+        catch (error) {
+          console.log("Error getting public key: ", error);
+        }
       }
-      catch (error) {
-        console.log("Error getting public key: ", error);
+      else {
+        const sk = keyValue;
+        if (!sk) {
+          return [];
+        }
+        let skDecoded = bech32Decoder('nsec', sk);
+        pk = getPublicKey(skDecoded);
       }
     }
     else {
-      const sk = keyValue;
-      if (!sk) {
+    if (publicKeyOverride.startsWith('npub')) {
+      try {
+        pk = bech32Decoder('npub', publicKeyOverride).toString('hex');
+      } catch (error) {
+        console.error("Error decoding npub:", error);
         return [];
       }
-      let skDecoded = bech32Decoder('nsec', sk);
-      pk = getPublicKey(skDecoded);
+    } else {
+      pk = publicKeyOverride;
+    }
     }
     if (pk && !followers.includes(pk)) followers.push(pk);
     setUserPublicKey(pk);
+    console.log("Getting followers for ", pk);
     const followersRet = await pool.querySync(RELAYS, { authors: [pk], kinds: [3] });
+    //console.log("Followers ret: ", followersRet);
     if (followersRet.length > 0) {
       const firstEvent = followersRet[0];
       return firstEvent.tags.map(tag => tag[1]);

@@ -27,7 +27,7 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
             setLoading(true);
             if (!pool || !pubkey) return;
 
-            const allFollowers = await getFollowers(pool, true, _nostrExists, _keyValue, () => {});
+            const allFollowers = await getFollowers(pool, true, _nostrExists, _keyValue, () => {}, pubkey);
             const uniqueFollowers = Array.from(new Set(allFollowers));
 
             const followerProfiles: Event[] = [];

@@ -56,7 +56,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       setLoading(true);
       
       try {
-        const newFollowers = await getFollowers(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey);
+        const newFollowers = await getFollowers(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey, null);
         try {
           if (props.keyValue) {
             let skDecoded = bech32Decoder('nsec', props.keyValue);

@@ -52,6 +52,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
     const [hasOlderPosts, setHasOlderPosts] = useState(true);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [npubFromUrl, setNpubFromUrl] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchProfileData = async () => {
@@ -61,6 +62,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
 
             const queryParams = new URLSearchParams(location.search);
             const npubFromUrl = queryParams.get("npub");
+            setNpubFromUrl(npubFromUrl);
             const isFromUrl = npubFromUrl !== null;
             const targetNpub = npubFromUrl || npub;
 
@@ -186,30 +188,33 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
         return <div className="h-screen"><Loading vCentered={false} /></div>;
     }
 
+    let title = '';
+    let description = '';
+    let image = '';
+    let url = '';
+    if (npubFromUrl) {
+        title = profileData?.name ? `${profileData.name} on Ghostcopywrite` : "Ghostcopywrite | Profile";
+        description = profileData?.about ? profileData.about : "Let Freedom Ring";
+        image = profileData?.picture ? profileData.picture : "https://ghostcopywrite.com/ostrich.png";
+        url = `https://ghostcopywrite.com/profile?npub=${npubFromUrl}`;
+    }
+    else {
+        title = "Ghostcopywrite | Profile";
+        description = "Let Freedom Ring";
+        image = "https://ghostcopywrite.com/ostrich.png";
+        url = "https://ghostcopywrite.com";
+    }
+
     return (
-        <div className="py-64">
+        <div className="py-16">
             <Helmet>
-                {pubkey ? (
-                    <>
-                        <title>{`${profileData?.name || 'User'} on Ghostcopywrite`}</title>
-                        <meta property="og:title" content={`${profileData?.name || 'User'} on Ghostcopywrite`} />
-                        <meta property="og:description" content={profileData?.about || 'User profile on Ghostcopywrite'} />
-                        <meta property="og:image" content={profileData?.picture || 'https://ghostcopywrite.com/ostrich.png'} />
-                        <meta property="og:url" content={`https://ghostcopywrite.com/profile?npub=${nip19.npubEncode(pubkey)}`} />
-                        <meta property="og:type" content="profile" />
-                        <meta name="twitter:card" content="summary_large_image" />
-                    </>
-                ) : (
-                    <>
-                        <title>Ghostcopywrite Profile</title>
-                        <meta property="og:title" content="Ghostcopywrite | Profile" />
-                        <meta property="og:description" content="Let Freedom Ring" />
-                        <meta property="og:image" content="https://ghostcopywrite.com/ostrich.png" />
-                        <meta property="og:url" content="https://ghostcopywrite.com/profile" />
-                        <meta property="og:type" content="website" />
-                        <meta name="twitter:card" content="summary_large_image" />
-                    </>
-                )}
+                <title>{title}</title>
+                <meta property="og:title" content={title} />
+                <meta property="og:description" content={description} />
+                <meta property="og:image" content={image} />
+                <meta property="og:url" content={url} />
+                <meta property="og:type" content="profile" />
+                <meta name="twitter:card" content="summary_large_image" />
             </Helmet>
             {profileData ? (
                 <div className="flex flex-col items-center">
@@ -246,11 +251,11 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                     </div>
                     <p className="text-gray-600 mb-4 text-center sm:text-left">{profileData?.about}</p>
                     <div className="flex items-center space-x-8 mb-4">
-                        <Link to={`/followers/${pubkey}`} className="flex items-center">
+                        <Link to={`/followers/${npubFromUrl ? npubFromUrl : nip19.npubEncode(pubkey)}`} className="flex items-center">
                             <UserGroupIcon className="h-6 w-6 mr-2" />
                             <span>Followers</span>
                         </Link>
-                        <Link to={`/following/${pubkey}`} className="flex items-center">
+                        <Link to={`/following/${npubFromUrl ? npubFromUrl : nip19.npubEncode(pubkey)}`} className="flex items-center">
                             <UsersIcon className="h-6 w-6 mr-2" />
                             <span>Following</span>
                         </Link>

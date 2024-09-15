@@ -3,6 +3,7 @@ import { SimplePool, Event } from "nostr-tools";
 import { useParams, Link } from "react-router-dom";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
+import { bech32Decoder } from "../utils/helperFunctions";
 
 interface FollowingProps {
     pool: SimplePool | null;
@@ -23,10 +24,19 @@ const Following: React.FC<FollowingProps> = ({ pool }) => {
         const fetchFollowing = async () => {
             setLoading(true);
             if (!pool || !pubkey) return;
+            let pk = pubkey;
+            if (pubkey.startsWith('npub')) {
+                try {
+                    pk = bech32Decoder('npub', pubkey).toString('hex');
+                } catch (error) {
+                    console.error("Error decoding npub:", error);
+                    return;
+                }
+            }
 
             const followingEvent: Event | null = await pool.get(RELAYS, {
                 kinds: [3],
-                authors: [pubkey],
+                authors: [pk],
             });
 
             if (!followingEvent) {
