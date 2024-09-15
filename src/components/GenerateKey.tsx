@@ -7,6 +7,7 @@ import { showCustomToast } from './CustomToast';
 import Ostrich from './Ostrich';
 import { RELAYS } from "../utils/constants";
 import { bech32Decoder } from "../utils/helperFunctions";
+import { Helmet } from 'react-helmet';
 
 interface GenerateKeyProps {
     setKeyValue: (value: string) => void;
@@ -172,6 +173,15 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
 
     return (
         <div className="py-64 relative" style={{ pointerEvents: 'auto' }} onClick={handleScreenClick}>
+            <Helmet>
+                <title>Ghostcopywrite | Sign Up Or Sign In</title>
+                <meta property="og:title" content="Ghostcopywrite | Sign Up Or Sign In" />
+                <meta property="og:description" content="Let Freedom Ring" />
+                <meta property="og:image" content="https://ghostcopywrite.com/ostrich.png" />
+                <meta property="og:url" content="https://ghostcopywrite.com/generate-key" />
+                <meta property="og:type" content="website" />
+                <meta name="twitter:card" content="summary_large_image" />
+            </Helmet>
             <div>
                 <div className="pb-24 relative">
                     <label htmlFor="npub" className="block mb-2 text-sm font-medium text-white">Public Key (npub): </label>

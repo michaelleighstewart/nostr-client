@@ -12,6 +12,7 @@ import Ostrich from "./Ostrich";
 import { showCustomToast } from "./CustomToast";
 import { PhotoIcon, VideoCameraIcon } from '@heroicons/react/24/solid';
 import NoteCard from "./NoteCard";
+import { Helmet } from 'react-helmet';
 
 interface HomeProps {
   keyValue: string;
@@ -228,6 +229,15 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
 
     return (
       <div className="py-16 pt-150">
+        <Helmet>
+          <title>Ghostcopywrite | Nostr Client</title>
+          <meta property="og:title" content="Ghostcopywrite | Nostr Client" />
+          <meta property="og:description" content="Let Freedom Ring" />
+          <meta property="og:image" content="https://ghostcopywrite.com/ostrich.png" />
+          <meta property="og:url" content="https://ghostcopywrite.com" />
+          <meta property="og:type" content="website" />
+          <meta name="twitter:card" content="summary_large_image" />
+        </Helmet>
         {isLoggedIn && (
           <div className="flex flex-col space-y-4 border border-gray-300 rounded-lg p-24 mb-8">
             <div>

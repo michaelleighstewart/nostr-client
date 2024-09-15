@@ -11,6 +11,7 @@ import { UserGroupIcon, UsersIcon, UserPlusIcon, ChatBubbleLeftRightIcon } from 
 import { showCustomToast } from "./CustomToast";
 import { fetchMetadataReactionsAndReplies, fetchData } from "../utils/noteUtils";
 import NewMessageDialog from "./NewMessageDialog";
+import { Helmet } from 'react-helmet';
 
 interface ProfileProps {
     npub?: string;
@@ -187,6 +188,29 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
 
     return (
         <div className="py-64">
+            <Helmet>
+                {pubkey ? (
+                    <>
+                        <title>{`${profileData?.name || 'User'} on Ghostcopywrite`}</title>
+                        <meta property="og:title" content={`${profileData?.name || 'User'} on Ghostcopywrite`} />
+                        <meta property="og:description" content={profileData?.about || 'User profile on Ghostcopywrite'} />
+                        <meta property="og:image" content={profileData?.picture || 'https://ghostcopywrite.com/ostrich.png'} />
+                        <meta property="og:url" content={`https://ghostcopywrite.com/profile?npub=${nip19.npubEncode(pubkey)}`} />
+                        <meta property="og:type" content="profile" />
+                        <meta name="twitter:card" content="summary_large_image" />
+                    </>
+                ) : (
+                    <>
+                        <title>Ghostcopywrite Profile</title>
+                        <meta property="og:title" content="Ghostcopywrite | Profile" />
+                        <meta property="og:description" content="Let Freedom Ring" />
+                        <meta property="og:image" content="https://ghostcopywrite.com/ostrich.png" />
+                        <meta property="og:url" content="https://ghostcopywrite.com/profile" />
+                        <meta property="og:type" content="website" />
+                        <meta name="twitter:card" content="summary_large_image" />
+                    </>
+                )}
+            </Helmet>
             {profileData ? (
                 <div className="flex flex-col items-center">
                     <div className="flex flex-col sm:flex-row items-center mb-4">
