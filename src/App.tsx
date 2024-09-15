@@ -20,7 +20,7 @@ import { useState, useEffect } from "react";
 import { RELAYS } from "./utils/constants";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import DefaultHelmet from "./components/DefaultHelmet";
+//import DefaultHelmet from "./components/DefaultHelmet";
 
 function App() {
   const [pool, setPool] = useState<SimplePool | null>(null);
@@ -84,7 +84,6 @@ function App() {
 
     return (
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 overflow-x-hidden overflow-y-hidden">
-        <DefaultHelmet />
         <div className={`relative ${!isLoggedIn && isHomePage ? 'z-50' : ''} overflow-y-hidden`}>
           <NavBar keyValue={key} setKey={setKey} nostrExists={nostrExists} pool={pool} />
         </div>
