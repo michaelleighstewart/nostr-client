@@ -7,7 +7,7 @@ import { getPublicKey, finalizeEvent, nip19 } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import NoteCard from "./NoteCard";
-import { UserGroupIcon, UsersIcon, UserPlusIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+import { UsersIcon, UserPlusIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { showCustomToast } from "./CustomToast";
 import { fetchMetadataReactionsAndReplies, fetchData } from "../utils/noteUtils";
 import NewMessageDialog from "./NewMessageDialog";
@@ -251,10 +251,10 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                     </div>
                     <p className="text-gray-600 mb-4 text-center sm:text-left">{profileData?.about}</p>
                     <div className="flex items-center space-x-8 mb-4">
-                        <Link to={`/followers/${npubFromUrl ? npubFromUrl : nip19.npubEncode(pubkey)}`} className="flex items-center">
+                        {/* <Link to={`/followers/${npubFromUrl ? npubFromUrl : nip19.npubEncode(pubkey)}`} className="flex items-center">
                             <UserGroupIcon className="h-6 w-6 mr-2" />
                             <span>Followers</span>
-                        </Link>
+                        </Link> */}
                         <Link to={`/following/${npubFromUrl ? npubFromUrl : nip19.npubEncode(pubkey)}`} className="flex items-center">
                             <UsersIcon className="h-6 w-6 mr-2" />
                             <span>Following</span>
