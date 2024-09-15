@@ -9,6 +9,7 @@ import React from "react";
 import { RELAYS } from "../utils/constants";
 import { Metadata, Reaction, User, ExtendedEvent } from "../utils/interfaces";
 import VideoEmbed from "./VideoEmbed";
+import ProfilesModal from "./ProfilesModal";
 
 interface Props {
     id: string;
@@ -67,6 +68,9 @@ interface Props {
     const [processedContent, setProcessedContent] = useState<React.ReactNode[]>([]);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [youtubeVideoId, setYoutubeVideoId] = useState<string | null>(null);
+    const [showLikesModal, setShowLikesModal] = useState(false);
+    const [showDislikesModal, setShowDislikesModal] = useState(false);
+    const [showRepostsModal, setShowRepostsModal] = useState(false);
     const navigate = useNavigate();
 
     function checkReactions() {
@@ -357,6 +361,18 @@ interface Props {
       });
     };
 
+    const handleShowLikes = () => {
+      setShowLikesModal(true);
+    };
+
+    const handleShowDislikes = () => {
+      setShowDislikesModal(true);
+    };
+
+    const handleShowReposts = () => {
+      setShowRepostsModal(true);
+    };
+
     if (localDeleted) {
       return (
         <div className="rounded p-16 border border-gray-600 bg-[#535bf2] bg-opacity-10 flex flex-col gap-16 break-words">
@@ -486,10 +502,20 @@ interface Props {
               />
             </div>
             <div className="p-4">
-              <span className="text-body5 text-gray-400">
+              <span 
+                className="text-body5 text-gray-400 cursor-pointer hover:underline"
+                onClick={() => handleShowLikes()}
+              >
                 {localReactions.filter((r) => r.type !== "-").length}
               </span>
             </div>
+            <ProfilesModal
+              npubs={localReactions.length ? localReactions.filter(r => r.type !== "-").map(r => nip19.npubEncode(r.liker_pubkey)) : []}
+              pool={pool}
+              isOpen={showLikesModal}
+              onClose={() => setShowLikesModal(false)}
+              title="Users Who Liked This Note"
+            />
             <div className="p-4 pl-8 md:pl-32">
               <HandThumbDownIcon
                 className={!alreadyDisliked ? "h-6 w-6 text-[#535bf2] cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
@@ -498,10 +524,20 @@ interface Props {
               />
             </div>
             <div className="p-4">
-              <span className="text-body5 text-gray-400">
+              <span 
+                className="text-body5 text-gray-400 cursor-pointer hover:underline"
+                onClick={() => handleShowDislikes()}
+              >
                 {localReactions.filter((r) => r.type === "-").length}
               </span>
             </div>
+            <ProfilesModal
+              npubs={localReactions.length ? localReactions.filter(r => r.type === '-').map(r => nip19.npubEncode(r.liker_pubkey)) : []}
+              pool={pool}
+              isOpen={showDislikesModal}
+              onClose={() => setShowDislikesModal(false)}
+              title="Users Who Disliked This Note"
+            />
             <div className="p-4 pl-8 md:pl-32">
               <ArrowPathRoundedSquareIcon
                 className="h-6 w-6 text-[#535bf2] cursor-pointer"
@@ -510,10 +546,20 @@ interface Props {
               />
             </div>
             <div className="p-4">
-              <span className="text-body5 text-gray-400">
+              <span 
+                className="text-body5 text-gray-400 cursor-pointer hover:underline"
+                onClick={() => handleShowReposts()}
+              >
                 {reposts}
               </span>
             </div>
+            <ProfilesModal
+              npubs={(allReposts && allReposts[id]) ? allReposts[id].map(r => nip19.npubEncode(r.pubkey)) : []}
+              pool={pool}
+              isOpen={showRepostsModal}
+              onClose={() => setShowRepostsModal(false)}
+              title="Users Who Reposted This Note"
+            />
             <div className="p-4 pl-8 md:pl-32">
               <ChatBubbleLeftIcon
                 className="h-6 w-6 text-[#535bf2] cursor-pointer"
@@ -522,9 +568,11 @@ interface Props {
               />
             </div>
             <div className="p-4">
-              <span className="text-body5 text-gray-400">
-                {replies}
-              </span>
+              <Link to={`/note/${id}`}>
+                <span className="text-body5 text-gray-400 cursor-pointer hover:underline font-normal">
+                  {replies}
+                </span>
+              </Link>
             </div>
           </>
         )}
