@@ -369,20 +369,21 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
     return <div>Post not found</div>;
   }
 
-  const title = `Note by ${post.pubkey.slice(0, 8)}...`;
+  const title = `Note by ${metadata[post.pubkey]?.name || post.pubkey.slice(0, 8)} on Ghostcopywrite`;
   const description = post.content.slice(0, 200) + (post.content.length > 200 ? '...' : '');
   const url = `https://ghostcopywrite.com/note/${id}`;
+  const image = metadata[post.pubkey]?.picture || 'https://ghostcopywrite.com/ostrich.png';
 
   return (
     <div className="space-y-4">
         <Helmet>
-        <meta name="description" content={description} />
-        <meta property="og:title" content={title} />
-        <meta property="og:description" content={description} />
-        <meta property="og:url" content={url} />
-        <meta property="og:type" content="article" />
-        <meta property="og:image" content="https://ghostcopywrite.com/ostrich.png" />
-        <meta name="twitter:card" content="summary_large_image" />
+          <meta name="description" content={description} />
+          <meta property="og:title" content={title} />
+          <meta property="og:description" content={description} />
+          <meta property="og:url" content={url} />
+          <meta property="og:type" content="article" />
+          <meta property="og:image" content={image} />
+          <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
       <NoteCard
         isPreview={false}
