@@ -179,7 +179,7 @@ interface Props {
               result.push(
                 <Link 
                   key={`npub-${index}-${match.index}`}
-                  to={`/profile?npub=${npub}`}
+                  to={`/profile/${npub}`}
                   className="text-blue-500 hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -201,7 +201,7 @@ interface Props {
               result.push(
                 <Link 
                   key={`nostr-${index}-${match.index}`}
-                  to={`/profile?npub=${nostrEntity.slice(6)}`}
+                  to={`/profile/${nostrEntity.slice(6)}`}
                   className="text-blue-500 hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -368,7 +368,7 @@ interface Props {
       <div className="rounded p-16 border border-gray-600 bg-[#535bf2] bg-opacity-10 flex flex-col gap-16 break-words">
         <div className="flex gap-12 items-center overflow-hidden">
           {user.image ?
-          <Link to={`/profile?npub=${userNpub}`}>
+          <Link to={`/profile/${userNpub}`}>
             <img
               src={user.image}
               alt="note"

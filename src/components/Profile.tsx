@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { SimplePool } from "nostr-tools";
-import { useLocation, Link } from "react-router-dom";
+import { useLocation, Link, useParams } from "react-router-dom";
 import { bech32Decoder } from "../utils/helperFunctions";
 import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";
 import { getPublicKey, finalizeEvent, nip19 } from "nostr-tools";
@@ -14,7 +14,6 @@ import NewMessageDialog from "./NewMessageDialog";
 import { Helmet } from 'react-helmet';
 
 interface ProfileProps {
-    npub?: string;
     keyValue: string;
     pool: SimplePool | null;
     nostrExists: boolean | null;
@@ -27,7 +26,7 @@ interface ProfileData {
     nip05?: string;
 }
 
-const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) => {
+const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const [profileData, setProfileData] = useState<ProfileData | null>(null);
     const [posts, setPosts] = useState<ExtendedEvent[]>([]);
     const [pubkey, setPubkey] = useState<string>('');
@@ -52,7 +51,9 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
     const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
     const [hasOlderPosts, setHasOlderPosts] = useState(true);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
-    const [npubFromUrl, setNpubFromUrl] = useState<string | null>(null);
+    const [npubFromUrl, setNpubFromUrl] = useState<string | undefined>(undefined);
+
+    const { npub } = useParams<{ npub: string }>();
 
     useEffect(() => {
         const fetchProfileData = async () => {
@@ -60,8 +61,9 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
             setProfileData(null);
             if (!pool) return;
 
-            const queryParams = new URLSearchParams(location.search);
-            const npubFromUrl = queryParams.get("npub");
+            //const queryParams = new URLSearchParams(location.search);
+            //const npubFromUrl = queryParams.get("npub");
+            const npubFromUrl = npub;
             setNpubFromUrl(npubFromUrl);
             const isFromUrl = npubFromUrl !== null;
             const targetNpub = npubFromUrl || npub;
@@ -255,7 +257,7 @@ const Profile: React.FC<ProfileProps> = ({ npub, keyValue, pool, nostrExists }) 
                             <UserGroupIcon className="h-6 w-6 mr-2" />
                             <span>Followers</span>
                         </Link> */}
-                        <Link to={`/following/${npubFromUrl ? npubFromUrl : nip19.npubEncode(pubkey)}`} className="flex items-center">
+                        <Link to={`/profile/${npubFromUrl ? npubFromUrl : nip19.npubEncode(pubkey)}/following/`} className="flex items-center">
                             <UsersIcon className="h-6 w-6 mr-2" />
                             <span>Following</span>
                         </Link>

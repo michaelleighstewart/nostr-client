@@ -121,7 +121,7 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
     return (
         <div className="py-64">
             <Link
-                to={`/profile?npub=${pubkey}`}
+                to={`/profile/${pubkey}`}
                 className="inline-flex items-center mb-4 p-2 text-blue-500 hover:text-blue-600 transition-colors"
             >
                 <ArrowLeftIcon className="w-64 h-64 mr-2" />
@@ -141,7 +141,7 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
                     {followers.map((follower) => (
                         <div key={follower.npub} className="flex flex-col items-center justify-between p-32 border rounded hover:shadow-md transition-shadow h-full">
                             <Link
-                                to={`/profile?npub=${follower.npub}`}
+                                to={`/profile/${follower.npub}`}
                                 className="flex flex-col items-center"
                             >
                                 <div className="w-80 h-80 mb-4 overflow-hidden rounded-full">

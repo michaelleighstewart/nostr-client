@@ -342,7 +342,7 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
               message.pubkey === userPubkey ? 'bg-[#535bf2] bg-opacity-20 ml-auto text-white' : 'bg-gray-100 text-black'
             } max-w-[70%]`}
           >
-            <Link to={`/profile?npub=${message.pubkey}`}>
+            <Link to={`/profile/${message.pubkey}`}>
               <img
                 src={userMetadata[message.pubkey]?.picture || 'default-avatar.png'}
                 alt={userMetadata[message.pubkey]?.name || 'User'}

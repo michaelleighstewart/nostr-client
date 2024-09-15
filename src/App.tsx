@@ -92,13 +92,15 @@ function App() {
             <Route path="/" element={<Layout />}></Route>
             <Route index element={<Home keyValue={key} pool={pool} nostrExists={nostrExists} />}></Route>
             <Route path="edit-profile" element={<EditProfile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
+            <Route path="profile/:npub" element={<Profile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="profile" element={<Profile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
+            <Route path="profile/:npub/following" element={<Following pool={pool} />} />
             <Route path="notifications" element={<Notifications keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="messages" element={<Messages keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="generate-key" element={<GenerateKey setKeyValue={handleSetKey} keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="people-to-follow" element={<PeopleToFollow keyValue={key} pool={pool} nostrExists={nostrExists} />} />
-            <Route path="followers/:pubkey" element={<Followers keyValue={key} pool={pool} nostrExists={nostrExists} />} />
-            <Route path="following/:pubkey" element={<Following pool={pool} />} />
+            <Route path="profile/:npub/follwers" element={<Followers keyValue={key} pool={pool} nostrExists={nostrExists} />} />
+            <Route path="profile/:npub/following" element={<Following pool={pool} />} />
             <Route path="conversation/:id" element={<Conversation pool={pool} nostrExists={nostrExists} keyValue={key} />} />
             <Route path="note/:id" element={<Note pool={pool} nostrExists={nostrExists} keyValue={key} />} />
             <Route path="search" element={<Search pool={pool} nostrExists={nostrExists} keyValue={key} />} />

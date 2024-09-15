@@ -25,15 +25,15 @@ const Following: React.FC<FollowingProps> = ({ pool }) => {
     const [following, setFollowing] = useState<FollowingData[]>([]);
     const [loading, setLoading] = useState(true);
     const [userMetadata, setUserMetadata] = useState<UserMetadata>({});
-    const { pubkey } = useParams<{ pubkey: string }>();
+    const { npub } = useParams<{ npub: string }>();
 
     useEffect(() => {
         const fetchUserMetadata = async () => {
-            if (!pool || !pubkey) return;
-            let pk = pubkey;
-            if (pubkey.startsWith('npub')) {
+            if (!pool || !npub) return;
+            let pk = npub;
+            if (npub.startsWith('npub')) {
                 try {
-                    pk = bech32Decoder('npub', pubkey).toString('hex');
+                    pk = bech32Decoder('npub', npub).toString('hex');
                 } catch (error) {
                     console.error("Error decoding npub:", error);
                     return;
@@ -60,11 +60,11 @@ const Following: React.FC<FollowingProps> = ({ pool }) => {
 
         const fetchFollowing = async () => {
             setLoading(true);
-            if (!pool || !pubkey) return;
-            let pk = pubkey;
-            if (pubkey.startsWith('npub')) {
+            if (!pool || !npub) return;
+            let pk = npub;
+            if (npub.startsWith('npub')) {
                 try {
-                    pk = bech32Decoder('npub', pubkey).toString('hex');
+                    pk = bech32Decoder('npub', npub).toString('hex');
                 } catch (error) {
                     console.error("Error decoding npub:", error);
                     return;
@@ -124,7 +124,7 @@ const Following: React.FC<FollowingProps> = ({ pool }) => {
 
         fetchUserMetadata();
         fetchFollowing();
-    }, [pool, pubkey]);
+    }, [pool, npub]);
 
     if (loading) {
         return <div className="h-screen"><Loading vCentered={false} /></div>;
@@ -133,7 +133,7 @@ const Following: React.FC<FollowingProps> = ({ pool }) => {
     return (
         <div className="py-64">
             <Link
-                to={`/profile?npub=${pubkey}`}
+                to={`/profile/${npub}`}
                 className="inline-flex items-center mb-4 p-2 text-blue-500 hover:text-blue-600 transition-colors"
             >
                 <ArrowLeftIcon className="w-64 h-64 mr-2" />
@@ -153,7 +153,7 @@ const Following: React.FC<FollowingProps> = ({ pool }) => {
                     {following.map((follow) => (
                         <div key={follow.npub} className="flex flex-col items-center justify-between p-32 border rounded hover:shadow-md transition-shadow h-full">
                             <Link
-                                to={`/profile?npub=${follow.npub}`}
+                                to={`/profile/${follow.npub}`}
                                 className="flex flex-col items-center"
                             >
                                 <div className="w-80 h-80 mb-4 overflow-hidden rounded-full">

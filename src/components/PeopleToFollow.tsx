@@ -315,7 +315,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                             {peopleToFollow.map((person, index) => (
                                 <div key={index} className="w-full flex-shrink-0 p-4">
                                     <div className="flex items-center mb-4 pb-16">
-                                        <Link to={`/profile?npub=${person.npub}`}>
+                                        <Link to={`/profile/${person.npub}`}>
                                             {person.picture ? (
                                                 <img 
                                                     src={person.picture} 
