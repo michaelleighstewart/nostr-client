@@ -4,7 +4,7 @@ import { useParams, Link } from "react-router-dom";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import { bech32Decoder } from "../utils/helperFunctions";
-import { UserCircleIcon } from '@heroicons/react/24/solid';
+import { UserCircleIcon, ArrowLeftIcon } from '@heroicons/react/24/solid';
 
 interface FollowingProps {
     pool: SimplePool | null;
@@ -16,12 +16,48 @@ interface FollowingData {
     picture?: string;
 }
 
+interface UserMetadata {
+    name?: string;
+    picture?: string;
+}
+
 const Following: React.FC<FollowingProps> = ({ pool }) => {
     const [following, setFollowing] = useState<FollowingData[]>([]);
     const [loading, setLoading] = useState(true);
+    const [userMetadata, setUserMetadata] = useState<UserMetadata>({});
     const { pubkey } = useParams<{ pubkey: string }>();
 
     useEffect(() => {
+        const fetchUserMetadata = async () => {
+            if (!pool || !pubkey) return;
+            let pk = pubkey;
+            if (pubkey.startsWith('npub')) {
+                try {
+                    pk = bech32Decoder('npub', pubkey).toString('hex');
+                } catch (error) {
+                    console.error("Error decoding npub:", error);
+                    return;
+                }
+            }
+
+            const userEvent: Event | null = await pool.get(RELAYS, {
+                kinds: [0],
+                authors: [pk],
+            });
+
+            if (userEvent) {
+                try {
+                    const metadata = JSON.parse(userEvent.content);
+                    setUserMetadata({
+                        name: metadata.name || metadata.display_name,
+                        picture: metadata.picture,
+                    });
+                } catch (error) {
+                    console.error("Error parsing user metadata:", error);
+                }
+            }
+        };
+
         const fetchFollowing = async () => {
             setLoading(true);
             if (!pool || !pubkey) return;
@@ -86,6 +122,7 @@ const Following: React.FC<FollowingProps> = ({ pool }) => {
             setLoading(false);
         };
 
+        fetchUserMetadata();
         fetchFollowing();
     }, [pool, pubkey]);
 
@@ -95,6 +132,21 @@ const Following: React.FC<FollowingProps> = ({ pool }) => {
 
     return (
         <div className="py-64">
+            <Link
+                to={`/profile?npub=${pubkey}`}
+                className="inline-flex items-center mb-4 p-2 text-blue-500 hover:text-blue-600 transition-colors"
+            >
+                <ArrowLeftIcon className="w-64 h-64 mr-2" />
+                {userMetadata.picture ? (
+                    <img
+                        src={userMetadata.picture}
+                        alt={userMetadata.name || 'Profile'}
+                        className="w-64 h-64 rounded-full object-cover"
+                    />
+                ) : (
+                    <UserCircleIcon className="w-64 h-64" />
+                )}
+            </Link>
             <h1 className="text-2xl font-bold mb-4">Following</h1>
             {following.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
