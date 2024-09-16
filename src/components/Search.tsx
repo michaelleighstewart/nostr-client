@@ -27,6 +27,7 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [currentUserPubkey, setCurrentUserPubkey] = useState<string | null>(null);
+  const [followingList, setFollowingList] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchCurrentUserPubkey = async () => {
@@ -42,6 +43,27 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
 
     fetchCurrentUserPubkey();
   }, [nostrExists, keyValue]);
+
+  useEffect(() => {
+    const fetchFollowingList = async () => {
+      if (!pool || !currentUserPubkey) return;
+
+      const followEvents = await pool.querySync(
+        RELAYS,
+        { kinds: [3], authors: [currentUserPubkey] }
+      );
+
+      if (followEvents.length > 0) {
+        const followedPubkeys = followEvents[0].tags
+          .filter(tag => tag[0] === 'p')
+          .map(tag => tag[1]);
+
+        setFollowingList(followedPubkeys);
+      }
+    };
+
+    fetchFollowingList();
+  }, [pool, currentUserPubkey]);
 
   const handleSearch = async () => {
     if (!pool || !searchTerm) return;
@@ -88,7 +110,7 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
                 npub: nip19.npubEncode(event.pubkey),
                 name: profile.display_name || profile.name,
                 picture: profile.picture,
-                isFollowing: false,
+                isFollowing: followingList.includes(event.pubkey),
               });
             },
             oneose() {
@@ -111,33 +133,12 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
             npub: nip19.npubEncode(profile.pubkey),
             name: content.display_name || content.name,
             picture: content.picture,
-            isFollowing: false,
+            isFollowing: followingList.includes(profile.pubkey),
           };
         });
         setSearchResults(results);
         setIsLoading(false);
       }
-
-      // Check if the current user is following the found profiles
-      if (currentUserPubkey && pool) {
-        const followEvents = await pool.querySync(
-          RELAYS,
-            { kinds: [3], authors: [currentUserPubkey] }
-        );
-
-        if (followEvents.length > 0) {
-          const followedPubkeys = followEvents[0].tags
-            .filter(tag => tag[0] === 'p')
-            .map(tag => tag[1]);
-
-          results = results.map(result => ({
-            ...result,
-            isFollowing: followedPubkeys.includes(nip19.decode(result.npub).data as string),
-          }));
-        }
-      }
-
-      setSearchResults(results);
     } catch (error) {
       console.error('Error searching for profile:', error);
       setIsLoading(false);
@@ -158,7 +159,7 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
     const event = {
       kind: 3,
       created_at: Math.floor(Date.now() / 1000),
-      tags: [['p', pubkey]],
+      tags: [...followingList.map(pk => ['p', pk]), ['p', pubkey]],
       content: '',
     };
 
@@ -172,6 +173,7 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
         await pool.publish(RELAYS, signedEvent);
       }
 
+      setFollowingList(prevList => [...prevList, pubkey]);
       setSearchResults(prevResults =>
         prevResults.map(result =>
           result.npub === npub ? { ...result, isFollowing: true } : result
@@ -214,7 +216,7 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
           {searchResults.map((result) => (
             <div key={result.npub} className="flex flex-col items-center justify-between p-32 border rounded hover:shadow-md transition-shadow h-full">
               <Link
-                to={`/profile?npub=${result.npub}`}
+                to={`/profile/${result.npub}`}
                 className="flex flex-col items-center"
               >
                 <div className="w-80 h-80 mb-4 overflow-hidden rounded-full">

@@ -7,7 +7,7 @@ import { getPublicKey, finalizeEvent, nip19 } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import NoteCard from "./NoteCard";
-import { UsersIcon, UserPlusIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+import { UsersIcon, UserPlusIcon, ChatBubbleLeftRightIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { showCustomToast } from "./CustomToast";
 import { fetchMetadataReactionsAndReplies, fetchData } from "../utils/noteUtils";
 import NewMessageDialog from "./NewMessageDialog";
@@ -31,6 +31,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const [posts, setPosts] = useState<ExtendedEvent[]>([]);
     const [pubkey, setPubkey] = useState<string>('');
     const [isFollowing, setIsFollowing] = useState(false);
+    const [followingList, setFollowingList] = useState<string[]>([]);
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
     const [replies, setReplies] = useState<Record<string, ExtendedEvent[]>>({});
     const [reposts, setReposts] = useState<Record<string, ExtendedEvent[]>>({});
@@ -61,8 +62,6 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
             setProfileData(null);
             if (!pool) return;
 
-            //const queryParams = new URLSearchParams(location.search);
-            //const npubFromUrl = queryParams.get("npub");
             const npubFromUrl = npub;
             setNpubFromUrl(npubFromUrl);
             const isFromUrl = npubFromUrl !== null;
@@ -95,7 +94,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 currentUserPubkey = getPublicKey(skDecoded);
             }
 
-            // Check if current user is following the profile
+            // Fetch following list
             const followEvents = await pool.querySync(
                 RELAYS,
                 { kinds: [3], authors: [currentUserPubkey] }
@@ -105,6 +104,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 const followedPubkeys = followEvents[0].tags
                     .filter(tag => tag[0] === 'p')
                     .map(tag => tag[1]);
+                setFollowingList(followedPubkeys);
                 setIsFollowing(followedPubkeys.includes(fetchedPubkey));
             }
 
@@ -142,7 +142,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
         const event = {
             kind: 3,
             created_at: Math.floor(Date.now() / 1000),
-            tags: [['p', pubkey]],
+            tags: [...followingList.map(pk => ['p', pk]), ['p', pubkey]],
             content: '',
         };
 
@@ -156,6 +156,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 await pool.publish(RELAYS, signedEvent);
             }
 
+            setFollowingList(prevList => [...prevList, pubkey]);
             setIsFollowing(true);
             showCustomToast("Successfully followed user!");
         } catch (error) {
@@ -239,6 +240,15 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                                     >
                                         <UserPlusIcon className="h-5 w-5 mr-2" />
                                         Follow
+                                    </button>
+                                )}
+                                {isFollowing && (
+                                    <button
+                                        className="text-white font-bold py-2 px-6 rounded flex items-center mb-2 sm:mb-0 sm:mr-2 bg-green-500 cursor-not-allowed"
+                                        disabled
+                                    >
+                                        <CheckIcon className="h-5 w-5 mr-2" />
+                                        Following
                                     </button>
                                 )}
                                 <button
