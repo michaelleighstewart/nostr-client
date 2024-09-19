@@ -86,7 +86,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 try {
                   const metadata = JSON.parse(metadataEvent.content) as Metadata;
                   setMetadata(prev => ({...prev, [pubkey]: metadata}));
-                  setMetadataToCache(pubkey, metadata);
+                  if (isLoggedIn) {
+                    setMetadataToCache(pubkey, metadata);
+                  }
                 } catch (error) {
                   console.error("Error parsing metadata:", error);
                 }
@@ -95,7 +97,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           );
         }
       });
-    }, [props.pool, metadata]);
+    }, [props.pool, metadata, isLoggedIn]);
 
     useEffect(() => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);

@@ -10,7 +10,7 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     setReactions: React.Dispatch<React.SetStateAction<Record<string, Reaction[]>>>, 
     setReplies: React.Dispatch<React.SetStateAction<Record<string, ExtendedEvent[]>>>,
     setReposts: React.Dispatch<React.SetStateAction<Record<string, ExtendedEvent[]>>>) => {
-        
+    
     const pubkeysToFetch = new Set(events.map(event => event.pubkey));
     const postsToFetch = events.map(event => event.id);
     const repostsToFetch: string[] = [];
@@ -51,7 +51,7 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
         }
     };
 
-    sub = pool?.subscribeManyEose(
+    sub = pool?.subscribeMany(
         RELAYS,
         [
             { kinds: [0], authors: pubkeysToFetchFromNetwork },
