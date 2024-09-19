@@ -25,7 +25,7 @@ interface HomeProps {
 const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [streamedEvents, setStreamedEvents] = useState<ExtendedEvent[]>([]);
     const [eventsImmediate, _setEvents] = useState<ExtendedEvent[]>([]);
-    const [events] = useDebounce(eventsImmediate, 1500);
+    const [events] = useDebounce(eventsImmediate, 15);
     const [repostEvents, _setRepostEvents] = useState<ExtendedEvent[]>([]);
     const [replyEvents, _setReplyEvents] = useState<ExtendedEvent[]>([]);
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
@@ -65,29 +65,37 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       setHasNotes(true);
       console.log("Has notes set to true");
       
-      // Check cache for metadata
-      const cachedMetadata = getMetadataFromCache(event.pubkey);
-      if (cachedMetadata) {
-        setMetadata(prev => ({...prev, [event.pubkey]: cachedMetadata}));
-      } else if (props.pool) {
-        // Fetch metadata if not in cache
-        props.pool.subscribeManyEose(
-          RELAYS,
-          [{ kinds: [0], authors: [event.pubkey] }],
-          {
-            onevent(metadataEvent) {
-              try {
-                const metadata = JSON.parse(metadataEvent.content) as Metadata;
-                setMetadata(prev => ({...prev, [event.pubkey]: metadata}));
-                setMetadataToCache(event.pubkey, metadata);
-              } catch (error) {
-                console.error("Error parsing metadata:", error);
+      const pubkeysToFetch = [event.pubkey];
+      
+      if (event.repostedEvent) {
+        pubkeysToFetch.push(event.repostedEvent.pubkey);
+      } else if (event.repliedEvent) {
+        pubkeysToFetch.push(event.repliedEvent.pubkey);
+      }
+      
+      pubkeysToFetch.forEach(pubkey => {
+        const cachedMetadata = getMetadataFromCache(pubkey);
+        if (cachedMetadata) {
+          setMetadata(prev => ({...prev, [pubkey]: cachedMetadata}));
+        } else if (props.pool && !metadata[pubkey]) {
+          props.pool.subscribeManyEose(
+            RELAYS,
+            [{ kinds: [0], authors: [pubkey] }],
+            {
+              onevent(metadataEvent) {
+                try {
+                  const metadata = JSON.parse(metadataEvent.content) as Metadata;
+                  setMetadata(prev => ({...prev, [pubkey]: metadata}));
+                  setMetadataToCache(pubkey, metadata);
+                } catch (error) {
+                  console.error("Error parsing metadata:", error);
+                }
               }
             }
-          }
-        );
-      }
-    }, [props.pool]);
+          );
+        }
+      });
+    }, [props.pool, metadata]);
 
     useEffect(() => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);
