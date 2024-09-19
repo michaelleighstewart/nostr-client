@@ -160,23 +160,27 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       fetchMetadataReactionsAndReplies(props.pool, streamedEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
   }, [streamedEvents]);
 
-    const loadMore = async () => {
-      if (!props.pool) return;
-      setLoadingMore(true);
-      const oneDayBeforeLastFetched = lastFetchedTimestamp - 24 * 60 * 60;
-      let filter = isLoggedIn
-        ? { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, authors: followers, limit: 10, until: lastFetchedTimestamp }
-        : { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, limit: 10, until: lastFetchedTimestamp };
-
-      const fetchedEvents = await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-        setLoading, setLoadingMore, setError, setStreamedEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, 
-        setInitialLoadComplete, filter, handleEventReceived);
-      if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
-        const newLastFetchedTimestamp = Math.min(...fetchedEvents.map((event: { created_at: number }) => event.created_at));
-        setLastFetchedTimestamp(newLastFetchedTimestamp);
-      }
-      setLoadingMore(false);
-    };
+  const loadMore = async () => {
+    if (!props.pool) return;
+    setLoadingMore(true);
+    const oneDayBeforeLastFetched = lastFetchedTimestamp - 24 * 60 * 60;
+    let filter = isLoggedIn
+      ? { kinds: [1, 5, 6, 7], since: oneDayBeforeLastFetched, authors: followers, limit: 10, until: lastFetchedTimestamp }
+      : { kinds: [1, 5, 6, 7], since: oneDayBeforeLastFetched, limit: 10, until: lastFetchedTimestamp };
+  
+    const fetchedEvents = await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
+      setLoading, setLoadingMore, setError, setStreamedEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, 
+      setInitialLoadComplete, filter, handleEventReceived);
+    
+    if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
+      const newLastFetchedTimestamp = Math.min(...fetchedEvents.map((event: { created_at: number }) => event.created_at));
+      setLastFetchedTimestamp(newLastFetchedTimestamp);
+      
+      // Fetch metadata, reactions, replies, and reposts for the new events
+      await fetchMetadataReactionsAndReplies(props.pool, fetchedEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
+    }
+    setLoadingMore(false);
+  };
 
     const handleSendMessage = async () => {
       if (!props.pool) return;
