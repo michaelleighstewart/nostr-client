@@ -13,6 +13,7 @@ import { showCustomToast } from "./CustomToast";
 import { PhotoIcon, VideoCameraIcon } from '@heroicons/react/24/solid';
 import NoteCard from "./NoteCard";
 import { Helmet } from 'react-helmet';
+import { getMetadataFromCache } from '../utils/cachingUtils';
 
 interface HomeProps {
   keyValue: string;
@@ -94,8 +95,17 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     }, [userPublicKey]);
 
     useEffect(() => {
-      if (!props.pool || events.length === 0) return;
-      fetchMetadataReactionsAndReplies(props.pool, events, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
+        const cachedMetadata: Record<string, Metadata> = {};
+        events.forEach(event => {
+            const cached = getMetadataFromCache(event.pubkey);
+            if (cached) {
+                cachedMetadata[event.pubkey] = cached;
+            }
+        });
+        setMetadata(prevMetadata => ({...prevMetadata, ...cachedMetadata}));
+
+        if (!props.pool || events.length === 0) return;
+        fetchMetadataReactionsAndReplies(props.pool, events, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
     }, [events]);
 
     const loadMore = async () => {

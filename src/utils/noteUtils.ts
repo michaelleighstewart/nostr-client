@@ -2,6 +2,7 @@ import { SimplePool, Event } from "nostr-tools";
 import { RELAYS } from "./constants";
 import { insertEventIntoDescendingList } from "./helperFunctions";
 import { ExtendedEvent, Metadata, Reaction } from "./interfaces";
+import { getMetadataFromCache, setMetadataToCache } from "./cachingUtils";
 
 export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events: ExtendedEvent[], 
     repostEvents: ExtendedEvent[],
@@ -19,15 +20,29 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
         repostsToFetch.push(event.repostedEvent?.id || "");
         repostPubkeysToFetch.push(event.repostedEvent?.pubkey || "");
     }
-    // Handle replyEvents
     const replyIdsToFetch: string[] = [];
     const replyPubkeysToFetch: string[] = [];
     for (const event of replyEvents) {
         replyIdsToFetch.push(event.repliedEvent?.id || "");
         replyPubkeysToFetch.push(event.repliedEvent?.pubkey || "");
     }
-
     repostPubkeysToFetch.forEach(pubkey => pubkeysToFetch.add(pubkey));
+
+    // Check cache for metadata
+    const cachedMetadata: Record<string, Metadata> = {};
+    const pubkeysToFetchFromNetwork: string[] = [];
+
+    pubkeysToFetch.forEach(pubkey => {
+        const cachedData = getMetadataFromCache(pubkey);
+        if (cachedData) {
+            cachedMetadata[pubkey] = cachedData;
+        } else {
+            pubkeysToFetchFromNetwork.push(pubkey);
+        }
+    });
+
+    // Update metadata state with cached data
+    setMetadata(prevMetadata => ({...prevMetadata, ...cachedMetadata}));
 
     let sub: any;
 
@@ -40,7 +55,7 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     sub = pool?.subscribeManyEose(
         RELAYS,
         [
-            { kinds: [0], authors: Array.from(pubkeysToFetch) },
+            { kinds: [0], authors: pubkeysToFetchFromNetwork },
             { kinds: [7], '#e': postsToFetch },
             { kinds: [1], '#e': postsToFetch },
             { kinds: [6], '#e': postsToFetch }
@@ -54,6 +69,7 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                         ...cur,
                         [event.pubkey]: metadata
                     }));
+                    setMetadataToCache(event.pubkey, metadata);
                 } else if (event.kind === 7) {
                     setReactions(cur => {
                         const newReaction: Reaction = {
