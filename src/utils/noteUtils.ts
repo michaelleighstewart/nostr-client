@@ -302,7 +302,8 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
     setDeletedNoteIds: React.Dispatch<React.SetStateAction<Set<string>>>,
     _setUserPublicKey: React.Dispatch<React.SetStateAction<string | null>>,
     setInitialLoadComplete: React.Dispatch<React.SetStateAction<boolean>>,
-    filter: any
+    filter: any,
+    onEventReceived: (event: ExtendedEvent) => void
 ) => {
     try {
       if (!append) {
@@ -319,12 +320,19 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
       //: { kinds: [1, 5, 6], since: since, limit: 10, ...(until !== 0 && { until }) };
       let subRepostedMeta: any;
       let subReactionsReplies: any;
+      let fetchedEvents: ExtendedEvent[] = [];
 
           const sub = pool?.subscribeMany(
             RELAYS,
             [filter],
             {
                 onevent(event: Event) {
+                    const extendedEvent: ExtendedEvent = {
+                        ...event,
+                        deleted: false,
+                        repostedEvent: null,
+                        repliedEvent: null
+                    };
                     setLastFetchedTimestamp(prevTimestamp => 
                         Math.min(prevTimestamp, event.created_at)
                     );
@@ -443,6 +451,8 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                         }
                     }
                 }
+                fetchedEvents.push(extendedEvent);
+                onEventReceived(extendedEvent); // Call the callback for each event
                 },
                 oneose() {
                     setLoading(false);

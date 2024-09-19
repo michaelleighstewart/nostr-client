@@ -4,6 +4,7 @@ import { SimplePool } from "nostr-tools";
 import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import React from "react";
 
 interface Props {
     notes: ExtendedEvent[];
@@ -17,7 +18,7 @@ interface Props {
     reposts: Record<string, ExtendedEvent[]>;
 }
 
-export default function NotesList({ notes, metadata, setMetadata, pool, nostrExists, reactions, keyValue, replies, reposts } : Props) {
+const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists, reactions, keyValue, replies, reposts }: Props) => {
     const [visibleNotes, setVisibleNotes] = useState<ExtendedEvent[]>([]);
     const isLoggedIn = nostrExists || !!keyValue;
 
@@ -94,4 +95,6 @@ export default function NotesList({ notes, metadata, setMetadata, pool, nostrExi
             </AnimatePresence>
         </div>
     )
-}
+});
+
+export default NotesList;

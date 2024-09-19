@@ -22,6 +22,7 @@ interface HomeProps {
 }
 
 const Home : React.FC<HomeProps> = (props: HomeProps) => {
+    const [streamedEvents, setStreamedEvents] = useState<ExtendedEvent[]>([]);
     const [eventsImmediate, setEvents] = useState<ExtendedEvent[]>([]);
     const [events] = useDebounce(eventsImmediate, 1500);
     const [repostEvents, _setRepostEvents] = useState<ExtendedEvent[]>([]);
@@ -48,6 +49,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [followers, setFollowers] = useState<string[]>([]);
 
+    const handleEventReceived = useCallback((event: ExtendedEvent) => {
+      setStreamedEvents(prev => [event, ...prev]);
+    }, []);
+
     useEffect(() => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);
     }, [props.nostrExists, props.keyValue]);
@@ -72,7 +77,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           : { kinds: [1, 5, 6], limit: 10 };
         
         const fetchedEvents = await fetchData(props.pool, 0, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-          setLoading, setLoadingMore, setError, setEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter);
+          setLoading, setLoadingMore, setError, setEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
+          setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived);
         
         if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
           const newLastFetchedTimestamp = Math.min(...fetchedEvents.map(event => event.created_at));
@@ -84,7 +90,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       } finally {
         setLoading(false);
       }
-    }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn, userPublicKey]);
+    }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn, userPublicKey, handleEventReceived]);
 
     useEffect(() => {
       fetchFollowersAndData();
@@ -118,7 +124,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
 
       const fetchedEvents = await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
         setLoading, setLoadingMore, setError, setEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, 
-        setInitialLoadComplete, filter);
+        setInitialLoadComplete, filter, handleEventReceived);
       if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
         const newLastFetchedTimestamp = Math.min(...fetchedEvents.map((event) => event.created_at));
         setLastFetchedTimestamp(newLastFetchedTimestamp);
