@@ -52,16 +52,18 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [_hasNotes, setHasNotes] = useState(false);
 
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
+      console.log("Event received:", event);
       setStreamedEvents(prev => {
         if (prev.some(e => e.id === event.id)) {
           return prev;
         }
         const newEvents = insertEventIntoDescendingList(prev, event);
-        if (newEvents.length > 0) {
-          setHasNotes(true);
-        }
+        console.log("Events count:", newEvents.length);
         return newEvents;
       });
+      
+      setHasNotes(true);
+      console.log("Has notes set to true");
       
       // Check cache for metadata
       const cachedMetadata = getMetadataFromCache(event.pubkey);
@@ -106,18 +108,20 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         } catch (error) {}
         setFollowers(newFollowers);
     
+        const oneWeekAgo = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
         let filter = isLoggedIn
-          ? { kinds: [1, 5, 6], authors: newFollowers, limit: 10 }
-          : { kinds: [1, 5, 6], limit: 10 };
+          ? { kinds: [1, 5, 6], authors: newFollowers, limit: 10, since: oneWeekAgo }
+          : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
         
         const fetchedEvents = await fetchData(props.pool, 0, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-          setLoading, setLoadingMore, setError, setStreamedEvents, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
+          setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
           setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived);
         
         if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
           const newLastFetchedTimestamp = Math.min(...fetchedEvents.map(event => event.created_at));
           setLastFetchedTimestamp(newLastFetchedTimestamp);
         }
+        setInitialLoadComplete(true);
       } catch (error) {
         console.error("Error fetching data:", error);
         setError("Failed to load data. Please try again.");
@@ -157,10 +161,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         : { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, limit: 10, until: lastFetchedTimestamp };
 
       const fetchedEvents = await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-        setLoading, setLoadingMore, setError, setEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, 
+        setLoading, setLoadingMore, setError, setStreamedEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, 
         setInitialLoadComplete, filter, handleEventReceived);
       if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
-        const newLastFetchedTimestamp = Math.min(...fetchedEvents.map((event) => event.created_at));
+        const newLastFetchedTimestamp = Math.min(...fetchedEvents.map((event: { created_at: number }) => event.created_at));
         setLastFetchedTimestamp(newLastFetchedTimestamp);
       }
       setLoadingMore(false);
@@ -388,7 +392,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               nostrExists={props.nostrExists} keyValue={props.keyValue}
               replies={replies} reposts={reposts} setMetadata={setMetadata}
               initialLoadComplete={initialLoadComplete} />
-              {initialLoadComplete && isLoggedIn && (
+              {streamedEvents.length > 0 && initialLoadComplete && isLoggedIn && (
                 <>
                   {loadingMore ? (
                     <Loading vCentered={false} />
