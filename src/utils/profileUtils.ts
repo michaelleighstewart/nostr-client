@@ -2,6 +2,7 @@ import { getPublicKey, SimplePool } from "nostr-tools";
 import { bech32Decoder } from "./helperFunctions";
 import { RELAYS } from "./constants";
 import { Metadata } from "./interfaces";
+import { getMetadataFromCache, setMetadataToCache } from './cachingUtils';
 
 export const getFollowers = async (pool: SimplePool, isLoggedIn: boolean, nostrExists: boolean | null, keyValue: string | null, 
   setUserPublicKey: (pk: string) => void, publicKeyOverride: string | null): Promise<string[]> => {
@@ -55,6 +56,16 @@ export const fetchUserMetadata = async (pool: SimplePool | null, userPublicKey: 
   setShowOstrich: (show: boolean) => void, setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>) => {
   if (!pool || !userPublicKey) return;
 
+    // Check cache first
+    const cachedMetadata = getMetadataFromCache(userPublicKey);
+    if (cachedMetadata) {
+      setMetadata(prevMetadata => ({
+        ...prevMetadata,
+        [userPublicKey]: cachedMetadata
+      }));
+      return;
+    }
+
   const events = await pool.querySync(RELAYS, {
     kinds: [0],
     authors: [userPublicKey],
@@ -67,6 +78,7 @@ export const fetchUserMetadata = async (pool: SimplePool | null, userPublicKey: 
       ...cur,
       [userPublicKey]: metadata,
     }));
+    setMetadataToCache(userPublicKey, metadata);
 
     if (!metadata.name) {
       setShowOstrich(true);
