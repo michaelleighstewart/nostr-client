@@ -3,8 +3,9 @@ import NoteCard from "./NoteCard";
 import { SimplePool } from "nostr-tools";
 import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import React from "react";
+import { AnimatePresence, motion } from "framer-motion";
+
 
 interface Props {
     notes: ExtendedEvent[];

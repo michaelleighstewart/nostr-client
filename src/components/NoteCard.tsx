@@ -34,7 +34,7 @@ interface Props {
     setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>;
   }
   
-  export default function NoteCard({
+  const NoteCard = React.memo(function NoteCard({
     id,
     content,
     user,
@@ -633,4 +633,6 @@ interface Props {
       ) : <></>}
       </div>
     );
-  }
+  })
+
+  export default NoteCard;
