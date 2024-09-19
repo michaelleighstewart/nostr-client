@@ -3,7 +3,7 @@ import { getPublicKey, SimplePool } from "nostr-tools";
 import { useState, useEffect, useRef, useCallback } from "react";
 import NotesList from "./NotesList";
 import { useDebounce } from "use-debounce";
-import { bech32Decoder, getBase64, sendMessage } from "../utils/helperFunctions";
+import { bech32Decoder, getBase64, insertEventIntoDescendingList, sendMessage } from "../utils/helperFunctions";
 import { ExtendedEvent, Metadata, Reaction, User } from "../utils/interfaces";
 import Loading from "./Loading";
 import { fetchUserMetadata, getFollowers } from "../utils/profileUtils";
@@ -13,7 +13,8 @@ import { showCustomToast } from "./CustomToast";
 import { PhotoIcon, VideoCameraIcon } from '@heroicons/react/24/solid';
 import NoteCard from "./NoteCard";
 import { Helmet } from 'react-helmet';
-import { getMetadataFromCache } from '../utils/cachingUtils';
+import { getMetadataFromCache, setMetadataToCache } from '../utils/cachingUtils';
+import { RELAYS } from '../utils/constants';
 
 interface HomeProps {
   keyValue: string;
@@ -50,8 +51,38 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [followers, setFollowers] = useState<string[]>([]);
 
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
-      setStreamedEvents(prev => [event, ...prev]);
-    }, []);
+      setStreamedEvents(prev => {
+        // Check if the event already exists in the array
+        if (prev.some(e => e.id === event.id)) {
+          return prev; // If it exists, return the previous state without changes
+        }
+        // Use insertEventIntoDescendingList to add the new event in the correct position
+        return insertEventIntoDescendingList(prev, event);
+      });
+      
+      // Check cache for metadata
+      const cachedMetadata = getMetadataFromCache(event.pubkey);
+      if (cachedMetadata) {
+        setMetadata(prev => ({...prev, [event.pubkey]: cachedMetadata}));
+      } else if (props.pool) {
+        // Fetch metadata if not in cache
+        props.pool.subscribeManyEose(
+          RELAYS,
+          [{ kinds: [0], authors: [event.pubkey] }],
+          {
+            onevent(metadataEvent) {
+              try {
+                const metadata = JSON.parse(metadataEvent.content) as Metadata;
+                setMetadata(prev => ({...prev, [event.pubkey]: metadata}));
+                setMetadataToCache(event.pubkey, metadata);
+              } catch (error) {
+                console.error("Error parsing metadata:", error);
+              }
+            }
+          }
+        );
+      }
+    }, [props.pool]);
 
     useEffect(() => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);
@@ -71,13 +102,13 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           }
         } catch (error) {}
         setFollowers(newFollowers);
-
+    
         let filter = isLoggedIn
           ? { kinds: [1, 5, 6], authors: newFollowers, limit: 10 }
           : { kinds: [1, 5, 6], limit: 10 };
         
         const fetchedEvents = await fetchData(props.pool, 0, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-          setLoading, setLoadingMore, setError, setEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
+          setLoading, setLoadingMore, setError, setStreamedEvents, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
           setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived);
         
         if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
@@ -90,7 +121,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       } finally {
         setLoading(false);
       }
-    }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn, userPublicKey, handleEventReceived]);
+    }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn, userPublicKey, handleEventReceived, streamedEvents]);
 
     useEffect(() => {
       fetchFollowersAndData();
@@ -101,18 +132,18 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     }, [userPublicKey]);
 
     useEffect(() => {
-        const cachedMetadata: Record<string, Metadata> = {};
-        events.forEach(event => {
-            const cached = getMetadataFromCache(event.pubkey);
-            if (cached) {
-                cachedMetadata[event.pubkey] = cached;
-            }
-        });
-        setMetadata(prevMetadata => ({...prevMetadata, ...cachedMetadata}));
-
-        if (!props.pool || events.length === 0) return;
-        fetchMetadataReactionsAndReplies(props.pool, events, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
-    }, [events]);
+      const cachedMetadata: Record<string, Metadata> = {};
+      streamedEvents.forEach(event => {
+          const cached = getMetadataFromCache(event.pubkey);
+          if (cached) {
+              cachedMetadata[event.pubkey] = cached;
+          }
+      });
+      setMetadata(prevMetadata => ({...prevMetadata, ...cachedMetadata}));
+  
+      if (!props.pool || streamedEvents.length === 0) return;
+      fetchMetadataReactionsAndReplies(props.pool, streamedEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
+  }, [streamedEvents]);
 
     const loadMore = async () => {
       if (!props.pool) return;
@@ -348,23 +379,26 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           <div className="text-red-500 text-center mt-4">{error}</div>
         ) : (
           <div className={`pt-32 relative ${!isLoggedIn ? 'pointer-events-none opacity-50' : ''}`}>
-            <NotesList metadata={metadata} reactions={reactions} notes={events.filter(e => !deletedNoteIds.has(e.id))} pool={props.pool} 
+            <NotesList metadata={metadata} reactions={reactions} 
+              notes={streamedEvents.filter(e => !deletedNoteIds.has(e.id))}
+              pool={props.pool} 
               nostrExists={props.nostrExists} keyValue={props.keyValue}
-              replies={replies} reposts={reposts} setMetadata={setMetadata} />
-            {initialLoadComplete && events.length > 0 && isLoggedIn && (
-              <div className="mt-8 mb-8 text-center">
-                {loadingMore ? (
-                  <Loading vCentered={false} />
-                ) : (
-                  <button 
-                    className="text-white font-bold py-3 px-6 rounded"
-                    onClick={loadMore}
-                  >
-                    Load More
-                  </button>
-                )}
-              </div>
-            )}
+              replies={replies} reposts={reposts} setMetadata={setMetadata}
+              initialLoadComplete={initialLoadComplete} />
+              {initialLoadComplete && streamedEvents.length > 0 && events.length > 0 && isLoggedIn && !loading && (
+                <div className="mt-8 mb-8 text-center">
+                  {loadingMore ? (
+                    <Loading vCentered={false} />
+                  ) : (
+                    <button 
+                      className="text-white font-bold py-3 px-6 rounded"
+                      onClick={loadMore}
+                    >
+                      Load More
+                    </button>
+                  )}
+                </div>
+              )}
           </div>
         )}
         <Ostrich show={showOstrich} onClose={() => setShowOstrich(false)} 

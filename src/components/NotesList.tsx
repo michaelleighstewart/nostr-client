@@ -16,9 +16,10 @@ interface Props {
     keyValue: string;
     replies: Record<string, ExtendedEvent[]>;
     reposts: Record<string, ExtendedEvent[]>;
+    initialLoadComplete: boolean;
 }
 
-const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists, reactions, keyValue, replies, reposts }: Props) => {
+const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists, reactions, keyValue, replies, reposts, initialLoadComplete }: Props) => {
     const [visibleNotes, setVisibleNotes] = useState<ExtendedEvent[]>([]);
     const isLoggedIn = nostrExists || !!keyValue;
 
@@ -40,13 +41,14 @@ const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists,
         return () => clearTimeout(timer);
     }, [notes, isLoggedIn, keyValue, nostrExists]);
 
-    if (notes.length === 0) {
+    if (!initialLoadComplete || visibleNotes.length === 0) {
         return (
             <div className="flex flex-col gap-16">
                 <p className="text-center text-gray-500">Waiting for recent notes...</p>
             </div>
         )
     }
+
     return (
         <div className="flex flex-col gap-16">
             <AnimatePresence>
@@ -64,11 +66,8 @@ const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists,
                                 id={note.id}
                                 created_at={note.created_at}
                                 user={{
-                                    name:
-                                        metadata[note.pubkey]?.name ??
-                                        `${nip19.npubEncode(note.pubkey).slice(0, 12)}...`,
-                                    image:
-                                        metadata[note.pubkey]?.picture,
+                                    name: metadata[note.pubkey]?.name ?? `${nip19.npubEncode(note.pubkey).slice(0, 12)}...`,
+                                    image: metadata[note.pubkey]?.picture,
                                     pubkey: note.pubkey,
                                     nip05: metadata[note.pubkey]?.nip05
                                 }}

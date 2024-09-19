@@ -327,7 +327,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
             [filter],
             {
                 onevent(event: Event) {
-                    const extendedEvent: ExtendedEvent = {
+                    let extendedEventToAdd: ExtendedEvent = {
                         ...event,
                         deleted: false,
                         repostedEvent: null,
@@ -350,6 +350,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                 repostedEvent: null,
                                 repliedEvent: null
                             };
+                            extendedEventToAdd = extendedEvent;
                             setEvents((events) => {
                                 // Check if the event already exists
                                 if (!events.some(e => e.id === extendedEvent.id)) {
@@ -389,6 +390,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                             repostedEvent: null,
                                             repliedEvent: repliedEvent
                                         };
+                                        extendedEventToAdd = extendedEvent;
                                         setEvents(prevEvents => {
                                             if (!prevEvents.some(e => e.id === extendedEvent.id)) {
                                                 return insertEventIntoDescendingList(prevEvents, extendedEvent);
@@ -437,6 +439,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                 repostedEvent: repostedEvent,
                                 repliedEvent: null
                             };
+                            extendedEventToAdd = extendedEvent;
                             setEvents((events) => {
                                 // Check if the event already exists
                                 if (!events.some(e => e.id === extendedEvent.id)) {
@@ -451,8 +454,8 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                         }
                     }
                 }
-                fetchedEvents.push(extendedEvent);
-                onEventReceived(extendedEvent); // Call the callback for each event
+                fetchedEvents.push(extendedEventToAdd);
+                onEventReceived(extendedEventToAdd); // Call the callback for each event
                 },
                 oneose() {
                     setLoading(false);
