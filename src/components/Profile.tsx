@@ -58,12 +58,13 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
         console.log("event came in", event);
         setStreamedEvents(prev => {
-          if (prev.some(e => e.id === event.id)) {
-            return prev;
-          }
-          return [...prev, event].sort((a, b) => b.created_at - a.created_at);
+            if (prev.some(e => e.id === event.id)) {
+                return prev;
+            }
+            const newEvents = [...prev, event].sort((a, b) => b.created_at - a.created_at);
+            return newEvents;
         });
-      }, []);
+    }, []);
 
     useEffect(() => {
         const fetchProfileData = async () => {
@@ -183,33 +184,21 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
         const filter = { kinds: [1, 5, 6], authors: [pubkey], limit: 10, until: oldestTimestamp - 1 };
         console.log("filter2", filter);
         
-        let newEvents: ExtendedEvent[] = [];
-        
-        const handleNewEvent = (event: ExtendedEvent) => {
-            console.log("new event came in2", event);
-            if (!streamedEvents.some(e => e.id === event.id)) {
-                newEvents.push(event);
-            }
-        };
-    
-        await fetchData(pool, 0, true, oldestTimestamp - 1, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
+        const fetchedEvents = await fetchData(pool, 0, true, oldestTimestamp - 1, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
             setLoading, setLoadingMore, setError, setStreamedEvents, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, 
-            setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleNewEvent);
+            setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived);
         
-        // Sort new events in descending order
-        newEvents.sort((a, b) => b.created_at - a.created_at);
-    
-        // Update streamedEvents by appending new events
-        setStreamedEvents(prevEvents => {
-            return [...prevEvents, ...newEvents];
-        });
+        if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
+            setStreamedEvents(prevEvents => {
+                const newEvents = [...prevEvents, ...fetchedEvents];
+                return newEvents.sort((a, b) => b.created_at - a.created_at);
+            });
+            const newLastFetchedTimestamp = Math.min(...fetchedEvents.map(event => event.created_at));
+            setLastFetchedTimestamp(newLastFetchedTimestamp);
+        } //else {
+        //    showCustomToast("No more posts to load");
+        //}
         
-        // Update lastFetchedTimestamp
-        if (newEvents.length > 0) {
-            setLastFetchedTimestamp(Math.min(...newEvents.map(e => e.created_at)));
-        }
-    
-        //setHasOlderPosts(newEvents.length > 0);
         setLoadingMore(false);
     };
 

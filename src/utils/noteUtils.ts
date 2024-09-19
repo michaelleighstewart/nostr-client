@@ -294,7 +294,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
     setLoading: React.Dispatch<React.SetStateAction<boolean>>,
     setLoadingMore: React.Dispatch<React.SetStateAction<boolean>>,
     setError: React.Dispatch<React.SetStateAction<string | null>>,
-    setEvents: React.Dispatch<React.SetStateAction<ExtendedEvent[]>>,
+    _setEvents: React.Dispatch<React.SetStateAction<ExtendedEvent[]>>,
     events: ExtendedEvent[],
     repostEvents: ExtendedEvent[],
     replyEvents: ExtendedEvent[],
@@ -351,13 +351,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                 repliedEvent: null
                             };
                             extendedEventToAdd = extendedEvent;
-                            setEvents((events) => {
-                                // Check if the event already exists
-                                if (!events.some(e => e.id === extendedEvent.id)) {
-                                    return insertEventIntoDescendingList(events, extendedEvent);
-                                }
-                                return events;
-                            });
                             onEventReceived(extendedEventToAdd);
                         }
                         else {
@@ -393,13 +386,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                             repliedEvent: repliedEvent
                                         };
                                         extendedEventToAdd = extendedEvent;
-                                        //console.log("extendedEventToAdd", extendedEventToAdd);
-                                        setEvents(prevEvents => {
-                                            if (!prevEvents.some(e => e.id === extendedEvent.id)) {
-                                                return insertEventIntoDescendingList(prevEvents, extendedEvent);
-                                            }
-                                            return prevEvents;
-                                        });
                                         replyEvents.push(extendedEvent);
                                         onEventReceived(extendedEvent);
                                     }
@@ -411,9 +397,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                             .filter(tag => tag[0] === 'e')
                             .map(tag => tag[1]);
                         setDeletedNoteIds(prev => new Set([...prev, ...deletedIds]));
-                        setEvents(prevEvents => prevEvents.map(e => 
-                            deletedIds.includes(e.id) ? {...e, deleted: true} : e
-                        ));
                         onEventReceived(extendedEventToAdd);
                     }
                     else if (event.kind === 6) {
@@ -445,13 +428,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                 repliedEvent: null
                             };
                             extendedEventToAdd = extendedEvent;
-                            setEvents((events) => {
-                                // Check if the event already exists
-                                if (!events.some(e => e.id === extendedEvent.id)) {
-                                    return insertEventIntoDescendingList(events, extendedEvent);
-                                }
-                                return events;
-                            });
                             repostEvents.push(extendedEvent);
                             onEventReceived(extendedEvent);
                             } catch (error) {
@@ -461,7 +437,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                     }
                 }
                 fetchedEvents.push(extendedEventToAdd);
-                //onEventReceived(extendedEventToAdd); // Call the callback for each event
                 },
                 oneose() {
                     setLoading(false);
