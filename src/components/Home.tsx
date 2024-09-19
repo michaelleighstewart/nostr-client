@@ -49,15 +49,18 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const videoInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [followers, setFollowers] = useState<string[]>([]);
+    const [hasNotes, setHasNotes] = useState(false);
 
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
       setStreamedEvents(prev => {
-        // Check if the event already exists in the array
         if (prev.some(e => e.id === event.id)) {
-          return prev; // If it exists, return the previous state without changes
+          return prev;
         }
-        // Use insertEventIntoDescendingList to add the new event in the correct position
-        return insertEventIntoDescendingList(prev, event);
+        const newEvents = insertEventIntoDescendingList(prev, event);
+        if (newEvents.length > 0) {
+          setHasNotes(true);
+        }
+        return newEvents;
       });
       
       // Check cache for metadata
@@ -385,19 +388,21 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               nostrExists={props.nostrExists} keyValue={props.keyValue}
               replies={replies} reposts={reposts} setMetadata={setMetadata}
               initialLoadComplete={initialLoadComplete} />
-              {initialLoadComplete && streamedEvents.length > 0 && isLoggedIn && !loading && (
-                <div className="mt-8 mb-8 text-center">
+              {hasNotes && initialLoadComplete && isLoggedIn && (
+                <>
                   {loadingMore ? (
                     <Loading vCentered={false} />
                   ) : (
-                    <button 
-                      className="text-white font-bold py-3 px-6 rounded"
-                      onClick={loadMore}
-                    >
-                      Load More
-                    </button>
+                    <div className="mt-8 mb-8 text-center">
+                      <button 
+                        className="text-white font-bold py-3 px-6 rounded"
+                        onClick={loadMore}
+                      >
+                        Load More
+                      </button>
+                    </div>
                   )}
-                </div>
+                </>
               )}
           </div>
         )}
