@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { SimplePool } from "nostr-tools";
 import { useLocation, Link, useParams } from "react-router-dom";
-import { bech32Decoder, insertEventIntoDescendingList } from "../utils/helperFunctions";
+import { bech32Decoder } from "../utils/helperFunctions";
 import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";
 import { getPublicKey, finalizeEvent, nip19 } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
@@ -28,7 +28,6 @@ interface ProfileData {
 
 const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const [profileData, setProfileData] = useState<ProfileData | null>(null);
-    const [posts, setPosts] = useState<ExtendedEvent[]>([]);
     const [streamedEvents, setStreamedEvents] = useState<ExtendedEvent[]>([]);
     const [pubkey, setPubkey] = useState<string>('');
     const [isFollowing, setIsFollowing] = useState(false);
@@ -46,23 +45,23 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const [_loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [_error, setError] = useState<string | null>(null);
-    const [lastFetchedTimestamp, setLastFetchedTimestamp] = useState<number>(Math.floor(Date.now() / 1000));
+    const [_lastFetchedTimestamp, setLastFetchedTimestamp] = useState<number>(Math.floor(Date.now() / 1000));
     const [repostEvents, _setRepostEvents] = useState<ExtendedEvent[]>([]);
     const [replyEvents, _setReplyEvents] = useState<ExtendedEvent[]>([]);
     const [isLoggedIn, _setIsLoggedIn] = useState<boolean | null>(nostrExists || !!keyValue);
     const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
-    const [hasOlderPosts, setHasOlderPosts] = useState(true);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [npubFromUrl, setNpubFromUrl] = useState<string | undefined>(undefined);
 
     const { npub } = useParams<{ npub: string }>();
 
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
+        console.log("event came in", event);
         setStreamedEvents(prev => {
           if (prev.some(e => e.id === event.id)) {
             return prev;
           }
-          return insertEventIntoDescendingList(prev, event);
+          return [...prev, event].sort((a, b) => b.created_at - a.created_at);
         });
       }, []);
 
@@ -132,8 +131,9 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
 
             // Fetch notes
             const filter = { kinds: [1, 5, 6], authors: [fetchedPubkey], limit: 10 };
+            console.log("filter1", filter);
             await fetchData(pool, 0, false, 0, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
-                setLoading, setLoadingMore, setError, setStreamedEvents, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, 
+                setLoading, setLoadingMore, setError, setStreamedEvents, [], repostEvents, replyEvents, setLastFetchedTimestamp, 
                 setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived);
             setLoadingPosts(false);
         };
@@ -144,7 +144,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     useEffect(() => {
         if (!pool || streamedEvents.length === 0) return;
         fetchMetadataReactionsAndReplies(pool, streamedEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
-    }, [pool, streamedEvents]);
+    }, [pool, streamedEvents, repostEvents, replyEvents]);
 
 
     const handleFollow = async () => {
@@ -179,16 +179,38 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const handleLoadMore = async () => {
         if (!pool) return;
         setLoadingMore(true);
-        const filter = { kinds: [1, 5, 6], authors: [pubkey], limit: 10, until: lastFetchedTimestamp };
-        const oldPostsCount = posts.length;
-        await fetchData(pool, 0, true, lastFetchedTimestamp, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
-            setLoading, setLoadingMore, setError, setStreamedEvents, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, 
-            setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived);
+        const oldestTimestamp = Math.min(...streamedEvents.map(e => e.created_at));
+        const filter = { kinds: [1, 5, 6], authors: [pubkey], limit: 10, until: oldestTimestamp - 1 };
+        console.log("filter2", filter);
         
-        // Check if any new posts were loaded
-        if (posts.length === oldPostsCount) {
-            setHasOlderPosts(false);
+        let newEvents: ExtendedEvent[] = [];
+        
+        const handleNewEvent = (event: ExtendedEvent) => {
+            console.log("new event came in2", event);
+            if (!streamedEvents.some(e => e.id === event.id)) {
+                newEvents.push(event);
+            }
+        };
+    
+        await fetchData(pool, 0, true, oldestTimestamp - 1, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
+            setLoading, setLoadingMore, setError, setStreamedEvents, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, 
+            setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleNewEvent);
+        
+        // Sort new events in descending order
+        newEvents.sort((a, b) => b.created_at - a.created_at);
+    
+        // Update streamedEvents by appending new events
+        setStreamedEvents(prevEvents => {
+            return [...prevEvents, ...newEvents];
+        });
+        
+        // Update lastFetchedTimestamp
+        if (newEvents.length > 0) {
+            setLastFetchedTimestamp(Math.min(...newEvents.map(e => e.created_at)));
         }
+    
+        //setHasOlderPosts(newEvents.length > 0);
+        setLoadingMore(false);
     };
 
     // Sort posts and reposts by date
@@ -274,10 +296,6 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                     </div>
                     <p className="text-gray-600 mb-4 text-center sm:text-left">{profileData?.about}</p>
                     <div className="flex items-center space-x-8 mb-4">
-                        {/* <Link to={`/followers/${npubFromUrl ? npubFromUrl : nip19.npubEncode(pubkey)}`} className="flex items-center">
-                            <UserGroupIcon className="h-6 w-6 mr-2" />
-                            <span>Followers</span>
-                        </Link> */}
                         <Link to={`/profile/${npubFromUrl ? npubFromUrl : nip19.npubEncode(pubkey)}/following/`} className="flex items-center">
                             <UsersIcon className="h-6 w-6 mr-2" />
                             <span>Following</span>
@@ -297,7 +315,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                         <p>No posts found.</p>
                     ) : (
                         <div className="space-y-8">
-                            {sortedPosts.map(post => (
+                            {streamedEvents.sort((a, b) => b.created_at - a.created_at).map((post, _index) => (
                                 <div key={post.id} className="mb-8 pb-32">
                                     <NoteCard
                                         isPreview={false}
@@ -328,7 +346,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                                     />
                                 </div>
                             ))}
-                            {!loadingMore && hasOlderPosts && (
+                            {!loadingMore && (
                                 <div className="mt-8 mb-8 text-center">
                                     <button
                                         onClick={handleLoadMore}
@@ -336,11 +354,6 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                                     >
                                         Load More
                                     </button>
-                                </div>
-                            )}
-                            {!loadingMore && !hasOlderPosts && (
-                                <div className="mt-8 mb-8 text-center text-gray-500">
-                                    No older notes available
                                 </div>
                             )}
                             {loadingMore && <Loading vCentered={false} />}

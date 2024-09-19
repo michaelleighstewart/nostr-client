@@ -385,7 +385,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               nostrExists={props.nostrExists} keyValue={props.keyValue}
               replies={replies} reposts={reposts} setMetadata={setMetadata}
               initialLoadComplete={initialLoadComplete} />
-              {initialLoadComplete && streamedEvents.length > 0 && events.length > 0 && isLoggedIn && !loading && (
+              {initialLoadComplete && streamedEvents.length > 0 && isLoggedIn && !loading && (
                 <div className="mt-8 mb-8 text-center">
                   {loadingMore ? (
                     <Loading vCentered={false} />
