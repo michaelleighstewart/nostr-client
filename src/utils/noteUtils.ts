@@ -1,6 +1,5 @@
 import { SimplePool, Event } from "nostr-tools";
 import { RELAYS } from "./constants";
-import { insertEventIntoDescendingList } from "./helperFunctions";
 import { ExtendedEvent, Metadata, Reaction } from "./interfaces";
 import { getMetadataFromCache, setMetadataToCache } from "./cachingUtils";
 

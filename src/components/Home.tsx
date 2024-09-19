@@ -49,7 +49,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const videoInputRef = useRef<HTMLInputElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [followers, setFollowers] = useState<string[]>([]);
-    const [hasNotes, setHasNotes] = useState(false);
+    const [_hasNotes, setHasNotes] = useState(false);
 
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
       setStreamedEvents(prev => {
