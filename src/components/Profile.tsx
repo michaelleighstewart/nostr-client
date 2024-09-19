@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { SimplePool } from "nostr-tools";
 import { useLocation, Link, useParams } from "react-router-dom";
-import { bech32Decoder } from "../utils/helperFunctions";
+import { bech32Decoder, insertEventIntoDescendingList } from "../utils/helperFunctions";
 import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";
 import { getPublicKey, finalizeEvent, nip19 } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
@@ -29,6 +29,7 @@ interface ProfileData {
 const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const [profileData, setProfileData] = useState<ProfileData | null>(null);
     const [posts, setPosts] = useState<ExtendedEvent[]>([]);
+    const [streamedEvents, setStreamedEvents] = useState<ExtendedEvent[]>([]);
     const [pubkey, setPubkey] = useState<string>('');
     const [isFollowing, setIsFollowing] = useState(false);
     const [followingList, setFollowingList] = useState<string[]>([]);
@@ -55,6 +56,15 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const [npubFromUrl, setNpubFromUrl] = useState<string | undefined>(undefined);
 
     const { npub } = useParams<{ npub: string }>();
+
+    const handleEventReceived = useCallback((event: ExtendedEvent) => {
+        setStreamedEvents(prev => {
+          if (prev.some(e => e.id === event.id)) {
+            return prev;
+          }
+          return insertEventIntoDescendingList(prev, event);
+        });
+      }, []);
 
     useEffect(() => {
         const fetchProfileData = async () => {
@@ -123,8 +133,8 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
             // Fetch notes
             const filter = { kinds: [1, 5, 6], authors: [fetchedPubkey], limit: 10 };
             await fetchData(pool, 0, false, 0, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
-                setLoading, setLoadingMore, setError, setPosts, posts, repostEvents, replyEvents, setLastFetchedTimestamp, 
-                setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter);
+                setLoading, setLoadingMore, setError, setStreamedEvents, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, 
+                setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived);
             setLoadingPosts(false);
         };
 
@@ -132,9 +142,10 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     }, [pool, npub, keyValue, nostrExists, location.search]);
 
     useEffect(() => {
-        if (!pool || posts.length === 0) return;
-        fetchMetadataReactionsAndReplies(pool, posts, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
-    }, [pool, posts]);
+        if (!pool || streamedEvents.length === 0) return;
+        fetchMetadataReactionsAndReplies(pool, streamedEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
+    }, [pool, streamedEvents]);
+
 
     const handleFollow = async () => {
         if (!pool) return;
@@ -171,8 +182,8 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
         const filter = { kinds: [1, 5, 6], authors: [pubkey], limit: 10, until: lastFetchedTimestamp };
         const oldPostsCount = posts.length;
         await fetchData(pool, 0, true, lastFetchedTimestamp, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
-            setLoading, setLoadingMore, setError, setPosts, posts, repostEvents, replyEvents, setLastFetchedTimestamp, 
-            setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter);
+            setLoading, setLoadingMore, setError, setStreamedEvents, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, 
+            setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived);
         
         // Check if any new posts were loaded
         if (posts.length === oldPostsCount) {
@@ -181,7 +192,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     };
 
     // Sort posts and reposts by date
-    const sortedPosts = [...posts].sort((a, b) => {
+    const sortedPosts = [...streamedEvents].sort((a, b) => {
         const dateA = a.repostedEvent ? a.repostedEvent.created_at : a.created_at;
         const dateB = b.repostedEvent ? b.repostedEvent.created_at : b.created_at;
         return dateB - dateA;

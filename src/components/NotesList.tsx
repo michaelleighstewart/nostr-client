@@ -49,6 +49,7 @@ const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists,
         )
     }
 
+    console.log("visibleNotes", visibleNotes);
     return (
         <div className="flex flex-col gap-16">
             <AnimatePresence>

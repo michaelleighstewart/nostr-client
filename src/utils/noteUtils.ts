@@ -358,9 +358,11 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                 }
                                 return events;
                             });
+                            onEventReceived(extendedEventToAdd);
                         }
                         else {
                             // Get the original note referenced in the first 'e' tag
+                            //console.log("event for reply", event);
                             const replyToId = event.tags.find(tag => tag[0] === 'e')?.[1];
                             if (replyToId) {
                                 // Fetch the original note
@@ -391,6 +393,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                             repliedEvent: repliedEvent
                                         };
                                         extendedEventToAdd = extendedEvent;
+                                        //console.log("extendedEventToAdd", extendedEventToAdd);
                                         setEvents(prevEvents => {
                                             if (!prevEvents.some(e => e.id === extendedEvent.id)) {
                                                 return insertEventIntoDescendingList(prevEvents, extendedEvent);
@@ -398,6 +401,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                             return prevEvents;
                                         });
                                         replyEvents.push(extendedEvent);
+                                        onEventReceived(extendedEvent);
                                     }
                                 });
                             }
@@ -410,6 +414,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                         setEvents(prevEvents => prevEvents.map(e => 
                             deletedIds.includes(e.id) ? {...e, deleted: true} : e
                         ));
+                        onEventReceived(extendedEventToAdd);
                     }
                     else if (event.kind === 6) {
                         if (!events.some(e => e.id === event.id)) {
@@ -448,6 +453,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                 return events;
                             });
                             repostEvents.push(extendedEvent);
+                            onEventReceived(extendedEvent);
                             } catch (error) {
                             console.error("Error parsing reposted content:", error);
                             }
@@ -455,7 +461,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                     }
                 }
                 fetchedEvents.push(extendedEventToAdd);
-                onEventReceived(extendedEventToAdd); // Call the callback for each event
+                //onEventReceived(extendedEventToAdd); // Call the callback for each event
                 },
                 oneose() {
                     setLoading(false);
