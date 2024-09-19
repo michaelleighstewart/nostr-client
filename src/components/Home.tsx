@@ -24,7 +24,7 @@ interface HomeProps {
 
 const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [streamedEvents, setStreamedEvents] = useState<ExtendedEvent[]>([]);
-    const [eventsImmediate, setEvents] = useState<ExtendedEvent[]>([]);
+    const [eventsImmediate, _setEvents] = useState<ExtendedEvent[]>([]);
     const [events] = useDebounce(eventsImmediate, 1500);
     const [repostEvents, _setRepostEvents] = useState<ExtendedEvent[]>([]);
     const [replyEvents, _setReplyEvents] = useState<ExtendedEvent[]>([]);
