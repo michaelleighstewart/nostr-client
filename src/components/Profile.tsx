@@ -57,6 +57,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const { npub } = useParams<{ npub: string }>();
 
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
+        console.log("Event received:", event);
         setStreamedEvents(prev => {
             if (prev.some(e => e.id === event.id)) {
                 return prev;
@@ -64,6 +65,9 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
             const newEvents = [...prev, event].sort((a, b) => b.created_at - a.created_at);
             return newEvents;
         });
+        if (pool) {
+            fetchMetadataReactionsAndReplies(pool, [event], repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
+          }
     }, []);
 
     useEffect(() => {
@@ -141,7 +145,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
             // Fetch notes
             const filter = { kinds: [1, 5, 6], authors: [fetchedPubkey], limit: 10 };
             await fetchData(pool, 0, false, 0, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
-                setLoading, setLoadingMore, setError, setStreamedEvents, [], repostEvents, replyEvents, setLastFetchedTimestamp, 
+                setLoading, setLoadingMore, setError, () => {}, [], repostEvents, replyEvents, setLastFetchedTimestamp, 
                 setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived);
             setLoadingPosts(false);
         };
@@ -149,10 +153,10 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
         fetchProfileData();
     }, [pool, npub, keyValue, nostrExists, location.search]);
 
-    useEffect(() => {
-        if (!pool || streamedEvents.length === 0) return;
-        fetchMetadataReactionsAndReplies(pool, streamedEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
-    }, [pool, streamedEvents, repostEvents, replyEvents]);
+    //useEffect(() => {
+    //    if (!pool || streamedEvents.length === 0) return;
+    //    fetchMetadataReactionsAndReplies(pool, streamedEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
+    //}, [pool, streamedEvents]);
 
 
     const handleFollow = async () => {
