@@ -152,10 +152,10 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
         fetchProfileData();
     }, [pool, npub, keyValue, nostrExists, location.search]);
 
-    //useEffect(() => {
-    //    if (!pool || streamedEvents.length === 0) return;
-    //    fetchMetadataReactionsAndReplies(pool, streamedEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
-    //}, [pool, streamedEvents]);
+    useEffect(() => {
+        if (!pool || streamedEvents.length === 0) return;
+        fetchMetadataReactionsAndReplies(pool, streamedEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
+    }, [pool, streamedEvents]);
 
 
     const handleFollow = async () => {
