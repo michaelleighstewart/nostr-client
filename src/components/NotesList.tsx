@@ -3,8 +3,6 @@ import NoteCard from "./NoteCard";
 import { SimplePool } from "nostr-tools";
 import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";
 import React, { useState, useEffect } from "react";
-import { FixedSizeList as List } from 'react-window';
-import AutoSizer from 'react-virtualized-auto-sizer';
 
 interface Props {
     notes: ExtendedEvent[];
