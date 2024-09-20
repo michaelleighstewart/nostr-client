@@ -12,6 +12,7 @@ import { showCustomToast } from "./CustomToast";
 import { fetchMetadataReactionsAndReplies, fetchData } from "../utils/noteUtils";
 import NewMessageDialog from "./NewMessageDialog";
 import { Helmet } from 'react-helmet';
+import { getMetadataFromCache, setMetadataToCache } from "../utils/cachingUtils";
 
 interface ProfileProps {
     keyValue: string;
@@ -70,15 +71,15 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
             setLoadingProfile(true);
             setProfileData(null);
             if (!pool) return;
-
+        
             const npubFromUrl = npub;
             setNpubFromUrl(npubFromUrl);
             const isFromUrl = npubFromUrl !== null;
             const targetNpub = npubFromUrl || npub;
-
+        
             let fetchedPubkey: string;
             let currentUserPubkey: string;
-
+        
             if (targetNpub) {
                 if (isFromUrl) {
                     fetchedPubkey = targetNpub.startsWith("npub")
@@ -94,7 +95,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 fetchedPubkey = getPublicKey(skDecoded);
             }
             setPubkey(fetchedPubkey);
-
+        
             // Get current user's pubkey
             if (nostrExists) {
                 currentUserPubkey = await (window as any).nostr.getPublicKey();
@@ -102,13 +103,13 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 const skDecoded = bech32Decoder("nsec", keyValue);
                 currentUserPubkey = getPublicKey(skDecoded);
             }
-
+        
             // Fetch following list
             const followEvents = await pool.querySync(
                 RELAYS,
                 { kinds: [3], authors: [currentUserPubkey] }
             );
-
+        
             if (followEvents.length > 0) {
                 const followedPubkeys = followEvents[0].tags
                     .filter(tag => tag[0] === 'p')
@@ -116,19 +117,27 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 setFollowingList(followedPubkeys);
                 setIsFollowing(followedPubkeys.includes(fetchedPubkey));
             }
-
-            // Fetch profile metadata
-            const profileEvents = await pool.querySync(
-                RELAYS,
-                { kinds: [0], authors: [fetchedPubkey] }
-            );
-
-            if (profileEvents.length > 0) {
-                const metadata = JSON.parse(profileEvents[0].content) as ProfileData;
-                setProfileData(metadata);
+        
+            // Try to get profile metadata from cache
+            const cachedMetadata = getMetadataFromCache(fetchedPubkey);
+            if (cachedMetadata) {
+                setProfileData(cachedMetadata);
+                setLoadingProfile(false);
+            } else {
+                // If not in cache, fetch profile metadata
+                const profileEvents = await pool.querySync(
+                    RELAYS,
+                    { kinds: [0], authors: [fetchedPubkey] }
+                );
+        
+                if (profileEvents.length > 0) {
+                    const metadata = JSON.parse(profileEvents[0].content) as ProfileData;
+                    setProfileData(metadata);
+                    setMetadataToCache(fetchedPubkey, metadata);
+                }
+                setLoadingProfile(false);
             }
-            setLoadingProfile(false);
-
+        
             // Fetch notes
             const filter = { kinds: [1, 5, 6], authors: [fetchedPubkey], limit: 10 };
             await fetchData(pool, 0, false, 0, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
