@@ -120,7 +120,6 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                   content: JSON.stringify(profile),
                 }
                 const eventToSend = await (window as any).nostr.signEvent(event);
-                console.log("event from editprofile1", eventToSend);
                 await props.pool.publish(RELAYS, eventToSend);
               }
               else {
@@ -134,7 +133,6 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                   tags: [],
                   content: JSON.stringify(profile),
                 }
-                console.log("event from editprofile2", event);
                 let eventFinal = finalizeEvent(event, skDecoded);
                 await props.pool.publish(RELAYS, eventFinal);
               }

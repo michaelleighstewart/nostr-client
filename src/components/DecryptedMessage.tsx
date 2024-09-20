@@ -20,16 +20,11 @@ const DecryptedMessage: React.FC<DecryptedMessageProps> = ({ message, keyValue }
         } else if (keyValue) {
           const privateKeyHex = nip19.decode(keyValue).data as string;
           const conversationKey = nip44.v2.utils.getConversationKey(privateKeyHex, message.pubkey);
-          console.log("Decrypting message with:");
-          console.log("Content:", message.content);
-          console.log("Conversation Key:", conversationKey);
           
           // Attempt to decode the payload before decryption
-          const decodedPayload = nip44.v2.utils.decodePayload(message.content);
-          console.log("Decoded Payload:", decodedPayload);
+          //const decodedPayload = nip44.v2.utils.decodePayload(message.content);
 
           decryptedContent = nip44.v2.decrypt(message.content, conversationKey);
-          console.log("Decrypted content:", decryptedContent);
         } else {
           throw new Error('No decryption method available');
         }

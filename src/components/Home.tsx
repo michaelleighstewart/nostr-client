@@ -55,7 +55,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const lastProcessedEventIndex = useRef(-1);
 
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
-      //console.log("event streamed", event);
       setStreamedEvents(prev => {
         if (prev.some(e => e.id === event.id)) {
           return prev;
@@ -184,7 +183,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       }
     
       if (!props.pool || newEvents.length === 0) return;
-      console.log("getting extra data for new events", newEvents);
       fetchMetadataReactionsAndReplies(props.pool, newEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
     
       lastProcessedEventIndex.current = streamedEvents.length - 1; 
@@ -437,19 +435,19 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         ) : error ? (
           <div className="text-red-500 text-center mt-4">{error}</div>
         ) : (
-<div className={`w-full ${!isLoggedIn ? 'pointer-events-none opacity-50' : ''}`}>
-  <NotesList 
-    metadata={metadata} 
-    reactions={reactions} 
-    notes={streamedEvents.filter(e => !deletedNoteIds.has(e.id))}
-    pool={props.pool} 
-    nostrExists={props.nostrExists} 
-    keyValue={props.keyValue}
-    replies={replies} 
-    reposts={reposts} 
-    setMetadata={setMetadata}
-    initialLoadComplete={initialLoadComplete} 
-  />
+            <div className={`w-full ${!isLoggedIn ? 'pointer-events-none opacity-50' : ''}`}>
+              <NotesList 
+                metadata={metadata} 
+                reactions={reactions} 
+                notes={streamedEvents.filter(e => !deletedNoteIds.has(e.id))}
+                pool={props.pool} 
+                nostrExists={props.nostrExists} 
+                keyValue={props.keyValue}
+                replies={replies} 
+                reposts={reposts} 
+                setMetadata={setMetadata}
+                initialLoadComplete={initialLoadComplete} 
+              />
               {streamedEvents.length > 0 && initialLoadComplete && isLoggedIn && (
                 <div className="mt-8 mb-8 text-center">
                   {loadingMore ? (

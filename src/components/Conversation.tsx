@@ -76,7 +76,6 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
       ],
       {
         async onevent(event: Event) {
-          console.log("message event", event);
           let decryptedContent: string;
           try {
             if (event.pubkey === userPubkey) {
@@ -111,7 +110,6 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
               gotAnyMessages = true;
               setHasOlderMessages(true);
               // Store the timestamp of the latest message
-              console.log("storing timestamp", Math.max(...updatedMessages.map(m => m.created_at)));
               localStorage.setItem(`lastViewedMessage_${userPubkey}`, String(Math.max(...updatedMessages.map(m => m.created_at))));
             }
             return updatedMessages;
@@ -121,7 +119,6 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
           
         },
         oneose() {
-          console.log("oneose");
           if (!gotAnyMessages) {
             setHasOlderMessages(false);
           }
@@ -152,7 +149,6 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
       ],
       {
         async onevent(event: Event) {
-          console.log("New message event", event);
           let decryptedContent: string;
           try {
             if (nostrExists) {

@@ -56,7 +56,6 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const { npub } = useParams<{ npub: string }>();
 
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
-        console.log("event came in", event);
         setStreamedEvents(prev => {
             if (prev.some(e => e.id === event.id)) {
                 return prev;
@@ -132,7 +131,6 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
 
             // Fetch notes
             const filter = { kinds: [1, 5, 6], authors: [fetchedPubkey], limit: 10 };
-            console.log("filter1", filter);
             await fetchData(pool, 0, false, 0, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
                 setLoading, setLoadingMore, setError, setStreamedEvents, [], repostEvents, replyEvents, setLastFetchedTimestamp, 
                 setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived);
@@ -182,7 +180,6 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
         setLoadingMore(true);
         const oldestTimestamp = Math.min(...streamedEvents.map(e => e.created_at));
         const filter = { kinds: [1, 5, 6], authors: [pubkey], limit: 10, until: oldestTimestamp - 1 };
-        console.log("filter2", filter);
         
         const fetchedEvents = await fetchData(pool, 0, true, oldestTimestamp - 1, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
             setLoading, setLoadingMore, setError, setStreamedEvents, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, 
