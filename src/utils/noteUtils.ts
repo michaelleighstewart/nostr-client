@@ -364,7 +364,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                             .filter(tag => tag[0] === 'e')
                             .map(tag => tag[1]);
                         setDeletedNoteIds(prev => new Set([...prev, ...deletedIds]));
-                        onEventReceived(extendedEventToAdd);
                     }
                     else if (event.kind === 6) {
                         if (!events.some(e => e.id === event.id)) {
