@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { SimplePool, getPublicKey } from 'nostr-tools';
 import { bech32Decoder } from '../utils/helperFunctions';
 import Loading from './Loading';
+import { API_URLS } from '../utils/apiConstants';
+import { showCustomToast } from "./CustomToast";
 
 interface BYOAlgorithmProps {
+
   keyValue: string;
   pool: SimplePool | null;
   nostrExists: boolean | null;
@@ -44,6 +47,36 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
     fetchUserPublicKey();
   }, [nostrExists, keyValue]);
 
+  useEffect(() => {
+    const fetchCurrentSettings = async () => {
+      if (!userPublicKey) return;
+
+      try {
+        const response = await fetch(`${API_URLS.BYO_ALGORITHM}?userId=${userPublicKey}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setSettings(data);
+        } else {
+          throw new Error('Failed to fetch current settings');
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+        showCustomToast('Failed to fetch current settings. Using default values.', 'error');
+      }
+    };
+
+    if (userPublicKey) {
+      fetchCurrentSettings();
+    }
+  }, [userPublicKey]);
+
+
   const handleSettingChange = (setting: keyof AlgorithmSettings, value: number | boolean) => {
     setSettings(prev => ({ ...prev, [setting]: value }));
   };
@@ -52,7 +85,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
     if (!userPublicKey) return;
 
     try {
-      const response = await fetch('YOUR_API_ENDPOINT/byo-algorithm', {
+      const response = await fetch(API_URLS.BYO_ALGORITHM, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -64,13 +97,13 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
       });
 
       if (response.ok) {
-        alert('Settings saved successfully!');
+        showCustomToast('Settings saved successfully!', 'success');
       } else {
         throw new Error('Failed to save settings');
       }
     } catch (error) {
       console.error('Error saving settings:', error);
-      alert('Failed to save settings. Please try again.');
+      showCustomToast('Failed to save settings. Please try again.', 'error');
     }
   };
 

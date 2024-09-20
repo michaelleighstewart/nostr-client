@@ -6,6 +6,7 @@ import { RELAYS } from "../utils/constants";
 import { useState, useEffect, useRef } from "react";
 import Loading from "./Loading";
 import { showCustomToast } from "./CustomToast";
+import { API_URLS } from "../utils/apiConstants";
 
 interface EditProfileProps {
     keyValue: string;
@@ -79,7 +80,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
             const base64File = await getBase64(file); // Convert file to base64
             const contentType = file.type; // Get the MIME type of the file
         
-            const response = await fetch('https://z2wavnt1bj.execute-api.us-west-2.amazonaws.com/prod/upload', {
+            const response = await fetch(API_URLS.FILE_UPLOAD, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json'

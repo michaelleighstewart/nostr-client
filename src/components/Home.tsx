@@ -16,6 +16,7 @@ import { Helmet } from 'react-helmet';
 import { getMetadataFromCache, setMetadataToCache } from '../utils/cachingUtils';
 import { RELAYS } from '../utils/constants';
 import { debounce } from 'lodash';
+import { API_URLS } from '../utils/apiConstants';
 
 interface HomeProps {
   keyValue: string;
@@ -221,7 +222,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         const base64File = await getBase64(file);
         const contentType = file.type;
 
-        const response = await fetch('https://z2wavnt1bj.execute-api.us-west-2.amazonaws.com/prod/upload', {
+        const response = await fetch(API_URLS.FILE_UPLOAD, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -250,7 +251,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         const base64File = await getBase64(file);
         const contentType = file.type;
 
-        const response = await fetch('https://z2wavnt1bj.execute-api.us-west-2.amazonaws.com/prod/upload', {
+        const response = await fetch(API_URLS.FILE_UPLOAD, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
