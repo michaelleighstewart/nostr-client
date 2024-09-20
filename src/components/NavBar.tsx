@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import * as React from 'react';
-import { HomeIcon, UserIcon, CogIcon, KeyIcon, UserGroupIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon, BellIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
+import { HomeIcon, UserIcon, CogIcon, KeyIcon, UserGroupIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon, WrenchIcon, BellIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
 import { bech32Decoder, validatePrivateKey } from '../utils/helperFunctions';
 import { getPublicKey, SimplePool } from 'nostr-tools';
 import Ostrich from "./Ostrich";
@@ -171,7 +171,14 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
               </Link>
             </li>
             <li className="inline-block mx-4 text-center pr-2">
+              <Link to="/byo-algorithm" className={`flex flex-col items-center ${isActive("/byo-algorithm")}`}>
+                <WrenchIcon className="h-6 w-6 my-3" />
+              </Link>
+            </li>
+
+            <li className="inline-block mx-4 text-center pr-2">
               <Link to="/notifications" className={`flex flex-col items-center ${isActive("/notifications")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
+
                 <div className="relative">
                   <BellIcon className="h-6 w-6 my-3" />
                   {newNotifications && (

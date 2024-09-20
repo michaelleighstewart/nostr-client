@@ -14,9 +14,10 @@ import Conversation from "./components/Conversation";
 import Note from "./components/Note";
 import Search from "./components/Search";
 import NavBar from "./components/NavBar";
-import Test from "./components/Test";
+import BYOAlgorithm from "./components/BYOAlgorithm";
 import { SimplePool } from "nostr-tools";
 import { useState, useEffect } from "react";
+
 import { RELAYS } from "./utils/constants";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -104,7 +105,7 @@ function App() {
             <Route path="conversation/:id" element={<Conversation pool={pool} nostrExists={nostrExists} keyValue={key} />} />
             <Route path="note/:id" element={<Note pool={pool} nostrExists={nostrExists} keyValue={key} />} />
             <Route path="search" element={<Search pool={pool} nostrExists={nostrExists} keyValue={key} />} />
-            <Route path="test" element={<Test />} />
+            <Route path="byo-algorithm" element={<BYOAlgorithm keyValue={key} pool={pool} nostrExists={nostrExists} />} />
           </Routes>
         </div>
       </div>
