@@ -17,21 +17,22 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     const repostsToFetch: string[] = [];
     const repostPubkeysToFetch: string[] = [];
     for (const event of repostEvents) {
-        if (!repostsToFetch.includes(event.repostedEvent?.id || "")) {
-            repostsToFetch.push(event.repostedEvent?.id || "");
+        if (!repostsToFetch.includes(event.id || "")) {
+            console.log("adding repost to fetch", event.id || "");
+            repostsToFetch.push(event.id || "");
         }
-        if (!repostPubkeysToFetch.includes(event.repostedEvent?.pubkey || "")) {
-            repostPubkeysToFetch.push(event.repostedEvent?.pubkey || "");
+        if (!repostPubkeysToFetch.includes(event.pubkey || "")) {
+            repostPubkeysToFetch.push(event.pubkey || "");
         }
     }
     const replyIdsToFetch: string[] = [];
     const replyPubkeysToFetch: string[] = [];
     for (const event of replyEvents) {
-        if (!replyIdsToFetch.includes(event.repliedEvent?.id || "")) {
-            replyIdsToFetch.push(event.repliedEvent?.id || "");
+        if (!replyIdsToFetch.includes(event.id || "")) {
+            replyIdsToFetch.push(event.id || "");
         }
-        if (!replyPubkeysToFetch.includes(event.repliedEvent?.pubkey || "")) {
-            replyPubkeysToFetch.push(event.repliedEvent?.pubkey || "");
+        if (!replyPubkeysToFetch.includes(event.pubkey || "")) {
+            replyPubkeysToFetch.push(event.pubkey || "");
         }
     }
     repostPubkeysToFetch.forEach(pubkey => pubkeysToFetch.add(pubkey));
@@ -63,9 +64,9 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     let allNewReposts: Record<string, ExtendedEvent[]> = {};
 
     [...new Set([...postsToFetch, ...repostsToFetch, ...replyIdsToFetch])].forEach(id => {
-        allNewReactions[id] = [];
-        allNewReplies[id] = [];
-        allNewReposts[id] = [];
+        if (!(id in allNewReactions)) allNewReactions[id] = [];
+        if (!(id in allNewReplies)) allNewReplies[id] = [];
+        if (!(id in allNewReposts)) allNewReposts[id] = [];
     });
 
     const fetchData = async (ids: string[], pubkeys: string[]) => {
@@ -87,6 +88,7 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                         } else if (event.kind === 7) {
                             const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                             if (postId) {
+                                console.log("got a reaction for post id", postId);
                                 const newReaction: Reaction = {
                                     id: event.id,
                                     liker_pubkey: event.pubkey,
@@ -137,7 +139,7 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     // Fetch data for reposts
     if (repostsToFetch.length > 0) {
         await fetchData(repostsToFetch, repostPubkeysToFetch);
-    }
+    }  
 
     // Fetch data for replies
     if (replyIdsToFetch.length > 0) {
@@ -146,10 +148,33 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
 
     // Update all states at once
     setMetadata(prevMetadata => ({...prevMetadata, ...allNewMetadata}));
-    setReactions(prevReactions => ({...prevReactions, ...allNewReactions}));
-    setReplies(prevReplies => ({...prevReplies, ...allNewReplies}));
-    setReposts(prevReposts => ({...prevReposts, ...allNewReposts}));
-
+    setReactions(prevReactions => {
+        const updatedReactions = {...prevReactions};
+        for (const [eventId, reactions] of Object.entries(allNewReactions)) {
+            if (!updatedReactions[eventId]) {
+                updatedReactions[eventId] = reactions;
+            }
+        }
+        return updatedReactions;
+    });
+    setReplies(prevReplies => {
+        const updatedReplies = {...prevReplies};
+        for (const [eventId, replies] of Object.entries(allNewReplies)) {
+            if (!updatedReplies[eventId]) {
+                updatedReplies[eventId] = replies;
+            }
+        }
+        return updatedReplies;
+    });
+    setReposts(prevReposts => {
+        const updatedReposts = {...prevReposts};
+        for (const [eventId, reposts] of Object.entries(allNewReposts)) {
+            if (!updatedReposts[eventId]) {
+                updatedReposts[eventId] = reposts;
+            }
+        }
+        return updatedReposts;
+    });
     return () => {
         cleanup();
     };
@@ -191,7 +216,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
           const sub = pool?.subscribeMany(
             RELAYS,
             [filter], 
-            //[{ ids: ["9e2b9f66a4af0035b0a447e33a348790ec2d95defb3f385fea67037fff73b24a"] }],
+            //[{ ids: ["8490a47e19a2da023157bbe5a1d50648f5bf909a7b3009876a0d8c311cf9aa26","c7178142104583db1c6e8f4c3621fbc1fb360e064cdb47f329fe7ca3e77ad3e3"] }],
             {
                 onevent(event: Event) {
                     let extendedEventToAdd: ExtendedEvent = {

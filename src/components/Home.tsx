@@ -63,11 +63,13 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       });
       
       setHasNotes(true);
-      
+
       const pubkeysToFetch = [event.pubkey];
 
       if (props.pool) {
-        fetchMetadataReactionsAndReplies(props.pool, [event], repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
+        //fetchMetadataReactionsAndReplies(props.pool, [event], repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
+        fetchMetadataReactionsAndReplies(props.pool, [event], event.repostedEvent ? [event.repostedEvent] : [], 
+          event.repliedEvent ? [event.repliedEvent] : [], setMetadata, setReactions, setReplies, setReposts);
       }
       
       if (event.repostedEvent) {

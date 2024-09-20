@@ -65,8 +65,8 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
             return newEvents;
         });
         if (pool) {
-            fetchMetadataReactionsAndReplies(pool, [event], repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
-          }
+            fetchMetadataReactionsAndReplies(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], event.repliedEvent ? [event.repliedEvent] : [], setMetadata, setReactions, setReplies, setReposts);
+        }
     }, []);
 
     useEffect(() => {
