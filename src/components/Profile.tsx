@@ -310,7 +310,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 <div>
                     <h2 className="text-2xl font-bold mt-8 mb-4 pb-16">Recent Notes</h2>
                     {sortedPosts.length === 0 ? (
-                        <p>No posts found.</p>
+                        <p>No notes found.</p>
                     ) : (
                         <div className="space-y-8">
                             {streamedEvents.sort((a, b) => b.created_at - a.created_at).map((post, _index) => (

@@ -203,12 +203,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
         setLoadingMore(true);
       }
       setError(null);
-      //let filter;
-      // Always get the followers if logged in
-      //const followers = isLoggedIn ? await getFollowers(pool as SimplePool, isLoggedIn, nostrExists, keyValue, setUserPublicKey) : [];
-      //filter = isLoggedIn
-      //? { kinds: [1, 5, 6], since: since, authors: followers, limit: 10, ...(until !== 0 && { until }) }
-      //: { kinds: [1, 5, 6], since: since, limit: 10, ...(until !== 0 && { until }) };
       let subRepostedMeta: any;
       let subReactionsReplies: any;
       let fetchedEvents: ExtendedEvent[] = [];
@@ -216,7 +210,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
           const sub = pool?.subscribeMany(
             RELAYS,
             [filter], 
-            //[{ ids: ["8490a47e19a2da023157bbe5a1d50648f5bf909a7b3009876a0d8c311cf9aa26","c7178142104583db1c6e8f4c3621fbc1fb360e064cdb47f329fe7ca3e77ad3e3"] }],
             {
                 onevent(event: Event) {
                     let extendedEventToAdd: ExtendedEvent = {
