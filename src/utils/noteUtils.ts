@@ -12,18 +12,27 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     setReposts: React.Dispatch<React.SetStateAction<Record<string, ExtendedEvent[]>>>) => {
     
     const pubkeysToFetch = new Set(events.map(event => event.pubkey));
+    //console.log("events is", events);
     const postsToFetch = events.map(event => event.id);
     const repostsToFetch: string[] = [];
     const repostPubkeysToFetch: string[] = [];
     for (const event of repostEvents) {
-        repostsToFetch.push(event.repostedEvent?.id || "");
-        repostPubkeysToFetch.push(event.repostedEvent?.pubkey || "");
+        if (!repostsToFetch.includes(event.repostedEvent?.id || "")) {
+            repostsToFetch.push(event.repostedEvent?.id || "");
+        }
+        if (!repostPubkeysToFetch.includes(event.repostedEvent?.pubkey || "")) {
+            repostPubkeysToFetch.push(event.repostedEvent?.pubkey || "");
+        }
     }
     const replyIdsToFetch: string[] = [];
     const replyPubkeysToFetch: string[] = [];
     for (const event of replyEvents) {
-        replyIdsToFetch.push(event.repliedEvent?.id || "");
-        replyPubkeysToFetch.push(event.repliedEvent?.pubkey || "");
+        if (!replyIdsToFetch.includes(event.repliedEvent?.id || "")) {
+            replyIdsToFetch.push(event.repliedEvent?.id || "");
+        }
+        if (!replyPubkeysToFetch.includes(event.repliedEvent?.pubkey || "")) {
+            replyPubkeysToFetch.push(event.repliedEvent?.pubkey || "");
+        }
     }
     repostPubkeysToFetch.forEach(pubkey => pubkeysToFetch.add(pubkey));
     const cachedMetadata: Record<string, Metadata> = {};
@@ -53,8 +62,9 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     let newRepliesForPosts: Record<string, ExtendedEvent[]> = Object.fromEntries(Array.from(postsToFetch).map(pubkey => [pubkey, []]));
     let newRepostsForPosts: Record<string, ExtendedEvent[]> = Object.fromEntries(Array.from(postsToFetch).map(pubkey => [pubkey, []]));
 
-    console.log("Fetching metadata, reactions, replies, and reposts for posts", postsToFetch);
-    console.log("Pubkeys to fetch", Array.from(pubkeysToFetch));
+    //console.log("Fetching metadata, reactions, replies, and reposts for posts", postsToFetch);
+    //console.log("Pubkeys to fetch", Array.from(pubkeysToFetch));
+    //console.log("events is", events);
     sub = pool?.subscribeManyEose(
         RELAYS,
         [
@@ -65,7 +75,7 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
         ],
         {
             onevent(event: Event) {
-                console.log("Processing event in extras section", event);
+                //console.log("Processing event in extras section", event);
                 if (event.kind === 0) {
                     console
                     const metadata = JSON.parse(event.content) as Metadata;
@@ -98,22 +108,18 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                         }
                     }
                 } else if (event.kind === 6) {
-                    console.log("Processing repost event", event.id);
                     const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                     if (postId) {
                         if (!newRepostsForPosts[postId]) {
-                            console.log("Adding repost to post", postId);
                             newRepostsForPosts[postId] = [];
                         }
                         if (!newRepostsForPosts[postId].some(r => r.id === event.id)) {
-                            console.log("Adding repost to post", postId);
                             newRepostsForPosts[postId].push(event as unknown as ExtendedEvent);
                         }
                     }
                 }
             },
             onclose() {
-                console.log("closing now....")
                 setMetadata(prevMetadata => ({...prevMetadata, ...newMetadataForPosts}));
                 setReactions(prevReactions => ({...prevReactions, ...newReactionsForPosts}));
                 setReplies(prevReplies => ({...prevReplies, ...newRepliesForPosts}));
@@ -193,10 +199,9 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     }
 
     let newMetadataForReplies: Record<string, Metadata> = {...cachedMetadata};
-    let newReactionsForReplies: Record<string, Reaction[]> = Object.fromEntries(Array.from(replyPubkeysToFetch).map(pubkey => [pubkey, []]));
-    let newRepliesForReplies: Record<string, ExtendedEvent[]> = Object.fromEntries(Array.from(replyPubkeysToFetch).map(pubkey => [pubkey, []]));
-    let newRepostsForReplies: Record<string, ExtendedEvent[]> = Object.fromEntries(Array.from(replyPubkeysToFetch).map(pubkey => [pubkey, []]));
-
+    let newReactionsForReplies: Record<string, Reaction[]> = Object.fromEntries(Array.from(replyIdsToFetch).map(pubkey => [pubkey, []]));
+    let newRepliesForReplies: Record<string, ExtendedEvent[]> = Object.fromEntries(Array.from(replyIdsToFetch).map(pubkey => [pubkey, []]));
+    let newRepostsForReplies: Record<string, ExtendedEvent[]> = Object.fromEntries(Array.from(replyIdsToFetch).map(pubkey => [pubkey, []]));
     if (replyIdsToFetch.length > 0) {
         const subRepostedMeta = pool?.subscribeManyEose(
             RELAYS,
@@ -299,7 +304,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
 
           const sub = pool?.subscribeMany(
             RELAYS,
-            [filter],
+            [filter], 
             {
                 onevent(event: Event) {
                     let extendedEventToAdd: ExtendedEvent = {
@@ -361,6 +366,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                         };
                                         extendedEventToAdd = extendedEvent;
                                         replyEvents.push(extendedEvent);
+                                        //console.log("extendedEvent is", extendedEvent);
                                         onEventReceived(extendedEvent);
                                     }
                                 });

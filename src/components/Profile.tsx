@@ -57,7 +57,6 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const { npub } = useParams<{ npub: string }>();
 
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
-        console.log("event came in", event);
         setStreamedEvents(prev => {
             if (prev.some(e => e.id === event.id)) {
                 return prev;

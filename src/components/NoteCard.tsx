@@ -495,8 +495,6 @@ interface Props {
                 onClick={() => sendZap(user, id)}>
               </BoltIcon>
             </div>
-            {allReactions && id in allReactions ? (
-            <>
             <div className="p-4 pl-8 md:pl-32">
               <HandThumbUpIcon
                 className={!alreadyLiked ? "h-6 w-6 text-[#535bf2] cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
@@ -504,6 +502,8 @@ interface Props {
                 onClick={!alreadyLiked ? () => handleReaction("+") : undefined}
               />
             </div>
+            {allReactions && id in allReactions ? (
+            <>
             <div className="p-4">
               <span 
                 className="text-body5 text-gray-400 cursor-pointer hover:underline"
@@ -513,7 +513,7 @@ interface Props {
               </span>
             </div>
             </>
-            ) : <div className="p-4 pl-8 md:pl-32"><Loading vCentered={true} tiny={true} /></div>}
+            ) : <div className="p-4"><Loading vCentered={true} tiny={true} /></div>}
             <ProfilesModal
               npubs={localReactions.length ? localReactions.filter(r => r.type !== "-").map(r => nip19.npubEncode(r.liker_pubkey)) : []}
               pool={pool}
@@ -521,8 +521,6 @@ interface Props {
               onClose={() => setShowLikesModal(false)}
               title="Users Who Liked This Note"
             />
-            {allReactions && id in allReactions ? (
-            <>
             <div className="p-4 pl-8 md:pl-32">
               <HandThumbDownIcon
                 className={!alreadyDisliked ? "h-6 w-6 text-[#535bf2] cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
@@ -530,6 +528,8 @@ interface Props {
                 onClick={!alreadyDisliked ? () => handleReaction("-") : undefined}
               />
             </div>
+            {allReactions && id in allReactions ? (
+            <>
             <div className="p-4">
               <span 
                 className="text-body5 text-gray-400 cursor-pointer hover:underline"
@@ -539,7 +539,7 @@ interface Props {
               </span>
             </div>
             </>
-            ) : <div className="p-4 pl-8 md:pl-32"><Loading vCentered={true} tiny={true} /></div>}
+            ) : <div className="p-4"><Loading vCentered={true} tiny={true} /></div>}
             <ProfilesModal
               npubs={localReactions.length ? localReactions.filter(r => r.type === '-').map(r => nip19.npubEncode(r.liker_pubkey)) : []}
               pool={pool}
@@ -547,8 +547,6 @@ interface Props {
               onClose={() => setShowDislikesModal(false)}
               title="Users Who Disliked This Note"
             />
-            {allReposts && id in allReposts ? (
-            <>
             <div className="p-4 pl-8 md:pl-32">
               <ArrowPathRoundedSquareIcon
                 className="h-6 w-6 text-[#535bf2] cursor-pointer"
@@ -556,6 +554,8 @@ interface Props {
                 onClick={handleRepost}
               />
             </div>
+            {allReposts && id in allReposts ? (
+            <>
             <div className="p-4">
               <span 
                 className="text-body5 text-gray-400 cursor-pointer hover:underline"
@@ -565,7 +565,7 @@ interface Props {
               </span>
             </div>
             </>
-            ) : <div className="p-4 pl-8 md:pl-32"><Loading vCentered={true} tiny={true} /></div>}
+            ) : <div className="p-4"><Loading vCentered={true} tiny={true} /></div>}
             <ProfilesModal
               npubs={(allReposts && allReposts[id]) ? allReposts[id].map(r => nip19.npubEncode(r.pubkey)) : []}
               pool={pool}
@@ -573,15 +573,15 @@ interface Props {
               onClose={() => setShowRepostsModal(false)}
               title="Users Who Reposted This Note"
             />
+            <div className="p-4 pl-8 md:pl-32">
+              <ChatBubbleLeftIcon
+                className="h-6 w-6 text-[#535bf2] cursor-pointer"
+                title="View replies"
+                onClick={() => navigate(`/note/${id}`)}
+              />
+            </div>
             {allReplies && id in allReplies ? (
               <>
-                <div className="p-4 pl-8 md:pl-32">
-                  <ChatBubbleLeftIcon
-                    className="h-6 w-6 text-[#535bf2] cursor-pointer"
-                    title="View replies"
-                    onClick={() => navigate(`/note/${id}`)}
-                  />
-                </div>
                 <div className="p-4">
                   <Link to={`/note/${id}`}>
                     <span className="text-body5 text-gray-400 cursor-pointer hover:underline font-normal">
@@ -590,7 +590,7 @@ interface Props {
                   </Link>
                 </div>
               </>
-            ) : <div className="p-4 pl-8 md:pl-32"><Loading vCentered={true} tiny={true} /></div>}
+            ) : <div className="p-4"><Loading vCentered={true} tiny={true} /></div>}
           </>
         )}
         {canDelete && !isPreview &&

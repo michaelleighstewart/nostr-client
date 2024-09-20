@@ -52,7 +52,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [followers, setFollowers] = useState<string[]>([]);
     const [_hasNotes, setHasNotes] = useState(false);
 
-    const lastProcessedEventIndex = useRef(-1);
+    //const lastProcessedEventIndex = useRef(-1);
 
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
       setStreamedEvents(prev => {
@@ -65,6 +65,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       setHasNotes(true);
       
       const pubkeysToFetch = [event.pubkey];
+
+      if (props.pool) {
+        fetchMetadataReactionsAndReplies(props.pool, [event], repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
+      }
       
       if (event.repostedEvent) {
         pubkeysToFetch.push(event.repostedEvent.pubkey);
@@ -129,6 +133,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         let filter = isLoggedIn
           ? { kinds: [1, 5, 6], authors: newFollowers, limit: 10, since: oneWeekAgo }
           : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
+        //let filter = { id: '9e2b9f66a4af0035b0a447e33a348790ec2d95defb3f385fea67037fff73b24a'};
         
         const fetchedEvents = await fetchData(props.pool, 0, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
           setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
@@ -155,39 +160,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       fetchUserMetadata(props.pool, userPublicKey ?? "", setShowOstrich, setMetadata);
     }, [userPublicKey]);
 
-    useEffect(() => {
-      //const lastProcessedEventIndex = useRef(-1);
-      const newEvents = streamedEvents.slice(lastProcessedEventIndex.current + 1);
-    
-      if (newEvents.length === 0) return;
-    
-      const cachedMetadata: Record<string, Metadata> = {};
-      const pubkeysToFetch: string[] = [];
-    
-      newEvents.forEach(event => {
-        const cached = getMetadataFromCache(event.pubkey);
-        if (cached) {
-          cachedMetadata[event.pubkey] = cached;
-        } else {
-          pubkeysToFetch.push(event.pubkey);
-        }
-      });
-    
-      setMetadata(prevMetadata => ({...prevMetadata, ...cachedMetadata}));
-    
-      if (!props.pool) return;
-    
-      // Fetch metadata for new pubkeys
-      if (pubkeysToFetch.length > 0) {
-        fetchUserMetadata(props.pool, pubkeysToFetch[0], () => {}, setMetadata);
-      }
-    
-      if (!props.pool || newEvents.length === 0) return;
-      fetchMetadataReactionsAndReplies(props.pool, newEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
-    
-      lastProcessedEventIndex.current = streamedEvents.length - 1; 
-    }, [streamedEvents, props.pool]);
-
     const debouncedLoadMore = debounce(async () => {
       if (!props.pool) return;
       setLoadingMore(true);
@@ -208,7 +180,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           const newEvents = [...prev, ...fetchedEvents];
           return newEvents.sort((a, b) => b.created_at - a.created_at);
         });
-        
         await fetchMetadataReactionsAndReplies(props.pool, fetchedEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
       }
       setLoadingMore(false);
