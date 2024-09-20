@@ -51,6 +51,11 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
         }
     };
 
+    let newMetadataForPosts: Record<string, Metadata> = {...cachedMetadata};
+    let newReactionsForPosts: Record<string, Reaction[]> = {};
+    let newRepliesForPosts: Record<string, ExtendedEvent[]> = {};
+    let newRepostsForPosts: Record<string, ExtendedEvent[]> = {};
+
     sub = pool?.subscribeManyEose(
         RELAYS,
         [
@@ -64,13 +69,14 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                 if (event.kind === 0) {
                     console
                     const metadata = JSON.parse(event.content) as Metadata;
-                    setMetadata(cur => ({
-                        ...cur,
-                        [event.pubkey]: metadata
-                    }));
+                    //setMetadata(cur => ({
+                    //    ...cur,
+                    //    [event.pubkey]: metadata
+                    //}));
+                    newMetadataForPosts[event.pubkey] = metadata;
                     setMetadataToCache(event.pubkey, metadata);
                 } else if (event.kind === 7) {
-                    setReactions(cur => {
+                    //setReactions(cur => {
                         const newReaction: Reaction = {
                             id: event.id,
                             liker_pubkey: event.pubkey,
@@ -79,35 +85,50 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                         };
                         const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                         if (postId) {
-                            const updatedReactions = { ...cur };
-                            if (updatedReactions[postId]) {
-                                if (!updatedReactions[postId].some(r => r.sig === newReaction.sig)) {
-                                    updatedReactions[postId] = [...updatedReactions[postId], newReaction];
-                                }
-                            } else {
-                                updatedReactions[postId] = [newReaction];
+                            if (!newReactionsForPosts[postId]) {
+                                newReactionsForPosts[postId] = [];
                             }
-                            return updatedReactions;
+                            if (!newReactionsForPosts[postId].some(r => r.sig === newReaction.sig)) {
+                                newReactionsForPosts[postId].push(newReaction);
+                            }
+                            //const updatedReactions = { ...cur };
+                            //if (updatedReactions[postId]) {
+                            //    if (!updatedReactions[postId].some(r => r.sig === newReaction.sig)) {
+                            //        updatedReactions[postId] = [...updatedReactions[postId], newReaction];
+                          //      }
+                            //} else {
+                            //    updatedReactions[postId] = [newReaction];
+                            //}
+                            //return updatedReactions;
                         }
-                        return cur;
-                    });
+                        //return cur;
+                    //});
                 } else if (event.kind === 1) {
-                    setReplies(cur => {
-                        const updatedReplies = { ...cur };
+                    //setReplies(cur => {
+                        //const updatedReplies = { ...cur };
+                    
                         const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                         if (postId) {
-                            if (updatedReplies[postId]) {
-                                if (!updatedReplies[postId].some(r => r.id === event.id)) {
-                                    updatedReplies[postId] = [...updatedReplies[postId], event as unknown as ExtendedEvent];
-                                }
-                            } else {
-                                updatedReplies[postId] = [event as unknown as ExtendedEvent];
+                            if (!newRepliesForPosts[postId]) {
+                                newRepliesForPosts[postId] = [];
+                            }
+                            if (!newRepliesForPosts[postId].some(r => r.id === event.id)) {
+                                newRepliesForPosts[postId].push(event as unknown as ExtendedEvent);
                             }
                         }
-                        return updatedReplies;
-                    });
+                        //if (postId) {
+                        //    if (updatedReplies[postId]) {
+                        //        if (!updatedReplies[postId].some(r => r.id === event.id)) {
+                        //            updatedReplies[postId] = [...updatedReplies[postId], event as unknown as ExtendedEvent];
+                        //        }
+                        //    } else {
+                        //        updatedReplies[postId] = [event as unknown as ExtendedEvent];
+                        //    }
+                        //}
+                    //    return updatedReplies;
+                    //});
                 } else if (event.kind === 6) {
-                    setReposts(cur => {
+                    /*setReposts(cur => {
                         const updatedReposts = { ...cur };
                         const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                         if (postId) {
@@ -120,19 +141,38 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                             }
                         }
                         return updatedReposts;
-                    });
+                    });*/
+                    const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                    if (postId) {
+                        if (!newRepostsForPosts[postId]) {
+                            newRepostsForPosts[postId] = [];
+                        }
+                        if (!newRepostsForPosts[postId].some(r => r.id === event.id)) {
+                            newRepostsForPosts[postId].push(event as unknown as ExtendedEvent);
+                        }
+                    }
                 }
             },
             onclose() {
+                setMetadata(prevMetadata => ({...prevMetadata, ...newMetadataForPosts}));
+                setReactions(prevReactions => ({...prevReactions, ...newReactionsForPosts}));
+                setReplies(prevReplies => ({...prevReplies, ...newRepliesForPosts}));
+                setReposts(prevReposts => ({...prevReposts, ...newRepostsForPosts}));
+                sub?.close();
             }
         }
     );
 
     // Fetch metadata, reactions, replies, and reposts for reposted events
     //const repostsToFetch = repostEvents.map(event => event.repostedEvent?.id).filter(Boolean) as string[];
+
+    let newMetadataForRepostedPosts: Record<string, Metadata> = {...cachedMetadata};
+    let newReactionsForRepostedPosts: Record<string, Reaction[]> = {};
+    let newRepliesForRepostedPosts: Record<string, ExtendedEvent[]> = {};
+    let newRepostsForRepostedPosts: Record<string, ExtendedEvent[]> = {};
     
     if (repostsToFetch.length > 0) {
-        const subRepostedMeta = pool?.subscribeMany(
+        const subRepostedMeta = pool?.subscribeManyEose(
             RELAYS,
             [
                 { kinds: [0], authors: Array.from(repostPubkeysToFetch) },
@@ -144,10 +184,12 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                 onevent(event: Event) {
                     if (event.kind === 0) {
                         const metadata = JSON.parse(event.content) as Metadata;
-                        setMetadata(cur => ({
-                            ...cur,
-                            [event.pubkey]: metadata
-                        }));
+                        //setMetadata(cur => ({
+                        //    ...cur,
+                        //    [event.pubkey]: metadata
+                        //}));
+                        newMetadataForRepostedPosts[event.pubkey] = metadata;
+                        setMetadataToCache(event.pubkey, metadata);
                     } else if (event.kind === 7) {
                         const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                         if (postId) {
@@ -157,7 +199,7 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                                 type: event.content,
                                 sig: event.sig
                             };
-                            setReactions(cur => {
+                            /*setReactions(cur => {
                                 const updatedReactions = { ...cur };
                                 if (updatedReactions[postId]) {
                                     if (!updatedReactions[postId].some(r => r.id === newReaction.id)) {
@@ -167,12 +209,18 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                                     updatedReactions[postId] = [newReaction];
                                 }
                                 return updatedReactions;
-                            });
+                            });*/
+                            if (!newReactionsForRepostedPosts[postId]) {
+                                newReactionsForRepostedPosts[postId] = [];
+                            }
+                            if (!newReactionsForRepostedPosts[postId].some(r => r.sig === newReaction.sig)) {
+                                newReactionsForRepostedPosts[postId].push(newReaction);
+                            }
                         }
                     } else if (event.kind === 1) {
                         const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                         if (postId) {
-                            setReplies(cur => {
+                            /*setReplies(cur => {
                                 const updatedReplies = { ...cur };
                                 if (updatedReplies[postId]) {
                                     if (!updatedReplies[postId].some(r => r.id === event.id)) {
@@ -182,12 +230,18 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                                     updatedReplies[postId] = [event as unknown as ExtendedEvent];
                                 }
                                 return updatedReplies;
-                            });
+                            });*/
+                            if (!newRepliesForRepostedPosts[postId]) {
+                                newRepliesForRepostedPosts[postId] = [];
+                            }
+                            if (!newRepliesForRepostedPosts[postId].some(r => r.id === event.id)) {
+                                newRepliesForRepostedPosts[postId].push(event as unknown as ExtendedEvent);
+                            }
                         }
                     } else if (event.kind === 6) {
                         const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                         if (postId) {
-                            setReposts(cur => {
+                            /*  setReposts(cur => {
                                 const updatedReposts = { ...cur };
                                 if (updatedReposts[postId]) {
                                     if (!updatedReposts[postId].some(r => r.id === event.id)) {
@@ -197,19 +251,34 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                                     updatedReposts[postId] = [event as unknown as ExtendedEvent];
                                 }
                                 return updatedReposts;
-                            });
+                            });*/
+                            if (!newRepostsForRepostedPosts[postId]) {
+                                newRepostsForRepostedPosts[postId] = [];
+                            }
+                            if (!newRepostsForRepostedPosts[postId].some(r => r.id === event.id)) {
+                                newRepostsForRepostedPosts[postId].push(event as unknown as ExtendedEvent);
+                            }
                         }
                     }
                 },
-                oneose() {
+                onclose() {
+                    setMetadata(prevMetadata => ({...prevMetadata, ...newMetadataForRepostedPosts}));
+                    setReactions(prevReactions => ({...prevReactions, ...newReactionsForRepostedPosts}));
+                    setReplies(prevReplies => ({...prevReplies, ...newRepliesForRepostedPosts}));
+                    setReposts(prevReposts => ({...prevReposts, ...newRepostsForRepostedPosts}));
                     subRepostedMeta?.close();
                 }
             }
         );
     }
 
+    let newMetadataForReplies: Record<string, Metadata> = {...cachedMetadata};
+    let newReactionsForReplies: Record<string, Reaction[]> = {};
+    let newRepliesForReplies: Record<string, ExtendedEvent[]> = {};
+    let newRepostsForReplies: Record<string, ExtendedEvent[]> = {};
+
     if (replyIdsToFetch.length > 0) {
-        const subRepostedMeta = pool?.subscribeMany(
+        const subRepostedMeta = pool?.subscribeManyEose(
             RELAYS,
             [
                 { kinds: [0], authors: Array.from(replyPubkeysToFetch) },
@@ -221,10 +290,12 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                 onevent(event: Event) {
                     if (event.kind === 0) {
                         const metadata = JSON.parse(event.content) as Metadata;
-                        setMetadata(cur => ({
-                            ...cur,
-                            [event.pubkey]: metadata
-                        }));
+                        //setMetadata(cur => ({
+                        //    ...cur,
+                        //    [event.pubkey]: metadata
+                        //}));
+                        newMetadataForReplies[event.pubkey] = metadata;
+                        setMetadataToCache(event.pubkey, metadata);
                     } else if (event.kind === 7) {
                         const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                         if (postId) {
@@ -234,7 +305,7 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                                 type: event.content,
                                 sig: event.sig
                             };
-                            setReactions(cur => {
+                            /*setReactions(cur => {
                                 const updatedReactions = { ...cur };
                                 if (updatedReactions[postId]) {
                                     if (!updatedReactions[postId].some(r => r.id === newReaction.id)) {
@@ -244,12 +315,18 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                                     updatedReactions[postId] = [newReaction];
                                 }
                                 return updatedReactions;
-                            });
+                            });*/
+                            if (!newReactionsForReplies[postId]) {
+                                newReactionsForReplies[postId] = [];
+                            }
+                            if (!newReactionsForReplies[postId].some(r => r.sig === newReaction.sig)) {
+                                newReactionsForReplies[postId].push(newReaction);
+                            }
                         }
                     } else if (event.kind === 1) {
                         const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                         if (postId) {
-                            setReplies(cur => {
+                            /*setReplies(cur => {
                                 const updatedReplies = { ...cur };
                                 if (updatedReplies[postId]) {
                                     if (!updatedReplies[postId].some(r => r.id === event.id)) {
@@ -259,12 +336,18 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                                     updatedReplies[postId] = [event as unknown as ExtendedEvent];
                                 }
                                 return updatedReplies;
-                            });
+                            });*/
+                            if (!newRepliesForReplies[postId]) {
+                                newRepliesForReplies[postId] = [];
+                            }
+                            if (!newRepliesForReplies[postId].some(r => r.id === event.id)) {
+                                newRepliesForReplies[postId].push(event as unknown as ExtendedEvent);
+                            }
                         }
                     } else if (event.kind === 6) {
                         const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                         if (postId) {
-                            setReposts(cur => {
+                            /*setReposts(cur => {
                                 const updatedReposts = { ...cur };
                                 if (updatedReposts[postId]) {
                                     if (!updatedReposts[postId].some(r => r.id === event.id)) {
@@ -274,11 +357,21 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                                     updatedReposts[postId] = [event as unknown as ExtendedEvent ];
                                 }
                                 return updatedReposts;
-                            });
+                            });*/
+                            if (!newRepostsForReplies[postId]) {
+                                newRepostsForReplies[postId] = [];
+                            }
+                            if (!newRepostsForReplies[postId].some(r => r.id === event.id)) {
+                                newRepostsForReplies[postId].push(event as unknown as ExtendedEvent);
+                            }
                         }
                     }
                 },
-                oneose() {
+                onclose() {
+                    setMetadata(prevMetadata => ({...prevMetadata, ...newMetadataForReplies}));
+                    setReactions(prevReactions => ({...prevReactions, ...newReactionsForReplies}));
+                    setReplies(prevReplies => ({...prevReplies, ...newRepliesForReplies}));
+                    setReposts(prevReposts => ({...prevReposts, ...newRepostsForReplies}));
                     subRepostedMeta?.close();
                 }
             }
