@@ -49,20 +49,23 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     };
 
     let newMetadataForPosts: Record<string, Metadata> = {...cachedMetadata};
-    let newReactionsForPosts: Record<string, Reaction[]> = {};
-    let newRepliesForPosts: Record<string, ExtendedEvent[]> = {};
-    let newRepostsForPosts: Record<string, ExtendedEvent[]> = {};
+    let newReactionsForPosts: Record<string, Reaction[]> = Object.fromEntries(Array.from(postsToFetch).map(pubkey => [pubkey, []]));
+    let newRepliesForPosts: Record<string, ExtendedEvent[]> = Object.fromEntries(Array.from(postsToFetch).map(pubkey => [pubkey, []]));
+    let newRepostsForPosts: Record<string, ExtendedEvent[]> = Object.fromEntries(Array.from(postsToFetch).map(pubkey => [pubkey, []]));
 
+    console.log("Fetching metadata, reactions, replies, and reposts for posts", postsToFetch);
+    console.log("Pubkeys to fetch", Array.from(pubkeysToFetch));
     sub = pool?.subscribeManyEose(
         RELAYS,
         [
-            { kinds: [0], authors: pubkeysToFetchFromNetwork },
+            { kinds: [0], authors: Array.from(pubkeysToFetchFromNetwork) },
             { kinds: [7], '#e': postsToFetch },
             { kinds: [1], '#e': postsToFetch },
             { kinds: [6], '#e': postsToFetch }
         ],
         {
             onevent(event: Event) {
+                console.log("Processing event in extras section", event);
                 if (event.kind === 0) {
                     console
                     const metadata = JSON.parse(event.content) as Metadata;
@@ -95,18 +98,22 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                         }
                     }
                 } else if (event.kind === 6) {
+                    console.log("Processing repost event", event.id);
                     const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                     if (postId) {
                         if (!newRepostsForPosts[postId]) {
+                            console.log("Adding repost to post", postId);
                             newRepostsForPosts[postId] = [];
                         }
                         if (!newRepostsForPosts[postId].some(r => r.id === event.id)) {
+                            console.log("Adding repost to post", postId);
                             newRepostsForPosts[postId].push(event as unknown as ExtendedEvent);
                         }
                     }
                 }
             },
             onclose() {
+                console.log("closing now....")
                 setMetadata(prevMetadata => ({...prevMetadata, ...newMetadataForPosts}));
                 setReactions(prevReactions => ({...prevReactions, ...newReactionsForPosts}));
                 setReplies(prevReplies => ({...prevReplies, ...newRepliesForPosts}));
@@ -117,9 +124,9 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     );
 
     let newMetadataForRepostedPosts: Record<string, Metadata> = {...cachedMetadata};
-    let newReactionsForRepostedPosts: Record<string, Reaction[]> = {};
-    let newRepliesForRepostedPosts: Record<string, ExtendedEvent[]> = {};
-    let newRepostsForRepostedPosts: Record<string, ExtendedEvent[]> = {};
+    let newReactionsForRepostedPosts: Record<string, Reaction[]> = Object.fromEntries(Array.from(repostsToFetch).map(pubkey => [pubkey, []]));
+    let newRepliesForRepostedPosts: Record<string, ExtendedEvent[]> = Object.fromEntries(Array.from(repostsToFetch).map(pubkey => [pubkey, []]));
+    let newRepostsForRepostedPosts: Record<string, ExtendedEvent[]> = Object.fromEntries(Array.from(repostsToFetch).map(pubkey => [pubkey, []]));
     
     if (repostsToFetch.length > 0) {
         const subRepostedMeta = pool?.subscribeManyEose(
@@ -186,9 +193,9 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     }
 
     let newMetadataForReplies: Record<string, Metadata> = {...cachedMetadata};
-    let newReactionsForReplies: Record<string, Reaction[]> = {};
-    let newRepliesForReplies: Record<string, ExtendedEvent[]> = {};
-    let newRepostsForReplies: Record<string, ExtendedEvent[]> = {};
+    let newReactionsForReplies: Record<string, Reaction[]> = Object.fromEntries(Array.from(replyPubkeysToFetch).map(pubkey => [pubkey, []]));
+    let newRepliesForReplies: Record<string, ExtendedEvent[]> = Object.fromEntries(Array.from(replyPubkeysToFetch).map(pubkey => [pubkey, []]));
+    let newRepostsForReplies: Record<string, ExtendedEvent[]> = Object.fromEntries(Array.from(replyPubkeysToFetch).map(pubkey => [pubkey, []]));
 
     if (replyIdsToFetch.length > 0) {
         const subRepostedMeta = pool?.subscribeManyEose(
