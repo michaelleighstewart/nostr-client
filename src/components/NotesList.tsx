@@ -2,10 +2,9 @@ import { nip19 } from "nostr-tools";
 import NoteCard from "./NoteCard";
 import { SimplePool } from "nostr-tools";
 import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";
-import { useState, useEffect } from "react";
-import React from "react";
-import { AnimatePresence, motion } from "framer-motion";
-
+import React, { useState, useEffect } from "react";
+import { FixedSizeList as List } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
 
 interface Props {
     notes: ExtendedEvent[];
@@ -29,12 +28,9 @@ const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists,
             if (isLoggedIn) {
                 setVisibleNotes(notes);
             } else {
-                // When not logged in, only show the most recent 10 notes
                 setVisibleNotes(prevNotes => {
                     const newNotes = notes.slice(0, 10);
-                    // Find new notes that are not in the previous visible notes
                     const addedNotes = newNotes.filter(note => !prevNotes.some(prevNote => prevNote.id === note.id));
-                    // Combine new notes with previous notes, keeping only the most recent 10
                     return [...addedNotes, ...prevNotes].slice(0, 10);
                 });
             }
@@ -49,51 +45,74 @@ const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists,
             </div>
         )
     }
-    return (
-        <div className="flex flex-col gap-16">
-            <AnimatePresence>
-                {visibleNotes.map((note, index) => (
-                    <motion.div
-                        key={`${note.id}-${note.deleted}`}
-                        initial={{ opacity: 0, y: 50 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -50 }}
-                        transition={{ duration: 0.5, delay: index * 0.1 }}
-                    >
-                        <div className="pb-32">
-                            <NoteCard
-                                isPreview={false}
-                                id={note.id}
-                                created_at={note.created_at}
-                                user={{
-                                    name: metadata[note.pubkey]?.name ?? `${nip19.npubEncode(note.pubkey).slice(0, 12)}...`,
-                                    image: metadata[note.pubkey]?.picture,
-                                    pubkey: note.pubkey,
-                                    nip05: metadata[note.pubkey]?.nip05
-                                }}
-                                content={note.content}
-                                hashtags={note.tags.filter((t) => t[0] === "t").map((t) => t[1])}
-                                pool={pool}
-                                nostrExists={nostrExists}
-                                reactions={reactions[note.id]}
-                                allReactions={reactions}
-                                keyValue={keyValue}
-                                replies={replies?.[note.id]?.length ?? 0}
-                                allReplies={replies}
-                                deleted={note.deleted}
-                                repostedEvent={note.repostedEvent}
-                                repliedEvent={note.repliedEvent}
-                                metadata={metadata}
-                                reposts={reposts?.[note.id]?.length ?? 0}
-                                allReposts={reposts}
-                                setMetadata={setMetadata}
-                            />
-                        </div>
-                    </motion.div>
-                ))}
-            </AnimatePresence>
+
+    const Row = ({ index, style }: { index: number, style: React.CSSProperties }) => (
+        <div style={{...style, paddingTop: '1rem', paddingBottom: '1rem'}}>
+            <NoteCard
+                isPreview={false}
+                id={visibleNotes[index].id}
+                created_at={visibleNotes[index].created_at}
+                user={{
+                    name: metadata[visibleNotes[index].pubkey]?.name ?? `${nip19.npubEncode(visibleNotes[index].pubkey).slice(0, 12)}...`,
+                    image: metadata[visibleNotes[index].pubkey]?.picture,
+                    pubkey: visibleNotes[index].pubkey,
+                    nip05: metadata[visibleNotes[index].pubkey]?.nip05
+                }}
+                content={visibleNotes[index].content}
+                hashtags={visibleNotes[index].tags.filter((t) => t[0] === "t").map((t) => t[1])}
+                pool={pool}
+                nostrExists={nostrExists}
+                reactions={reactions[visibleNotes[index].id]}
+                allReactions={reactions}
+                keyValue={keyValue}
+                replies={replies?.[visibleNotes[index].id]?.length ?? 0}
+                allReplies={replies}
+                deleted={visibleNotes[index].deleted}
+                repostedEvent={visibleNotes[index].repostedEvent}
+                repliedEvent={visibleNotes[index].repliedEvent}
+                metadata={metadata}
+                reposts={reposts?.[visibleNotes[index].id]?.length ?? 0}
+                allReposts={reposts}
+                setMetadata={setMetadata}
+            />
         </div>
-    )
+    );
+
+    return (
+        <div className="w-full">
+            {visibleNotes.map((note, _index) => (
+                <div key={note.id} className="mb-4 py-16">
+                    <NoteCard
+                        isPreview={false}
+                        id={note.id}
+                        created_at={note.created_at}
+                        user={{
+                            name: metadata[note.pubkey]?.name ?? `${nip19.npubEncode(note.pubkey).slice(0, 12)}...`,
+                            image: metadata[note.pubkey]?.picture,
+                            pubkey: note.pubkey,
+                            nip05: metadata[note.pubkey]?.nip05
+                        }}
+                        content={note.content}
+                        hashtags={note.tags.filter((t) => t[0] === "t").map((t) => t[1])}
+                        pool={pool}
+                        nostrExists={nostrExists}
+                        reactions={reactions[note.id]}
+                        allReactions={reactions}
+                        keyValue={keyValue}
+                        replies={replies?.[note.id]?.length ?? 0}
+                        allReplies={replies}
+                        deleted={note.deleted}
+                        repostedEvent={note.repostedEvent}
+                        repliedEvent={note.repliedEvent}
+                        metadata={metadata}
+                        reposts={reposts?.[note.id]?.length ?? 0}
+                        allReposts={reposts}
+                        setMetadata={setMetadata}
+                    />
+                </div>
+            ))}
+        </div>
+    );
 });
 
 export default NotesList;

@@ -51,7 +51,7 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
         }
     };
 
-    sub = pool?.subscribeMany(
+    sub = pool?.subscribeManyEose(
         RELAYS,
         [
             { kinds: [0], authors: pubkeysToFetchFromNetwork },

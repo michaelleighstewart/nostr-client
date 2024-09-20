@@ -17,8 +17,6 @@ import { getMetadataFromCache, setMetadataToCache } from '../utils/cachingUtils'
 import { RELAYS } from '../utils/constants';
 import { debounce } from 'lodash';
 
-
-
 interface HomeProps {
   keyValue: string;
   pool: SimplePool | null;
@@ -57,7 +55,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const lastProcessedEventIndex = useRef(-1);
 
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
-      console.log("event streamed", event);
+      //console.log("event streamed", event);
       setStreamedEvents(prev => {
         if (prev.some(e => e.id === event.id)) {
           return prev;
@@ -100,40 +98,18 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         }
       });
     }, [props.pool, metadata, isLoggedIn]);
+
+    useEffect(() => {
+      const timer = setInterval(() => {
+        setStreamedEvents(prev => [...prev].sort((a, b) => b.created_at - a.created_at));
+      }, 1000); // Sort every second
     
-    const batchUpdateReactions = useCallback(debounce((updates: Record<string, Reaction[]>) => {
-      setReactions(prev => {
-        const newReactions = {...prev};
-        Object.entries(updates).forEach(([postId, reactions]) => {
-          newReactions[postId] = [...(newReactions[postId] || []), ...reactions];
-        });
-        return newReactions;
-      });
-    }, 1000), []);
-    
-    const batchUpdateReplies = useCallback(debounce((updates: Record<string, ExtendedEvent[]>) => {
-      setReplies(prev => {
-        const newReplies = {...prev};
-        Object.entries(updates).forEach(([postId, replies]) => {
-          newReplies[postId] = [...(newReplies[postId] || []), ...replies];
-        });
-        return newReplies;
-      });
-    }, 1000), []);
-    
-    const batchUpdateReposts = useCallback(debounce((updates: Record<string, ExtendedEvent[]>) => {
-      setReposts(prev => {
-        const newReposts = {...prev};
-        Object.entries(updates).forEach(([postId, reposts]) => {
-          newReposts[postId] = [...(newReposts[postId] || []), ...reposts];
-        });
-        return newReposts;
-      });
-    }, 1000), []);
+      return () => clearInterval(timer);
+    }, []);
 
     useEffect(() => {
       setIsLoggedIn(props.nostrExists || !!props.keyValue);
-    }, [props.nostrExists, props.keyValue]);
+    }, [props.nostrExists, props.keyValue, loadingMore]);
 
     const fetchFollowersAndData = useCallback(async () => {
       if (!props.pool) return;
@@ -208,38 +184,43 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       }
     
       if (!props.pool || newEvents.length === 0) return;
+      console.log("getting extra data for new events", newEvents);
       fetchMetadataReactionsAndReplies(props.pool, newEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
     
-      lastProcessedEventIndex.current = streamedEvents.length - 1;
-    }, [streamedEvents, props.pool, batchUpdateReactions, batchUpdateReplies, batchUpdateReposts]);
+      lastProcessedEventIndex.current = streamedEvents.length - 1; 
+    }, [streamedEvents, props.pool]);
 
-  const loadMore = async () => {
-    if (!props.pool) return;
-    setLoadingMore(true);
-    const oneDayBeforeLastFetched = lastFetchedTimestamp - 24 * 60 * 60;
-    let filter = isLoggedIn
-      ? { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, authors: followers, limit: 10, until: lastFetchedTimestamp }
-      : { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, limit: 10, until: lastFetchedTimestamp };
-    console.log("Filter:", filter);
-  
-    const fetchedEvents = await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-      setLoading, setLoadingMore, setError, setStreamedEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, 
-      setInitialLoadComplete, filter, handleEventReceived);
+    const debouncedLoadMore = debounce(async () => {
+      if (!props.pool) return;
+      setLoadingMore(true);
+      const oneDayBeforeLastFetched = lastFetchedTimestamp - 24 * 60 * 60;
+      let filter = isLoggedIn
+        ? { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, authors: followers, limit: 10, until: lastFetchedTimestamp }
+        : { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, limit: 10, until: lastFetchedTimestamp };
     
-    if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
-      const newLastFetchedTimestamp = Math.min(...fetchedEvents.map(event => event.created_at));
-      setLastFetchedTimestamp(newLastFetchedTimestamp);
+      const fetchedEvents = await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
+        setLoading, setLoadingMore, setError, setStreamedEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, 
+        setInitialLoadComplete, filter, handleEventReceived);
       
-      setStreamedEvents(prev => {
-        const newEvents = [...prev, ...fetchedEvents];
-        return newEvents.sort((a, b) => b.created_at - a.created_at);
-      });
-      
-      // Fetch metadata, reactions, replies, and reposts for the new events
-      await fetchMetadataReactionsAndReplies(props.pool, fetchedEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
-    }
-    setLoadingMore(false);
-  };
+      if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
+        const newLastFetchedTimestamp = Math.min(...fetchedEvents.map(event => event.created_at));
+        setLastFetchedTimestamp(newLastFetchedTimestamp);
+        
+        setStreamedEvents(prev => {
+          const newEvents = [...prev, ...fetchedEvents];
+          return newEvents.sort((a, b) => b.created_at - a.created_at);
+        });
+        
+        await fetchMetadataReactionsAndReplies(props.pool, fetchedEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
+      }
+      setLoadingMore(false);
+    }, 300);
+    
+    const loadMore = () => {
+      if (!loadingMore) {
+        debouncedLoadMore();
+      }
+    };
 
     const handleSendMessage = async () => {
       if (!props.pool) return;
@@ -456,13 +437,19 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         ) : error ? (
           <div className="text-red-500 text-center mt-4">{error}</div>
         ) : (
-          <div className={`pt-32 relative ${!isLoggedIn ? 'pointer-events-none opacity-50' : ''}`}>
-            <NotesList metadata={metadata} reactions={reactions} 
-              notes={streamedEvents.filter(e => !deletedNoteIds.has(e.id))}
-              pool={props.pool} 
-              nostrExists={props.nostrExists} keyValue={props.keyValue}
-              replies={replies} reposts={reposts} setMetadata={setMetadata}
-              initialLoadComplete={initialLoadComplete} />
+<div className={`w-full ${!isLoggedIn ? 'pointer-events-none opacity-50' : ''}`}>
+  <NotesList 
+    metadata={metadata} 
+    reactions={reactions} 
+    notes={streamedEvents.filter(e => !deletedNoteIds.has(e.id))}
+    pool={props.pool} 
+    nostrExists={props.nostrExists} 
+    keyValue={props.keyValue}
+    replies={replies} 
+    reposts={reposts} 
+    setMetadata={setMetadata}
+    initialLoadComplete={initialLoadComplete} 
+  />
               {streamedEvents.length > 0 && initialLoadComplete && isLoggedIn && (
                 <div className="mt-8 mb-8 text-center">
                   {loadingMore ? (
