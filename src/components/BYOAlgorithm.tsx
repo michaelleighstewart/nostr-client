@@ -17,7 +17,7 @@ interface AlgorithmSettings {
   byoReactions: boolean;
 }
 
-const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, pool, nostrExists }) => {
+const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) => {
   const [loading, setLoading] = useState(true);
   const [userPublicKey, setUserPublicKey] = useState<string | null>(null);
   const [settings, setSettings] = useState<AlgorithmSettings>({
