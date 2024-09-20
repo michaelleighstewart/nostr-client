@@ -44,38 +44,6 @@ const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists,
         )
     }
 
-    const Row = ({ index, style }: { index: number, style: React.CSSProperties }) => (
-        <div style={{...style, paddingTop: '1rem', paddingBottom: '1rem'}}>
-            <NoteCard
-                isPreview={false}
-                id={visibleNotes[index].id}
-                created_at={visibleNotes[index].created_at}
-                user={{
-                    name: metadata[visibleNotes[index].pubkey]?.name ?? `${nip19.npubEncode(visibleNotes[index].pubkey).slice(0, 12)}...`,
-                    image: metadata[visibleNotes[index].pubkey]?.picture,
-                    pubkey: visibleNotes[index].pubkey,
-                    nip05: metadata[visibleNotes[index].pubkey]?.nip05
-                }}
-                content={visibleNotes[index].content}
-                hashtags={visibleNotes[index].tags.filter((t) => t[0] === "t").map((t) => t[1])}
-                pool={pool}
-                nostrExists={nostrExists}
-                reactions={reactions[visibleNotes[index].id]}
-                allReactions={reactions}
-                keyValue={keyValue}
-                replies={replies?.[visibleNotes[index].id]?.length ?? 0}
-                allReplies={replies}
-                deleted={visibleNotes[index].deleted}
-                repostedEvent={visibleNotes[index].repostedEvent}
-                repliedEvent={visibleNotes[index].repliedEvent}
-                metadata={metadata}
-                reposts={reposts?.[visibleNotes[index].id]?.length ?? 0}
-                allReposts={reposts}
-                setMetadata={setMetadata}
-            />
-        </div>
-    );
-
     return (
         <div className="w-full">
             {visibleNotes.map((note, _index) => (
