@@ -22,9 +22,13 @@ interface ProfileData {
 const ProfilesModal: React.FC<ProfilesModalProps> = ({ npubs, pool, isOpen, onClose, title }) => {
   const [profiles, setProfiles] = useState<ProfileData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchedProfiles, setFetchedProfiles] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+  
     const fetchProfiles = async () => {
+      if (!isOpen || !pool || fetchedProfiles) return;
       setLoading(true);
       const pubkeys = npubs.map(npub => {
         try {
@@ -34,11 +38,10 @@ const ProfilesModal: React.FC<ProfilesModalProps> = ({ npubs, pool, isOpen, onCl
           return null;
         }
       }).filter((pubkey): pubkey is string => pubkey !== null);
-
+  
       const profileEvents: Event[] = [];
       await new Promise<void>((resolve) => {
-        if (!pool) return;
-        pool?.subscribeMany(
+        const sub = pool.subscribeMany(
           RELAYS,
           [{ kinds: [0], authors: pubkeys }],
           {
@@ -49,10 +52,13 @@ const ProfilesModal: React.FC<ProfilesModalProps> = ({ npubs, pool, isOpen, onCl
             },
             oneose() {
               resolve();
+              sub.close();
             }
           }
         );
       });
+  
+      if (!isMounted) return;
 
       const profileData: ProfileData[] = pubkeys.map(pubkey => {
         const event = profileEvents.find(e => e.pubkey === pubkey);
@@ -73,14 +79,21 @@ const ProfilesModal: React.FC<ProfilesModalProps> = ({ npubs, pool, isOpen, onCl
 
       setProfiles(profileData);
       setLoading(false);
+      setFetchedProfiles(true);
     };
+  
+    fetchProfiles();
+  
+    return () => {
+      isMounted = false;
+    };
+  }, [pool, isOpen]);
 
-    if (isOpen && npubs.length > 0) {
-      fetchProfiles();
-    } else if (isOpen) {
-      setLoading(false);
+  useEffect(() => {
+    if (!isOpen) {
+      setFetchedProfiles(false);
     }
-  }, [npubs, pool, isOpen]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
