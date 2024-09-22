@@ -6,7 +6,6 @@ import { API_URLS } from '../utils/apiConstants';
 import { showCustomToast } from "./CustomToast";
 
 interface BYOAlgorithmProps {
-
   keyValue: string;
   pool: SimplePool | null;
   nostrExists: boolean | null;
@@ -23,13 +22,8 @@ interface AlgorithmSettings {
 const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) => {
   const [loading, setLoading] = useState(true);
   const [userPublicKey, setUserPublicKey] = useState<string | null>(null);
-  const [settings, setSettings] = useState<AlgorithmSettings>({
-    byoDegrees: 3,
-    byoPosts: true,
-    byoReposts: true,
-    byoReplies: false,
-    byoReactions: true,
-  });
+  const [settings, setSettings] = useState<AlgorithmSettings | null>(null);
+  const [isNewAlgorithm, setIsNewAlgorithm] = useState(false);
 
   useEffect(() => {
     const fetchUserPublicKey = async () => {
@@ -61,13 +55,33 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
 
         if (response.ok) {
           const data = await response.json();
-          setSettings(data);
+          if (data && Object.keys(data).length > 0) {
+            setSettings(data.data);
+            setIsNewAlgorithm(false);
+          } else {
+            setSettings({
+              byoDegrees: 3,
+              byoPosts: true,
+              byoReposts: true,
+              byoReplies: false,
+              byoReactions: true,
+            });
+            setIsNewAlgorithm(true);
+          }
         } else {
           throw new Error('Failed to fetch current settings');
         }
       } catch (error) {
         console.error('Error fetching settings:', error);
         showCustomToast('Failed to fetch current settings. Using default values.', 'error');
+        setSettings({
+          byoDegrees: 3,
+          byoPosts: true,
+          byoReposts: true,
+          byoReplies: false,
+          byoReactions: true,
+        });
+        setIsNewAlgorithm(true);
       }
     };
 
@@ -76,13 +90,12 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
     }
   }, [userPublicKey]);
 
-
   const handleSettingChange = (setting: keyof AlgorithmSettings, value: number | boolean) => {
-    setSettings(prev => ({ ...prev, [setting]: value }));
+    setSettings(prev => prev ? ({ ...prev, [setting]: value }) : null);
   };
 
   const handleSaveSettings = async () => {
-    if (!userPublicKey) return;
+    if (!userPublicKey || !settings) return;
 
     try {
       const response = await fetch(API_URLS.BYO_ALGORITHM, {
@@ -92,12 +105,14 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
         },
         body: JSON.stringify({
           userId: userPublicKey,
+          name: userPublicKey + "_BYOA_v1",
           ...settings,
         }),
       });
 
       if (response.ok) {
         showCustomToast('Settings saved successfully!', 'success');
+        setIsNewAlgorithm(false);
       } else {
         throw new Error('Failed to save settings');
       }
@@ -107,13 +122,18 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
     }
   };
 
-  if (loading) {
+  if (loading || settings === null) {
     return <Loading vCentered={false} />;
   }
 
   return (
     <div className="py-16 px-4 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold mb-8">Build Your Own Algorithm (WIP)</h1>
+      <h1 className="text-3xl font-bold mb-8">Build Your Own Algorithm</h1>
+      {isNewAlgorithm ? (
+        <p className="mb-4 text-yellow-500">Creating a new algorithm. Adjust the settings below and save to create your personalized algorithm.</p>
+      ) : (
+        <p className="mb-4 text-green-500">Existing algorithm loaded. You can modify the settings below.</p>
+      )}
       <div className="space-y-6">
         <div>
           <label className="block text-sm font-medium mb-2">Degrees of Separation</label>
@@ -144,7 +164,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
           onClick={handleSaveSettings}
           className="w-full py-2 px-4 bg-[#535bf2]-600 text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
         >
-          Save Settings
+          {isNewAlgorithm ? 'Create Algorithm' : 'Update Algorithm'}
         </button>
       </div>
     </div>

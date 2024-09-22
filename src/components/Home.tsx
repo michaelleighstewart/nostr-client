@@ -17,6 +17,7 @@ import { getMetadataFromCache, setMetadataToCache } from '../utils/cachingUtils'
 import { RELAYS } from '../utils/constants';
 import { debounce } from 'lodash';
 import { API_URLS } from '../utils/apiConstants';
+import { constructFilterFromBYOAlgo } from '../utils/algoUtils';
 
 interface HomeProps {
   keyValue: string;
@@ -52,6 +53,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [followers, setFollowers] = useState<string[]>([]);
     const [_hasNotes, setHasNotes] = useState(false);
+    const [byoAlgo, setByoAlgo] = useState<any>(null);
 
     //const lastProcessedEventIndex = useRef(-1);
 
@@ -131,12 +133,28 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           }
         } catch (error) {}
         setFollowers(newFollowers);
+
+        // Fetch BYO algorithm
+        if (userPublicKey) {
+          try {
+            const response = await fetch(`${API_URLS.BYO_ALGORITHM}?userId=${userPublicKey}`);
+            if (response.ok) {
+              const data = await response.json();
+              setByoAlgo(data);
+            }
+          } catch (error) {
+            console.error("Error fetching BYO algorithm:", error);
+          }
+        }
     
         const oneWeekAgo = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
-        let filter = isLoggedIn
-          ? { kinds: [1, 5, 6], authors: newFollowers, limit: 10, since: oneWeekAgo }
-          : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
+        //let filter = isLoggedIn
+        //  ? { kinds: [1, 5, 6], authors: newFollowers, limit: 10, since: oneWeekAgo }
+        //  : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
         //let filter = { id: '9e2b9f66a4af0035b0a447e33a348790ec2d95defb3f385fea67037fff73b24a'};
+        let filter = isLoggedIn
+        ? constructFilterFromBYOAlgo(byoAlgo, newFollowers, oneWeekAgo)
+        : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
         
         const fetchedEvents = await fetchData(props.pool, 0, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
           setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
