@@ -18,6 +18,7 @@ import { RELAYS } from '../utils/constants';
 import { debounce } from 'lodash';
 import { API_URLS } from '../utils/apiConstants';
 import { constructFilterFromBYOAlgo } from '../utils/algoUtils';
+import { createAuthHeader } from '../utils/authUtils';
 
 interface HomeProps {
   keyValue: string;
@@ -137,7 +138,15 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         // Fetch BYO algorithm
         if (userPublicKey) {
           try {
-            const response = await fetch(`${API_URLS.BYO_ALGORITHM}?userId=${userPublicKey}`);
+            const authHeader = await createAuthHeader('GET', '/byo-algo', props.nostrExists ?? false, props.keyValue ?? "");
+            const response = await fetch(`${API_URLS.BYO_ALGORITHM}?userId=${userPublicKey}`,
+              {
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'Bearer ' + authHeader,
+                },
+              }
+            );
             if (response.ok) {
               const data = await response.json();
               setByoAlgo(data);

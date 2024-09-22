@@ -4,6 +4,7 @@ import { bech32Decoder } from '../utils/helperFunctions';
 import Loading from './Loading';
 import { API_URLS } from '../utils/apiConstants';
 import { showCustomToast } from "./CustomToast";
+import { createAuthHeader } from '../utils/authUtils';
 
 interface BYOAlgorithmProps {
   keyValue: string;
@@ -46,10 +47,12 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
       if (!userPublicKey) return;
 
       try {
+        const authHeader = await createAuthHeader('GET', '/byo-algo', nostrExists ?? false, keyValue);
         const response = await fetch(`${API_URLS.BYO_ALGORITHM}?userId=${userPublicKey}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + authHeader,
           },
         });
 
@@ -98,10 +101,12 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
     if (!userPublicKey || !settings) return;
 
     try {
+    const authHeader = await createAuthHeader('GET', '/byo-algo', nostrExists ?? false, keyValue);
       const response = await fetch(API_URLS.BYO_ALGORITHM, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + authHeader,
         },
         body: JSON.stringify({
           userId: userPublicKey,
