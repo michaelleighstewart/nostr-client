@@ -16,7 +16,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const networkRef = useRef<HTMLDivElement>(null);
-  const [network, setNetwork] = useState<Network | null>(null);
+  const [_network, setNetwork] = useState<Network | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
