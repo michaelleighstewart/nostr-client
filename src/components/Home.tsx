@@ -184,7 +184,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       } finally {
         setLoading(false);
       }
-    }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn, userPublicKey, handleEventReceived, streamedEvents]);
+    }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn, userPublicKey, handleEventReceived, streamedEvents, selectedAlgorithm]);
 
     useEffect(() => {
       fetchFollowersAndData();
