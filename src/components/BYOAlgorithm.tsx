@@ -83,7 +83,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
     const getDefaultAlgorithm = () => ({
       id: 'default',
       name: '',
-      byoDegrees: 3,
+      byoDegrees: 1,
       byoPosts: true,
       byoReposts: true,
       byoReplies: false,
@@ -158,7 +158,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
     const newAlgorithm: AlgorithmSettings = {
       id: 'new',
       name: '',
-      byoDegrees: 3,
+      byoDegrees: 1,
       byoPosts: true,
       byoReposts: true,
       byoReplies: false,
@@ -223,7 +223,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
           <input
             type="number"
             min="1"
-            max="3"
+            max="2"
             value={currentAlgorithm.byoDegrees}
             onChange={(e) => handleSettingChange('byoDegrees', parseInt(e.target.value))}
             className="w-full p-2 border rounded text-black"

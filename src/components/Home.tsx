@@ -454,15 +454,21 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         ) : (
           <>
           <div className="flex space-x-4">
-          {byoAlgo.map(algo => (
-            <button
-              key={algo.algoId}
-              onClick={() => setSelectedAlgorithm(algo)}
-              className={`px-4 py-2 border-b-2 ${selectedAlgorithm.algoId === algo.algoId ? 'border-blue-500 text-white' : 'border-transparent text-gray-700 hover:text-blue-500 hover:border-blue-500'}`}
-            >
-              {algo.name || 'Algorithm'}
-            </button>
-          ))}
+            <div className="flex border-b border-gray-600">
+            {byoAlgo.map(algo => (
+              <button
+                key={algo.algoId}
+                onClick={() => setSelectedAlgorithm(algo)}
+                className={`px-32 py-2 mx-8 -mb-px ${
+                  selectedAlgorithm.algoId === algo.algoId
+                    ? 'bg-[#242424] border-t border-l border-r border-blue-500 text-white rounded-t-md' // Active tab with raised effect
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white rounded-t-md border-transparent' // Inactive tabs with flat appearance
+                }`}
+              >
+                {algo.name || 'Algorithm'}
+              </button>
+            ))}
+          </div>
         </div>
             <div className={`w-full ${!isLoggedIn ? 'pointer-events-none opacity-50' : ''}`}>
               <NotesList 
