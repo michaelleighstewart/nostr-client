@@ -56,6 +56,14 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
 
     const { npub } = useParams<{ npub: string }>();
 
+    const defaultAlgorithm = {
+        byoDegrees: 1,
+        byoPosts: true,
+        byoReposts: true,
+        byoReplies: true,
+        byoReactions: true
+    };
+
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
         setStreamedEvents(prev => {
             if (prev.some(e => e.id === event.id)) {
@@ -145,7 +153,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
             const filter = { kinds: [1, 5, 6], authors: [fetchedPubkey], limit: 10 };
             await fetchData(pool, 0, false, 0, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
                 setLoading, setLoadingMore, setError, () => {}, [], repostEvents, replyEvents, setLastFetchedTimestamp, 
-                setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived);
+                setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived, defaultAlgorithm);
             setLoadingPosts(false);
         };
 
@@ -195,7 +203,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
         
         const fetchedEvents = await fetchData(pool, 0, true, oldestTimestamp - 1, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
             setLoading, setLoadingMore, setError, setStreamedEvents, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, 
-            setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived);
+            setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived, defaultAlgorithm);
         
         if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
             setStreamedEvents(prevEvents => {
@@ -204,9 +212,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
             });
             const newLastFetchedTimestamp = Math.min(...fetchedEvents.map(event => event.created_at));
             setLastFetchedTimestamp(newLastFetchedTimestamp);
-        } //else {
-        //    showCustomToast("No more posts to load");
-        //}
+        }
         
         setLoadingMore(false);
     };

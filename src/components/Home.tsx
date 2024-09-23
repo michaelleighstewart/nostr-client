@@ -219,7 +219,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     
       const fetchedEvents = await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
         setLoading, setLoadingMore, setError, setStreamedEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, 
-        setInitialLoadComplete, filter, handleEventReceived);
+        setInitialLoadComplete, filter, handleEventReceived, selectedAlgorithm);
       
       if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
         const newLastFetchedTimestamp = Math.min(...fetchedEvents.map(event => event.created_at));
