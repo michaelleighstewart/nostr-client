@@ -31,6 +31,10 @@ interface BYOAlgo {
       limit: 10,
       since,
     };
+
+    if (!byoAlgo.byoReplies) {
+      filter['#e'] = [''];
+    }
   
     if (byoAlgo.byoDegrees > 1) {
       console.log(`Fetching followers up to ${byoAlgo.byoDegrees} degrees of separation`);

@@ -18,7 +18,6 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     const repostPubkeysToFetch: string[] = [];
     for (const event of repostEvents) {
         if (!repostsToFetch.includes(event.id || "")) {
-            console.log("adding repost to fetch", event.id || "");
             repostsToFetch.push(event.id || "");
         }
         if (!repostPubkeysToFetch.includes(event.pubkey || "")) {
@@ -194,7 +193,8 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
     _setUserPublicKey: React.Dispatch<React.SetStateAction<string | null>>,
     setInitialLoadComplete: React.Dispatch<React.SetStateAction<boolean>>,
     filter: any,
-    onEventReceived: (event: ExtendedEvent) => void
+    onEventReceived: (event: ExtendedEvent) => void,
+    selectedAlgorithm: any
 ) => {
     try {
       if (!append) {
@@ -236,12 +236,12 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                 repliedEvent: null
                             };
                             extendedEventToAdd = extendedEvent;
-                            onEventReceived(extendedEventToAdd);
+                            if (selectedAlgorithm.byoPosts) onEventReceived(extendedEventToAdd);
                         }
                         else {
                             // Get the original note referenced in the first 'e' tag
                             const replyToId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                            if (replyToId) {
+                            if (replyToId && selectedAlgorithm.byoReplies) {
                                 // Fetch the original note
                                 pool?.get(RELAYS, {
                                     ids: [replyToId]
@@ -312,7 +312,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                             };
                             extendedEventToAdd = extendedEvent;
                             repostEvents.push(extendedEvent);
-                            onEventReceived(extendedEvent);
+                            if (selectedAlgorithm.byoReposts) onEventReceived(extendedEvent);
                             } catch (error) {
                             console.error("Error parsing reposted content:", error);
                             }
