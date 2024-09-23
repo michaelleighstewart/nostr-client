@@ -137,10 +137,18 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         setFollowers(newFollowers);
 
         // Fetch BYO algorithms
-        if (userPublicKey) {
+        if (props.keyValue) {
+          let pk = "";
+          if (props.nostrExists) {
+            pk = await (window as any).nostr.getPublicKey()
+          }
+          else {
+            let skDecoded = bech32Decoder('nsec', props.keyValue);
+            pk = getPublicKey(skDecoded);
+          }
           try {
             const authHeader = await createAuthHeader('GET', '/byo-algo', props.nostrExists ?? false, props.keyValue ?? "");
-            const response = await fetch(`${API_URLS.BYO_ALGORITHM}?userId=${userPublicKey}`,
+            const response = await fetch(`${API_URLS.BYO_ALGORITHM}?userId=${pk}`,
               {
                 headers: {
                   'Content-Type': 'application/json',
@@ -184,7 +192,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       } finally {
         setLoading(false);
       }
-    }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn, userPublicKey, handleEventReceived, streamedEvents, selectedAlgorithm]);
+    }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn, userPublicKey, handleEventReceived, streamedEvents]);
 
     useEffect(() => {
       fetchFollowersAndData();
