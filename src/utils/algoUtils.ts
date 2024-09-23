@@ -1,3 +1,6 @@
+import { SimplePool } from "nostr-tools";
+import { RELAYS } from "./constants";
+
 interface BYOAlgo {
     byoDegrees: number;
     byoPosts: boolean;
@@ -6,7 +9,9 @@ interface BYOAlgo {
     byoReactions: boolean;
   }
   
-  export function constructFilterFromBYOAlgo(byoAlgo: BYOAlgo | null, followers: string[], since: number): any {
+  export async function constructFilterFromBYOAlgo(byoAlgo: BYOAlgo | null, followers: string[], since: number,
+    pool: SimplePool
+  ): Promise<any> {
     if (!byoAlgo) {
       return { kinds: [1, 5, 6], authors: followers, limit: 10, since };
     }
@@ -27,11 +32,50 @@ interface BYOAlgo {
       since,
     };
   
-    // If byoDegrees is greater than 1, we need to fetch followers of followers
     if (byoAlgo.byoDegrees > 1) {
-      // This is a placeholder. In a real implementation, you'd need to fetch followers of followers
-      // up to the specified degree. This would likely involve multiple queries to the nostr network.
       console.log(`Fetching followers up to ${byoAlgo.byoDegrees} degrees of separation`);
+      const getFollowersOfFollowers = async (pool: SimplePool, initialFollowers: string[], degrees: number): Promise<string[]> => {
+        let allFollowers = new Set(initialFollowers);
+        let currentDegree = 1;
+        let currentFollowers = initialFollowers;
+
+        while (currentDegree < degrees) {
+          const followersPromises = currentFollowers.map(pubkey => 
+            new Promise<string[]>((resolve) => {
+              let followersToAdd: any[] = [];
+              pool.subscribeManyEose(
+                RELAYS,
+                [
+                    {
+                        kinds: [0],
+                        authors: [pubkey],
+                    }
+                ],
+                {
+                    onevent(event) {
+                        followersToAdd.push(event);
+                    },
+                    onclose() {
+                        resolve(followersToAdd);
+                    }
+                }
+              );
+            })
+          );
+
+          const newFollowers = await Promise.all(followersPromises);
+          newFollowers.flat().forEach(follower => allFollowers.add(follower));
+          
+          currentFollowers = Array.from(allFollowers);
+          currentDegree++;
+        }
+
+        return Array.from(allFollowers);
+      };
+
+      // Use the function to get all followers up to the specified degree
+      const allFollowers = await getFollowersOfFollowers(pool, followers, byoAlgo.byoDegrees);
+      filter.authors = allFollowers;
     }
   
     return filter;
