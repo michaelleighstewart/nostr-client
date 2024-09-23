@@ -4,7 +4,7 @@ import { RELAYS } from "./constants";
 import { Metadata } from "./interfaces";
 import { getMetadataFromCache, setMetadataToCache } from './cachingUtils';
 
-export const getFollowers = async (pool: SimplePool, isLoggedIn: boolean, nostrExists: boolean | null, keyValue: string | null, 
+export const getFollowing = async (pool: SimplePool, isLoggedIn: boolean, nostrExists: boolean | null, keyValue: string | null, 
   setUserPublicKey: (pk: string) => void, publicKeyOverride: string | null): Promise<string[]> => {
     if (!isLoggedIn) return [];
       

@@ -15,6 +15,7 @@ import Note from "./components/Note";
 import Search from "./components/Search";
 import NavBar from "./components/NavBar";
 import BYOAlgorithm from "./components/BYOAlgorithm";
+import SocialGraph from './components/SocialGraph';
 import { SimplePool } from "nostr-tools";
 import { useState, useEffect } from "react";
 
@@ -97,6 +98,7 @@ function App() {
             <Route path="profile" element={<Profile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="profile/:npub/following" element={<Following pool={pool} />} />
             <Route path="notifications" element={<Notifications keyValue={key} pool={pool} nostrExists={nostrExists} />} />
+            <Route path="social-graph" element={<SocialGraph keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="messages" element={<Messages keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="generate-key" element={<GenerateKey setKeyValue={handleSetKey} keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="people-to-follow" element={<PeopleToFollow keyValue={key} pool={pool} nostrExists={nostrExists} />} />

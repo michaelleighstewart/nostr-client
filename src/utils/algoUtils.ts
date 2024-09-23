@@ -38,7 +38,7 @@ interface BYOAlgo {
   
     if (byoAlgo.byoDegrees > 1) {
       console.log(`Fetching followers up to ${byoAlgo.byoDegrees} degrees of separation`);
-      const getFollowersOfFollowers = async (pool: SimplePool, initialFollowers: string[], degrees: number): Promise<string[]> => {
+      const getFollowingOfFollowing = async (pool: SimplePool, initialFollowers: string[], degrees: number): Promise<string[]> => {
         let allFollowers = new Set(initialFollowers);
         let currentDegree = 1;
         let currentFollowers = initialFollowers;
@@ -78,7 +78,7 @@ interface BYOAlgo {
       };
 
       // Use the function to get all followers up to the specified degree
-      const allFollowers = await getFollowersOfFollowers(pool, followers, byoAlgo.byoDegrees);
+      const allFollowers = await getFollowingOfFollowing(pool, followers, byoAlgo.byoDegrees);
       filter.authors = allFollowers;
     }
   

@@ -3,7 +3,7 @@ import { SimplePool, Event, nip19 } from "nostr-tools";
 import { useParams, Link } from "react-router-dom";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
-import { getFollowers } from "../utils/profileUtils";
+import { getFollowing } from "../utils/profileUtils";
 import { UserCircleIcon, ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { bech32Decoder } from "../utils/helperFunctions";
 
@@ -65,8 +65,8 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
             setLoading(true);
             if (!pool || !pubkey) return;
 
-            const allFollowers = await getFollowers(pool, true, _nostrExists, _keyValue, () => {}, pubkey);
-            const uniqueFollowers = Array.from(new Set(allFollowers));
+            const allFollowing = await getFollowing(pool, true, _nostrExists, _keyValue, () => {}, pubkey);
+            const uniqueFollowers = Array.from(new Set(allFollowing));
 
             const followerProfiles: Event[] = [];
             await new Promise<void>((resolve) => {

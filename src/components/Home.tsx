@@ -6,7 +6,7 @@ import { useDebounce } from "use-debounce";
 import { bech32Decoder, getBase64, sendMessage } from "../utils/helperFunctions";
 import { ExtendedEvent, Metadata, Reaction, User } from "../utils/interfaces";
 import Loading from "./Loading";
-import { fetchUserMetadata, getFollowers } from "../utils/profileUtils";
+import { fetchUserMetadata, getFollowing } from "../utils/profileUtils";
 import { fetchMetadataReactionsAndReplies, fetchData } from '../utils/noteUtils';
 import Ostrich from "./Ostrich";
 import { showCustomToast } from "./CustomToast";
@@ -160,15 +160,15 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         setLoading(true);
         
         try {
-          const newFollowers = await getFollowers(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey, null);
+          const newFollowing = await getFollowing(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey, null);
           try {
             if (props.keyValue) {
               let skDecoded = bech32Decoder('nsec', props.keyValue);
               let pk = getPublicKey(skDecoded);
-              if (!newFollowers.includes(pk)) newFollowers.push(pk);
+              if (!newFollowing.includes(pk)) newFollowing.push(pk);
             }
           } catch (error) {}
-          setFollowers(newFollowers);
+          setFollowers(newFollowing);
       
           const oneWeekAgo = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
           //let filter = isLoggedIn
@@ -176,7 +176,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           //  : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
           //let filter = { id: '9e2b9f66a4af0035b0a447e33a348790ec2d95defb3f385fea67037fff73b24a'};
           let filter = isLoggedIn
-          ? constructFilterFromBYOAlgo(selectedAlgorithm, newFollowers, oneWeekAgo, props.pool)
+          ? constructFilterFromBYOAlgo(selectedAlgorithm, newFollowing, oneWeekAgo, props.pool)
           : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
           
           const fetchedEvents = await fetchData(props.pool, 0, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
