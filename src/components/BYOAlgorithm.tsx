@@ -13,6 +13,8 @@ interface BYOAlgorithmProps {
 }
 
 interface AlgorithmSettings {
+  id: string;
+  name: string;
   byoDegrees: number;
   byoPosts: boolean;
   byoReposts: boolean;
@@ -24,9 +26,9 @@ interface AlgorithmSettings {
 const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) => {
   const [loading, setLoading] = useState(true);
   const [userPublicKey, setUserPublicKey] = useState<string | null>(null);
-  const [settings, setSettings] = useState<AlgorithmSettings | null>(null);
-  const [isNewAlgorithm, setIsNewAlgorithm] = useState(false);
-  const [originalSettings, setOriginalSettings] = useState<AlgorithmSettings | null>(null);
+  const [algorithms, setAlgorithms] = useState<AlgorithmSettings[]>([]);
+  const [selectedAlgorithm, setSelectedAlgorithm] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserPublicKey = async () => {
@@ -45,7 +47,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
   }, [nostrExists, keyValue]);
 
   useEffect(() => {
-    const fetchCurrentSettings = async () => {
+    const fetchAlgorithms = async () => {
       if (!userPublicKey) return;
 
       try {
@@ -60,103 +62,156 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
 
         if (response.ok) {
           const data = await response.json();
-          if (data && Object.keys(data).length > 0) {
-            setSettings(data.data);
-            setOriginalSettings(data.data);
-            setIsNewAlgorithm(false);
+          if (data && Array.isArray(data.algos) && data.algos.length > 0) {
+            setAlgorithms([...data.algos]);
+            setSelectedAlgorithm(data.algos[0].id);
           } else {
-            setDefaultSettings();
+            setDefaultAlgorithm();
           }
         } else if (response.status === 404) {
-          setDefaultSettings();
+          setDefaultAlgorithm();
         } else {
-          throw new Error('Failed to fetch current settings');
+          throw new Error('Failed to fetch algorithms');
         }
       } catch (error) {
-        console.error('Error fetching settings:', error);
-        showCustomToast('Failed to fetch current settings. Using default values.', 'error');
-        setDefaultSettings();
+        console.error('Error fetching algorithms:', error);
+        showCustomToast('Failed to fetch algorithms. Using default values.', 'error');
+        setDefaultAlgorithm();
       }
     };
 
-    const setDefaultSettings = () => {
-      const defaultSettings = {
-        byoDegrees: 3,
-        byoPosts: true,
-        byoReposts: true,
-        byoReplies: false,
-        byoReactions: true,
-        basedOn: 'Following',
-      };
-      setSettings(defaultSettings);
-      setOriginalSettings(defaultSettings);
-      setIsNewAlgorithm(true);
+    const getDefaultAlgorithm = () => ({
+      id: 'default',
+      name: '',
+      byoDegrees: 3,
+      byoPosts: true,
+      byoReposts: true,
+      byoReplies: false,
+      byoReactions: true,
+      basedOn: 'Following',
+    });
+
+    const setDefaultAlgorithm = () => {
+      setAlgorithms([getDefaultAlgorithm()]);
+      setSelectedAlgorithm('default');
     };
 
     if (userPublicKey) {
-      fetchCurrentSettings();
+      fetchAlgorithms();
     }
   }, [userPublicKey]);
 
   const handleSettingChange = (setting: keyof AlgorithmSettings, value: number | boolean | string) => {
-    setSettings(prev => prev ? ({ ...prev, [setting]: value }) : null);
+    setAlgorithms(prevAlgorithms => 
+      prevAlgorithms.map(algo => 
+        algo.id === selectedAlgorithm ? { ...algo, [setting]: value } : algo
+      )
+    );
+    if (setting === 'name') {
+      setNameError(value ? null : 'Algorithm name is required');
+    }
   };
 
   const handleSaveSettings = async () => {
-    if (!userPublicKey || !settings || !originalSettings) return;
+    if (!userPublicKey || !selectedAlgorithm) return;
+
+    const algorithmToSave = algorithms.find(algo => algo.id === selectedAlgorithm);
+    if (!algorithmToSave) return;
+
+    if (!algorithmToSave.name.trim()) {
+      setNameError('Algorithm name is required');
+      return;
+    }
 
     try {
       const authHeader = await createAuthHeader('POST', '/byo-algo', nostrExists ?? false, keyValue);
-      const changedSettings = Object.entries(settings).reduce<Partial<AlgorithmSettings>>((acc, [key, value]) => {
-        if (value !== originalSettings[key as keyof AlgorithmSettings]) {
-          acc[key as keyof AlgorithmSettings] = value;
-        }
-        return acc;
-      }, {});
-
       const response = await fetch(API_URLS.BYO_ALGORITHM, {
-        method: isNewAlgorithm ? 'POST' : 'PATCH',
+        method: algorithmToSave.id === 'new' ? 'POST' : 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + authHeader,
         },
         body: JSON.stringify({
           userId: userPublicKey,
-          name: userPublicKey + "_BYOA_v1",
-          ...(isNewAlgorithm ? settings : changedSettings),
+          ...algorithmToSave,
+          ...(algorithmToSave.id !== 'new' && { id: algorithmToSave.id }),
         }),
       });
 
       if (response.ok) {
-        showCustomToast('Settings saved successfully!', 'success');
-        setIsNewAlgorithm(false);
-        setOriginalSettings(settings);
+        showCustomToast('Algorithm saved successfully!', 'success');
+        if (algorithmToSave.id === 'default') {
+          const newAlgorithm = await response.json();
+          setAlgorithms(prevAlgorithms => [...prevAlgorithms.filter(algo => algo.id !== 'default'), newAlgorithm]);
+          setSelectedAlgorithm(newAlgorithm.id);
+        }
       } else {
-        throw new Error('Failed to save settings');
+        throw new Error('Failed to save algorithm');
       }
     } catch (error) {
-      console.error('Error saving settings:', error);
-      showCustomToast('Failed to save settings. Please try again.', 'error');
+      console.error('Error saving algorithm:', error);
+      showCustomToast('Failed to save algorithm. Please try again.', 'error');
     }
   };
 
-  if (loading || settings === null) {
+  const handleAddNew = () => {
+    const newAlgorithm: AlgorithmSettings = {
+      id: 'new',
+      name: '',
+      byoDegrees: 3,
+      byoPosts: true,
+      byoReposts: true,
+      byoReplies: false,
+      byoReactions: true,
+      basedOn: 'Following',
+    };
+    setAlgorithms(prevAlgorithms => [...prevAlgorithms, newAlgorithm]);
+    setSelectedAlgorithm('new');
+  };
+
+  if (loading || algorithms.length === 0) {
     return <Loading vCentered={false} />;
   }
+
+  const currentAlgorithm = algorithms.find(algo => algo.id === selectedAlgorithm) || algorithms[0];
 
   return (
     <div className="py-16 px-4 max-w-2xl mx-auto">
       <h1 className="text-3xl font-bold mb-8">Build Your Own Algorithm</h1>
-      {isNewAlgorithm ? (
-        <p className="mb-4 text-yellow-500">Creating a new algorithm. Adjust the settings below and save to create your personalized algorithm.</p>
-      ) : (
-        <p className="mb-4 text-green-500">Existing algorithm loaded. You can modify the settings below.</p>
-      )}
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-2">Select Algorithm</label>
+        <select
+          value={selectedAlgorithm || ''}
+          onChange={(e) => setSelectedAlgorithm(e.target.value)}
+          className="w-full p-2 border rounded text-black"
+        >
+          {algorithms.map(algo => (
+            <option key={algo.id} value={algo.id}>{algo.name || 'New Algorithm'}</option>
+          ))}
+        </select>
+        <button
+          onClick={handleAddNew}
+          className="w-full py-2 px-4 bg-[#535bf2]-600 text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
+        >
+          Create Algorithm
+        </button>
+      </div>
       <div className="space-y-6">
+        <div>
+          <label className="block text-sm font-medium mb-2">Algorithm Name*</label>
+          <input
+            type="text"
+            value={currentAlgorithm.name}
+            onChange={(e) => handleSettingChange('name', e.target.value)}
+            className={`w-full p-2 border rounded text-black ${nameError ? 'border-red-500' : ''}`}
+            placeholder="Enter algorithm name"
+          />
+          {nameError && <p className="text-red-500 text-sm mt-1">{nameError}</p>}
+        </div>
         <div>
           <label className="block text-sm font-medium mb-2">Based On</label>
           <select
-            value={settings.basedOn}
+            value={currentAlgorithm.basedOn}
             onChange={(e) => handleSettingChange('basedOn', e.target.value)}
             className="w-full p-2 border rounded text-black"
           >
@@ -169,7 +224,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
             type="number"
             min="1"
             max="3"
-            value={settings.byoDegrees}
+            value={currentAlgorithm.byoDegrees}
             onChange={(e) => handleSettingChange('byoDegrees', parseInt(e.target.value))}
             className="w-full p-2 border rounded text-black"
           />
@@ -179,7 +234,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
             <input
               type="checkbox"
               id={setting}
-              checked={!!settings[setting as keyof AlgorithmSettings]}
+              checked={!!currentAlgorithm[setting as keyof AlgorithmSettings]}
               onChange={(e) => handleSettingChange(setting as keyof AlgorithmSettings, e.target.checked)}
               className="mr-2"
             />
@@ -191,8 +246,9 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
         <button
           onClick={handleSaveSettings}
           className="w-full py-2 px-4 bg-[#535bf2]-600 text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
+          disabled={!currentAlgorithm.name.trim()}
         >
-          {isNewAlgorithm ? 'Create Algorithm' : 'Update Algorithm'}
+          {currentAlgorithm.id === 'new' ? 'Create Algorithm' : 'Update Algorithm'}
         </button>
       </div>
     </div>
