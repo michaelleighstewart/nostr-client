@@ -54,7 +54,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [followers, setFollowers] = useState<string[]>([]);
     const [_hasNotes, setHasNotes] = useState(false);
-    const [byoAlgo, setByoAlgo] = useState<any>(null);
+    const [byoAlgo, setByoAlgo] = useState<any[]>([]);
+    const [selectedAlgorithm, setSelectedAlgorithm] = useState<any | null>(null);
 
     //const lastProcessedEventIndex = useRef(-1);
 
@@ -135,7 +136,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         } catch (error) {}
         setFollowers(newFollowers);
 
-        // Fetch BYO algorithm
+        // Fetch BYO algorithms
         if (userPublicKey) {
           try {
             const authHeader = await createAuthHeader('GET', '/byo-algo', props.nostrExists ?? false, props.keyValue ?? "");
@@ -149,10 +150,13 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             );
             if (response.ok) {
               const data = await response.json();
-              setByoAlgo(data);
+              setByoAlgo(data.algos);
+              if (selectedAlgorithm === null) {
+                setSelectedAlgorithm(data.algos[0]);
+              }
             }
           } catch (error) {
-            console.error("Error fetching BYO algorithm:", error);
+            console.error("Error fetching BYO algorithms:", error);
           }
         }
     
@@ -162,7 +166,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         //  : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
         //let filter = { id: '9e2b9f66a4af0035b0a447e33a348790ec2d95defb3f385fea67037fff73b24a'};
         let filter = isLoggedIn
-        ? constructFilterFromBYOAlgo(byoAlgo, newFollowers, oneWeekAgo)
+        ? constructFilterFromBYOAlgo(selectedAlgorithm, newFollowers, oneWeekAgo)
         : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
         
         const fetchedEvents = await fetchData(props.pool, 0, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
@@ -189,6 +193,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     useEffect(() => {
       fetchUserMetadata(props.pool, userPublicKey ?? "", setShowOstrich, setMetadata);
     }, [userPublicKey]);
+
+    useEffect(() => {
+      fetchFollowersAndData();
+    }, [selectedAlgorithm]);
 
     const debouncedLoadMore = debounce(async () => {
       if (!props.pool) return;
@@ -345,7 +353,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         </Helmet>
         {isLoggedIn && (
           <div className="flex flex-col space-y-4 border border-gray-300 rounded-lg p-24 mb-8">
-            <div>
+                        <div>
               <div className="pb-2">
                 <textarea
                   ref={textareaRef}
@@ -436,6 +444,18 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         ) : error ? (
           <div className="text-red-500 text-center mt-4">{error}</div>
         ) : (
+          <>
+          <div className="flex space-x-4">
+          {byoAlgo.map(algo => (
+            <button
+              key={algo.algoId}
+              onClick={() => setSelectedAlgorithm(algo)}
+              className={`px-4 py-2 border-b-2 ${selectedAlgorithm.algoId === algo.algoId ? 'border-blue-500 text-white' : 'border-transparent text-gray-700 hover:text-blue-500 hover:border-blue-500'}`}
+            >
+              {algo.name || 'Algorithm'}
+            </button>
+          ))}
+        </div>
             <div className={`w-full ${!isLoggedIn ? 'pointer-events-none opacity-50' : ''}`}>
               <NotesList 
                 metadata={metadata} 
@@ -464,7 +484,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 </div>
               )}
           </div>
-        )}
+        </>)}
         <Ostrich show={showOstrich} onClose={() => setShowOstrich(false)} 
             text="Hey! Please " linkText="set up your profile to let users know who you are" 
             linkUrl="/edit-profile" />

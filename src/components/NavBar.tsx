@@ -171,7 +171,7 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
               </Link>
             </li>
             <li className="inline-block mx-4 text-center pr-2">
-              <Link to="/byo-algorithm" className={`flex flex-col items-center ${isActive("/byo-algorithm")}`}>
+              <Link to="/byo-algorithm" className={`flex flex-col items-center ${isActive("/byo-algorithm")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
                 <WrenchIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
