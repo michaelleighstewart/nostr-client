@@ -123,74 +123,77 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
 
     const fetchFollowersAndData = useCallback(async () => {
       if (!props.pool) return;
-      setLoading(true);
-      
-      try {
-        const newFollowers = await getFollowers(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey, null);
+      let setAlgo = false;
+              // Fetch BYO algorithms
+              if (props.keyValue) {
+                let pk = "";
+                if (props.nostrExists) {
+                  pk = await (window as any).nostr.getPublicKey()
+                }
+                else {
+                  let skDecoded = bech32Decoder('nsec', props.keyValue);
+                  pk = getPublicKey(skDecoded);
+                }
+                try {
+                  const authHeader = await createAuthHeader('GET', '/byo-algo', props.nostrExists ?? false, props.keyValue ?? "");
+                  const response = await fetch(`${API_URLS.BYO_ALGORITHM}?userId=${pk}`,
+                    {
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authHeader,
+                      },
+                    }
+                  );
+                  if (response.ok) {
+                    const data = await response.json();
+                    setByoAlgo(data.algos);
+                    if (selectedAlgorithm === null) {
+                      setSelectedAlgorithm(data.algos[0]);
+                      setAlgo = true;
+                    }
+                  }
+                } catch (error) {
+                  console.error("Error fetching BYO algorithms:", error);
+                }
+              }
+      if (!setAlgo) {
+        setLoading(true);
+        
         try {
-          if (props.keyValue) {
-            let skDecoded = bech32Decoder('nsec', props.keyValue);
-            let pk = getPublicKey(skDecoded);
-            if (!newFollowers.includes(pk)) newFollowers.push(pk);
-          }
-        } catch (error) {}
-        setFollowers(newFollowers);
-
-        // Fetch BYO algorithms
-        if (props.keyValue) {
-          let pk = "";
-          if (props.nostrExists) {
-            pk = await (window as any).nostr.getPublicKey()
-          }
-          else {
-            let skDecoded = bech32Decoder('nsec', props.keyValue);
-            pk = getPublicKey(skDecoded);
-          }
+          const newFollowers = await getFollowers(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey, null);
           try {
-            const authHeader = await createAuthHeader('GET', '/byo-algo', props.nostrExists ?? false, props.keyValue ?? "");
-            const response = await fetch(`${API_URLS.BYO_ALGORITHM}?userId=${pk}`,
-              {
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': 'Bearer ' + authHeader,
-                },
-              }
-            );
-            if (response.ok) {
-              const data = await response.json();
-              setByoAlgo(data.algos);
-              if (selectedAlgorithm === null) {
-                setSelectedAlgorithm(data.algos[0]);
-              }
+            if (props.keyValue) {
+              let skDecoded = bech32Decoder('nsec', props.keyValue);
+              let pk = getPublicKey(skDecoded);
+              if (!newFollowers.includes(pk)) newFollowers.push(pk);
             }
-          } catch (error) {
-            console.error("Error fetching BYO algorithms:", error);
+          } catch (error) {}
+          setFollowers(newFollowers);
+      
+          const oneWeekAgo = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
+          //let filter = isLoggedIn
+          //  ? { kinds: [1, 5, 6], authors: newFollowers, limit: 10, since: oneWeekAgo }
+          //  : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
+          //let filter = { id: '9e2b9f66a4af0035b0a447e33a348790ec2d95defb3f385fea67037fff73b24a'};
+          let filter = isLoggedIn
+          ? constructFilterFromBYOAlgo(selectedAlgorithm, newFollowers, oneWeekAgo)
+          : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
+          
+          const fetchedEvents = await fetchData(props.pool, 0, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
+            setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
+            setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived);
+          
+          if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
+            const newLastFetchedTimestamp = Math.min(...fetchedEvents.map(event => event.created_at));
+            setLastFetchedTimestamp(newLastFetchedTimestamp);
           }
+          setInitialLoadComplete(true);
+        } catch (error) {
+          console.error("Error fetching data:", error);
+          setError("Failed to load data. Please try again.");
+        } finally {
+          setLoading(false);
         }
-    
-        const oneWeekAgo = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
-        //let filter = isLoggedIn
-        //  ? { kinds: [1, 5, 6], authors: newFollowers, limit: 10, since: oneWeekAgo }
-        //  : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
-        //let filter = { id: '9e2b9f66a4af0035b0a447e33a348790ec2d95defb3f385fea67037fff73b24a'};
-        let filter = isLoggedIn
-        ? constructFilterFromBYOAlgo(selectedAlgorithm, newFollowers, oneWeekAgo)
-        : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
-        
-        const fetchedEvents = await fetchData(props.pool, 0, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-          setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
-          setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived);
-        
-        if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
-          const newLastFetchedTimestamp = Math.min(...fetchedEvents.map(event => event.created_at));
-          setLastFetchedTimestamp(newLastFetchedTimestamp);
-        }
-        setInitialLoadComplete(true);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setError("Failed to load data. Please try again.");
-      } finally {
-        setLoading(false);
       }
     }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn, userPublicKey, handleEventReceived, streamedEvents]);
 
