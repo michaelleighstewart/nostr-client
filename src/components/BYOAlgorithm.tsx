@@ -18,6 +18,7 @@ interface AlgorithmSettings {
   byoReposts: boolean;
   byoReplies: boolean;
   byoReactions: boolean;
+  basedOn: string;
 }
 
 const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) => {
@@ -25,6 +26,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
   const [userPublicKey, setUserPublicKey] = useState<string | null>(null);
   const [settings, setSettings] = useState<AlgorithmSettings | null>(null);
   const [isNewAlgorithm, setIsNewAlgorithm] = useState(false);
+  const [originalSettings, setOriginalSettings] = useState<AlgorithmSettings | null>(null);
 
   useEffect(() => {
     const fetchUserPublicKey = async () => {
@@ -60,32 +62,35 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
           const data = await response.json();
           if (data && Object.keys(data).length > 0) {
             setSettings(data.data);
+            setOriginalSettings(data.data);
             setIsNewAlgorithm(false);
           } else {
-            setSettings({
-              byoDegrees: 3,
-              byoPosts: true,
-              byoReposts: true,
-              byoReplies: false,
-              byoReactions: true,
-            });
-            setIsNewAlgorithm(true);
+            setDefaultSettings();
           }
+        } else if (response.status === 404) {
+          setDefaultSettings();
         } else {
           throw new Error('Failed to fetch current settings');
         }
       } catch (error) {
         console.error('Error fetching settings:', error);
         showCustomToast('Failed to fetch current settings. Using default values.', 'error');
-        setSettings({
-          byoDegrees: 3,
-          byoPosts: true,
-          byoReposts: true,
-          byoReplies: false,
-          byoReactions: true,
-        });
-        setIsNewAlgorithm(true);
+        setDefaultSettings();
       }
+    };
+
+    const setDefaultSettings = () => {
+      const defaultSettings = {
+        byoDegrees: 3,
+        byoPosts: true,
+        byoReposts: true,
+        byoReplies: false,
+        byoReactions: true,
+        basedOn: 'Following',
+      };
+      setSettings(defaultSettings);
+      setOriginalSettings(defaultSettings);
+      setIsNewAlgorithm(true);
     };
 
     if (userPublicKey) {
@@ -93,17 +98,24 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
     }
   }, [userPublicKey]);
 
-  const handleSettingChange = (setting: keyof AlgorithmSettings, value: number | boolean) => {
+  const handleSettingChange = (setting: keyof AlgorithmSettings, value: number | boolean | string) => {
     setSettings(prev => prev ? ({ ...prev, [setting]: value }) : null);
   };
 
   const handleSaveSettings = async () => {
-    if (!userPublicKey || !settings) return;
+    if (!userPublicKey || !settings || !originalSettings) return;
 
     try {
-    const authHeader = await createAuthHeader('GET', '/byo-algo', nostrExists ?? false, keyValue);
+      const authHeader = await createAuthHeader('POST', '/byo-algo', nostrExists ?? false, keyValue);
+      const changedSettings = Object.entries(settings).reduce<Partial<AlgorithmSettings>>((acc, [key, value]) => {
+        if (value !== originalSettings[key as keyof AlgorithmSettings]) {
+          acc[key as keyof AlgorithmSettings] = value;
+        }
+        return acc;
+      }, {});
+
       const response = await fetch(API_URLS.BYO_ALGORITHM, {
-        method: 'POST',
+        method: isNewAlgorithm ? 'POST' : 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + authHeader,
@@ -111,13 +123,14 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
         body: JSON.stringify({
           userId: userPublicKey,
           name: userPublicKey + "_BYOA_v1",
-          ...settings,
+          ...(isNewAlgorithm ? settings : changedSettings),
         }),
       });
 
       if (response.ok) {
         showCustomToast('Settings saved successfully!', 'success');
         setIsNewAlgorithm(false);
+        setOriginalSettings(settings);
       } else {
         throw new Error('Failed to save settings');
       }
@@ -141,11 +154,21 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
       )}
       <div className="space-y-6">
         <div>
+          <label className="block text-sm font-medium mb-2">Based On</label>
+          <select
+            value={settings.basedOn}
+            onChange={(e) => handleSettingChange('basedOn', e.target.value)}
+            className="w-full p-2 border rounded text-black"
+          >
+            <option value="Following">Following</option>
+          </select>
+        </div>
+        <div>
           <label className="block text-sm font-medium mb-2">Degrees of Separation</label>
           <input
             type="number"
             min="1"
-            max="6"
+            max="3"
             value={settings.byoDegrees}
             onChange={(e) => handleSettingChange('byoDegrees', parseInt(e.target.value))}
             className="w-full p-2 border rounded text-black"
