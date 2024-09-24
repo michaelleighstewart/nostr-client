@@ -6,7 +6,6 @@ interface BYOAlgo {
     byoPosts: boolean;
     byoReposts: boolean;
     byoReplies: boolean;
-    byoReactions: boolean;
   }
   
   export async function constructFilterFromBYOAlgo(byoAlgo: BYOAlgo | null, followers: string[], since: number,
@@ -20,7 +19,8 @@ interface BYOAlgo {
     if (byoAlgo.byoPosts) kinds.push(1);
     if (byoAlgo.byoReposts) kinds.push(6);
     if (byoAlgo.byoReplies) kinds.push(1); // Replies are also kind 1
-    if (byoAlgo.byoReactions) kinds.push(7);
+    kinds.push(5);
+    //if (byoAlgo.byoReactions) kinds.push(7);
   
     // If no kinds are selected, default to posts
     if (kinds.length === 0) kinds.push(1);
@@ -32,9 +32,9 @@ interface BYOAlgo {
       since,
     };
 
-    if (!byoAlgo.byoReplies) {
-      filter['#e'] = [''];
-    }
+    //if (!byoAlgo.byoReplies) {
+    //  filter['#e'] = [''];
+    //}
   
     if (byoAlgo.byoDegrees > 1) {
       console.log(`Fetching followers up to ${byoAlgo.byoDegrees} degrees of separation`);
@@ -42,26 +42,28 @@ interface BYOAlgo {
         let allFollowers = new Set(initialFollowers);
         let currentDegree = 1;
         let currentFollowers = initialFollowers;
-
         while (currentDegree < degrees) {
           const followersPromises = currentFollowers.map(pubkey => 
             new Promise<string[]>((resolve) => {
-              let followersToAdd: any[] = [];
+              const subFollowersToAdd: string[] = [];
               pool.subscribeManyEose(
                 RELAYS,
                 [
                     {
-                        kinds: [0],
+                        kinds: [3],
                         authors: [pubkey],
                     }
                 ],
                 {
-                    onevent(event) {
-                        followersToAdd.push(event);
-                    },
-                    onclose() {
-                        resolve(followersToAdd);
-                    }
+                  onevent(event) {
+                    const newFollowers = event.tags
+                      .filter(tag => tag[0] === 'p')
+                      .map(tag => tag[1]);
+                    subFollowersToAdd.push(...newFollowers);
+                  },
+                  onclose() {
+                    resolve(subFollowersToAdd);
+                  }
                 }
               );
             })
@@ -70,7 +72,7 @@ interface BYOAlgo {
           const newFollowers = await Promise.all(followersPromises);
           newFollowers.flat().forEach(follower => allFollowers.add(follower));
           
-          currentFollowers = Array.from(allFollowers);
+          currentFollowers = newFollowers.flat().filter(follower => !initialFollowers.includes(follower));
           currentDegree++;
         }
 

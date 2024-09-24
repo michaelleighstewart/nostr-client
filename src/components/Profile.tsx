@@ -40,7 +40,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [loadingProfile, setLoadingProfile] = useState(true);
     const [loadingPosts, setLoadingPosts] = useState(true);
-    const [_deletedNoteIds, setDeletedNoteIds] = useState<Set<string>>(new Set());
+    const [deletedNoteIds, setDeletedNoteIds] = useState<Set<string>>(new Set());
     const [_userPublicKey, setUserPublicKey] = useState<string | null>(null);
     const [_initialLoadComplete, setInitialLoadComplete] = useState(false);
     const [_loading, setLoading] = useState(true);
@@ -60,8 +60,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
         byoDegrees: 1,
         byoPosts: true,
         byoReposts: true,
-        byoReplies: true,
-        byoReactions: true
+        byoReplies: true
     };
 
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
@@ -319,37 +318,40 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                         <p>No notes found.</p>
                     ) : (
                         <div className="space-y-8">
-                            {streamedEvents.sort((a, b) => b.created_at - a.created_at).map((post, _index) => (
-                                <div key={post.id} className="mb-8 pb-32">
-                                    <NoteCard
-                                        isPreview={false}
-                                        id={post.id}
-                                        content={post.content}
-                                        user={{
-                                            name: profileData?.name || 'Unknown',
-                                            image: profileData?.picture,
-                                            pubkey: post.pubkey,
-                                            nip05: profileData?.nip05
-                                        }}
-                                        created_at={post.created_at}
-                                        hashtags={post.tags.filter(tag => tag[0] === 't').map(tag => tag[1])}
-                                        pool={pool}
-                                        nostrExists={nostrExists}
-                                        reactions={reactions[post.id] || []}
-                                        keyValue={keyValue}
-                                        deleted={post.deleted === true}
-                                        replies={replies?.[post.id]?.length || 0}
-                                        repostedEvent={post.repostedEvent || null}
-                                        metadata={metadata}
-                                        allReactions={reactions}
-                                        allReplies={replies}
-                                        repliedEvent={post.repliedEvent || null}
-                                        reposts={reposts?.[post.id]?.length || 0}
-                                        allReposts={reposts}
-                                        setMetadata={setMetadata}
-                                    />
-                                </div>
-                            ))}
+                            {streamedEvents
+                                .filter(post => !deletedNoteIds.has(post.id))
+                                .sort((a, b) => b.created_at - a.created_at)
+                                .map((post, _index) => (
+                                    <div key={post.id} className="mb-8 pb-32">
+                                        <NoteCard
+                                            isPreview={false}
+                                            id={post.id}
+                                            content={post.content}
+                                            user={{
+                                                name: profileData?.name || 'Unknown',
+                                                image: profileData?.picture,
+                                                pubkey: post.pubkey,
+                                                nip05: profileData?.nip05
+                                            }}
+                                            created_at={post.created_at}
+                                            hashtags={post.tags.filter(tag => tag[0] === 't').map(tag => tag[1])}
+                                            pool={pool}
+                                            nostrExists={nostrExists}
+                                            reactions={reactions[post.id] || []}
+                                            keyValue={keyValue}
+                                            deleted={post.deleted === true}
+                                            replies={replies?.[post.id]?.length || 0}
+                                            repostedEvent={post.repostedEvent || null}
+                                            metadata={metadata}
+                                            allReactions={reactions}
+                                            allReplies={replies}
+                                            repliedEvent={post.repliedEvent || null}
+                                            reposts={reposts?.[post.id]?.length || 0}
+                                            allReposts={reposts}
+                                            setMetadata={setMetadata}
+                                        />
+                                    </div>
+                                ))}
                             {!loadingMore && (
                                 <div className="mt-8 mb-8 text-center">
                                     <button

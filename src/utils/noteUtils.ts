@@ -87,7 +87,6 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                         } else if (event.kind === 7) {
                             const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                             if (postId) {
-                                console.log("got a reaction for post id", postId);
                                 const newReaction: Reaction = {
                                     id: event.id,
                                     liker_pubkey: event.pubkey,
@@ -197,146 +196,188 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
     selectedAlgorithm: any
 ) => {
     try {
-      if (!append) {
-        setLoading(true);
-      } else {
-        setLoadingMore(true);
-      }
-      setError(null);
-      let subRepostedMeta: any;
-      let subReactionsReplies: any;
-      let fetchedEvents: ExtendedEvent[] = [];
+        if (!append) {
+            setLoading(true);
+        } else {
+            setLoadingMore(true);
+        }
+        setError(null);
+        let fetchedEvents: ExtendedEvent[] = [];
+        let initialEventsReceived = false;
 
-          const sub = pool?.subscribeMany(
-            RELAYS,
-            [filter], 
-            {
-                onevent(event: Event) {
-                    let extendedEventToAdd: ExtendedEvent = {
-                        ...event,
-                        deleted: false,
-                        repostedEvent: null,
-                        repliedEvent: null
-                    };
-                    setLastFetchedTimestamp(prevTimestamp => 
-                        Math.min(prevTimestamp, event.created_at)
-                    );
+        const chunkArray = (array: string[], chunkSize: number) => {
+            const chunks = [];
+            for (let i = 0; i < array.length; i += chunkSize) {
+                chunks.push(array.slice(i, i + chunkSize));
+            }
+            return chunks;
+        };
 
-                    if (event.kind === 1) {
-                        if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
-                            const extendedEvent: ExtendedEvent = {
+        const authorChunks = filter.authors && filter.authors.length > 50
+            ? chunkArray(filter.authors, 50)
+            : [filter.authors];
+
+
+        const createSubscription = (authorChunk: string[]) => {
+            return new Promise<void>((resolve) => {
+                const chunkFilter = { ...filter, authors: authorChunk };
+                const sub = pool?.subscribeMany(
+                    RELAYS,
+                    [chunkFilter],
+                    {
+                        onevent(event: Event) {
+                            let extendedEventToAdd: ExtendedEvent = {
                                 ...event,
-                                id: event.id,
-                                pubkey: event.pubkey,
-                                created_at: event.created_at,
-                                content: event.content,
-                                tags: event.tags,
                                 deleted: false,
                                 repostedEvent: null,
                                 repliedEvent: null
                             };
-                            extendedEventToAdd = extendedEvent;
-                            if (selectedAlgorithm.byoPosts) onEventReceived(extendedEventToAdd);
-                        }
-                        else {
-                            // Get the original note referenced in the first 'e' tag
-                            const replyToId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                            if (replyToId && selectedAlgorithm.byoReplies) {
-                                // Fetch the original note
-                                pool?.get(RELAYS, {
-                                    ids: [replyToId]
-                                }).then(originalEvent => {
-                                    if (originalEvent) {
-                                        const repliedEvent: ExtendedEvent = {
-                                            ...originalEvent,
-                                            id: originalEvent.id,
-                                            pubkey: originalEvent.pubkey,
-                                            created_at: originalEvent.created_at,
-                                            content: originalEvent.content,
-                                            tags: originalEvent.tags,
+                            setLastFetchedTimestamp(prevTimestamp => 
+                                Math.min(prevTimestamp, event.created_at)
+                            );
+
+                            if (event.kind === 1) {
+                                if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
+                                    const extendedEvent: ExtendedEvent = {
+                                        ...event,
+                                        id: event.id,
+                                        pubkey: event.pubkey,
+                                        created_at: event.created_at,
+                                        content: event.content,
+                                        tags: event.tags,
+                                        deleted: false,
+                                        repostedEvent: null,
+                                        repliedEvent: null
+                                    };
+                                    extendedEventToAdd = extendedEvent;
+                                    fetchedEvents.push(extendedEventToAdd);
+                                    if (selectedAlgorithm.byoPosts) onEventReceived(extendedEventToAdd);
+                                }
+                                else {
+                                    // Get the original note referenced in the first 'e' tag
+                                    const replyToId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                                    if (replyToId && selectedAlgorithm.byoReplies) {
+                                        // Fetch the original note
+                                        pool?.get(RELAYS, {
+                                            ids: [replyToId]
+                                        }).then(originalEvent => {
+                                            if (originalEvent) {
+                                                const repliedEvent: ExtendedEvent = {
+                                                    ...originalEvent,
+                                                    id: originalEvent.id,
+                                                    pubkey: originalEvent.pubkey,
+                                                    created_at: originalEvent.created_at,
+                                                    content: originalEvent.content,
+                                                    tags: originalEvent.tags,
+                                                    deleted: false,
+                                                    repostedEvent: null,
+                                                    repliedEvent: null
+                                                };
+                                                const extendedEvent: ExtendedEvent = {
+                                                    ...event,
+                                                    id: event.id,
+                                                    pubkey: event.pubkey,
+                                                    created_at: event.created_at,
+                                                    content: event.content,
+                                                    tags: event.tags,
+                                                    deleted: false,
+                                                    repostedEvent: null,
+                                                    repliedEvent: repliedEvent
+                                                };
+                                                extendedEventToAdd = extendedEvent;
+                                                replyEvents.push(extendedEvent);
+                                                fetchedEvents.push(extendedEventToAdd);
+                                                onEventReceived(extendedEvent);
+                                            }
+                                        });
+                                    }
+                                }
+                            } else if (event.kind === 5) {
+                                const deletedIds = event.tags
+                                    .filter(tag => tag[0] === 'e')
+                                    .map(tag => tag[1]);
+                                setDeletedNoteIds(prev => new Set([...prev, ...deletedIds]));
+                            }
+                            else if (event.kind === 6) {
+                                if (!events.some(e => e.id === event.id)) {
+                                const repostedId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                                //if (!events.some(e => e.id === event.id)) {
+                                if (repostedId) {
+                                    try {
+                                        const repostedContent = JSON.parse(event.content);
+                                        const repostedEvent: ExtendedEvent = {
+                                            ...event,
+                                            id: repostedContent.id,
+                                            pubkey: repostedContent.pubkey,
+                                            created_at: repostedContent.created_at,
+                                            content: repostedContent.content,
+                                            tags: repostedContent.tags,
                                             deleted: false,
                                             repostedEvent: null,
                                             repliedEvent: null
                                         };
-                                        const extendedEvent: ExtendedEvent = {
-                                            ...event,
-                                            id: event.id,
-                                            pubkey: event.pubkey,
-                                            created_at: event.created_at,
-                                            content: event.content,
-                                            tags: event.tags,
-                                            deleted: false,
-                                            repostedEvent: null,
-                                            repliedEvent: repliedEvent
-                                        };
-                                        extendedEventToAdd = extendedEvent;
-                                        replyEvents.push(extendedEvent);
-                                        onEventReceived(extendedEvent);
+                                    const extendedEvent: ExtendedEvent = {
+                                        id: event.id,
+                                        pubkey: event.pubkey,
+                                        created_at: event.created_at,
+                                        content: "",
+                                        tags: event.tags,
+                                        deleted: false,
+                                        repostedEvent: repostedEvent,
+                                        repliedEvent: null
+                                    };
+                                    extendedEventToAdd = extendedEvent;
+                                    repostEvents.push(extendedEvent);
+                                    if (selectedAlgorithm.byoReposts) onEventReceived(extendedEvent);
+                                    } catch (error) {
+                                    console.error("Error parsing reposted content:", error);
                                     }
-                                });
+                                }
                             }
+                            fetchedEvents.push(extendedEventToAdd);
                         }
-                    } else if (event.kind === 5) {
-                        const deletedIds = event.tags
-                            .filter(tag => tag[0] === 'e')
-                            .map(tag => tag[1]);
-                        setDeletedNoteIds(prev => new Set([...prev, ...deletedIds]));
-                    }
-                    else if (event.kind === 6) {
-                        if (!events.some(e => e.id === event.id)) {
-                        const repostedId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                        //if (!events.some(e => e.id === event.id)) {
-                        if (repostedId) {
-                            try {
-                                const repostedContent = JSON.parse(event.content);
-                                const repostedEvent: ExtendedEvent = {
-                                    ...event,
-                                    id: repostedContent.id,
-                                    pubkey: repostedContent.pubkey,
-                                    created_at: repostedContent.created_at,
-                                    content: repostedContent.content,
-                                    tags: repostedContent.tags,
-                                    deleted: false,
-                                    repostedEvent: null,
-                                    repliedEvent: null
-                                };
-                            const extendedEvent: ExtendedEvent = {
-                                id: event.id,
-                                pubkey: event.pubkey,
-                                created_at: event.created_at,
-                                content: "",
-                                tags: event.tags,
-                                deleted: false,
-                                repostedEvent: repostedEvent,
-                                repliedEvent: null
-                            };
-                            extendedEventToAdd = extendedEvent;
-                            repostEvents.push(extendedEvent);
-                            if (selectedAlgorithm.byoReposts) onEventReceived(extendedEvent);
-                            } catch (error) {
-                            console.error("Error parsing reposted content:", error);
+
+
+                            // Check if we have received the initial 10 events
+                            if (!initialEventsReceived && fetchedEvents.length >= 10) {
+                                initialEventsReceived = true;
+                                const initialEvents = fetchedEvents.slice(0, 10);
+                                initialEvents.forEach(e => onEventReceived(e));
+                                setLoading(false);
+                                setInitialLoadComplete(true);
+                            } else if (initialEventsReceived) {
+                                // If we've already received the initial events, process new ones immediately
+                                onEventReceived(extendedEventToAdd);
                             }
+                        },
+                        oneose() {
+                            sub?.close();
+                            resolve();
                         }
                     }
-                }
-                fetchedEvents.push(extendedEventToAdd);
-                },
-                oneose() {
-                    setLoading(false);
-                    setLoadingMore(false);
-                    setInitialLoadComplete(true);
-                }
-            }
-        );
-        return () => {
-            if (sub) sub.close();
-            if (subRepostedMeta) subRepostedMeta.close();
-            if (subReactionsReplies) subReactionsReplies.close();
+                );
+            });
         };
+
+        // Process each chunk of authors
+        for (const chunk of authorChunks) {
+            await createSubscription(chunk);
+        }
+
+        setLoading(false);
+        setLoadingMore(false);
+        setInitialLoadComplete(true);
+
+        // Process any remaining events that weren't part of the initial 10
+        if (fetchedEvents.length > 10) {
+            fetchedEvents.slice(10).forEach(e => onEventReceived(e));
+        }
+
+        return fetchedEvents;
     } catch (error) {
-      console.error("Error fetching data: ", error);
-      setError("An error occurred while fetching posts. Please try again later.");
-      setLoading(false);
-      setLoadingMore(false);
+        console.error("Error fetching data: ", error);
+        setError("An error occurred while fetching posts. Please try again later.");
+        setLoading(false);
+        setLoadingMore(false);
     }
-  };
+};

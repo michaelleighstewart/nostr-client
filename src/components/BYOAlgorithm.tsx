@@ -19,7 +19,6 @@ interface AlgorithmSettings {
   byoPosts: boolean;
   byoReposts: boolean;
   byoReplies: boolean;
-  byoReactions: boolean;
   basedOn: string;
 }
 
@@ -87,7 +86,6 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
       byoPosts: true,
       byoReposts: true,
       byoReplies: false,
-      byoReactions: true,
       basedOn: 'Following',
     });
 
@@ -162,7 +160,6 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
       byoPosts: true,
       byoReposts: true,
       byoReplies: false,
-      byoReactions: true,
       basedOn: 'Following',
     };
     setAlgorithms(prevAlgorithms => [...prevAlgorithms, newAlgorithm]);
@@ -229,7 +226,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
             className="w-full p-2 border rounded text-black"
           />
         </div>
-        {['byoPosts', 'byoReposts', 'byoReplies', 'byoReactions'].map((setting) => (
+        {['byoPosts', 'byoReposts', 'byoReplies'].map((setting) => (
           <div key={setting} className="flex items-center">
             <input
               type="checkbox"

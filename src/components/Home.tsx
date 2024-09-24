@@ -195,7 +195,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           setLoading(false);
         }
       }
-    }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn, userPublicKey, handleEventReceived, streamedEvents]);
+    }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn, userPublicKey, handleEventReceived, streamedEvents, selectedAlgorithm]);
 
     useEffect(() => {
       fetchFollowersAndData();
@@ -461,9 +461,13 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             {byoAlgo.map(algo => (
               <button
                 key={algo.algoId}
-                onClick={() => setSelectedAlgorithm(algo)}
+                onClick={() => {
+                  setSelectedAlgorithm(algo);
+                  setStreamedEvents([]);
+                  setLastFetchedTimestamp(Math.floor(Date.now() / 1000));
+                }}
                 className={`px-32 py-2 mx-8 -mb-px ${
-                  selectedAlgorithm.algoId === algo.algoId
+                  selectedAlgorithm?.algoId === algo.algoId
                     ? 'bg-[#242424] border-t border-l border-r border-blue-500 text-white rounded-t-md' // Active tab with raised effect
                     : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white rounded-t-md border-transparent' // Inactive tabs with flat appearance
                 }`}
