@@ -22,6 +22,8 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const [followingFollowingData, setFollowingFollowingData] = useState<{[key: string]: string[]}>({});
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [metadata, setMetadata] = useState<{[key: string]: any}>({});
+  const [progress, setProgress] = useState<number>(0);
+  const [totalUsers, setTotalUsers] = useState<number>(0);
 
   const updateGraph = useCallback(() => {
     if (!graphData) return;
@@ -38,10 +40,8 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         const newNodes = followingFollowingData[nodeId].map(pubkey => ({
           id: nodeId + "_" + pubkey,
           label: metadata[pubkey]?.name || nip19.npubEncode(pubkey).slice(0, 8),
-          //label: nip19.npubEncode(pubkey).slice(0, 8),
           shape: 'circularImage',
           image: metadata[pubkey]?.picture || 'default-profile-picture.jpg',
-          //image: 'default-profile-picture.jpg',
           size: 15,
           font: { color: 'white' }
         }));
@@ -61,11 +61,11 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         graphData.edges.add(filteredNewEdges);
       }
     });
-  }, [graphData, expandedNodes, followingFollowingData]);
+  }, [graphData, expandedNodes, followingFollowingData, metadata]);
   
   useEffect(() => {
     updateGraph();
-  }, [expandedNodes, updateGraph]);
+  }, [expandedNodes, updateGraph, metadata]);
 
   const handleClick = useCallback((params: any) => {
     const nodeId = params.nodes[0];
@@ -92,46 +92,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       }
     };
   }, [network, graphData, handleClick]);
-
-  //a bit clunky
-  /*useEffect(() => {
-    if (network && graphData) {
-      network.on("zoom", (params) => {
-        const scale = params.scale;
-        const nodeIds = network.getNodeAt({x: params.pointer.x, y: params.pointer.y}) as string;
-  
-        if (scale > 1.5 && nodeIds && followingFollowingData[nodeIds]) {
-          // Show followingFollowing nodes and edges
-          const newNodes = followingFollowingData[nodeIds].map(pubkey => ({
-            id: nodeIds + "_" + pubkey,
-            //label: metadata[pubkey]?.name || nip19.npubEncode(pubkey).slice(0, 8),
-            label: nip19.npubEncode(pubkey).slice(0, 8),
-            shape: 'circularImage',
-            //image: metadata[pubkey]?.picture || 'default-profile-picture.jpg',
-            image: 'default-profile-picture.jpg',
-            size: 15,
-            font: { color: 'white' }
-          }));
-  
-          const newEdges = followingFollowingData[nodeIds].map(pubkey => ({
-            from: nodeIds,
-            to: nodeIds + "_" + pubkey,
-            id: nodeIds + "-" + pubkey
-          }));
-  
-          graphData.nodes.add(newNodes);
-          graphData.edges.add(newEdges);
-        } else {
-          // Hide followingFollowing nodes and edges
-          const nodesToRemove = graphData.nodes.get().filter((node: { id: string | string[]; }) => node.id.includes("_")).map((node: { id: any; }) => node.id);
-          const edgesToRemove = graphData.edges.get().filter((edge: { id: string | string[]; }) => edge.id.includes("_")).map((edge: { id: any; }) => edge.id);
-  
-          graphData.nodes.remove(nodesToRemove);
-          graphData.edges.remove(edgesToRemove);
-        }
-      });
-    }
-  }, [network, graphData, followingFollowingData]);*/
 
   useEffect(() => {
     const fetchData = async () => {
@@ -165,8 +125,9 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           followers.forEach(follower => allPubkeys.add(follower));
         });
     
-        const metadata = await fetchMetadata(Array.from(allPubkeys));
-        setMetadata(metadata);
+        setTotalUsers(allPubkeys.size);
+        const metadataRetrieved = await fetchMetadata(Array.from(allPubkeys));
+        setMetadata(metadataRetrieved);
 
         const nodes = new DataSet();
         
@@ -174,9 +135,9 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         if (!nodes.get(userPubkey)) {
           nodes.add({
             id: userPubkey,
-            label: `${metadata[userPubkey]?.name || 'Unknown'} (You)`,
+            label: `${metadataRetrieved[userPubkey]?.name || 'Unknown'} (You)`,
             shape: 'circularImage',
-            image: metadata[userPubkey]?.picture || 'default-profile-picture.jpg',
+            image: metadataRetrieved[userPubkey]?.picture || 'default-profile-picture.jpg',
             size: 30,
             font: { color: 'white' }
           } as any);
@@ -187,9 +148,9 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           if (!nodes.get(pubkey)) {
             nodes.add({
               id: pubkey,
-              label: metadata[pubkey]?.name || nip19.npubEncode(pubkey).slice(0, 8),
+              label: metadataRetrieved[pubkey]?.name || nip19.npubEncode(pubkey).slice(0, 8),
               shape: 'circularImage',
-              image: metadata[pubkey]?.picture || 'default-profile-picture.jpg',
+              image: metadataRetrieved[pubkey]?.picture || 'default-profile-picture.jpg',
               size: 20,
               font: { color: 'white' }
             } as any);
@@ -199,29 +160,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         const edges = new DataSet(
           uniqueFollowing.map((pubkey: string) => ({ from: userPubkey, to: pubkey, id: `${userPubkey}-${pubkey}` }))
         );
-
-
-        /*uniqueFollowing.forEach(async (pubkey: string) => {
-          const followingFollowing = await getFollowing(pool, true, nostrExists ?? false, pubkey, () => {}, pubkey);
-          // Limit to the first 5 following
-          const limitedFollowingFollowing = followingFollowing;//.slice(0, 6);
-          limitedFollowingFollowing.forEach(followingFollowingPubkey => {
-            if (!nodes.get(followingFollowingPubkey) && pubkey !== followingFollowingPubkey) {
-              nodes.add({
-                id: pubkey + "_" + followingFollowingPubkey,
-                label: metadata[followingFollowingPubkey]?.name || nip19.npubEncode(followingFollowingPubkey).slice(0, 8),
-                shape: 'circularImage',
-                image: metadata[followingFollowingPubkey]?.picture || 'default-profile-picture.jpg',
-                size: 15,
-                font: { color: 'white' }
-              } as any)
-            }
-            if (!edges.get(pubkey + "_" + followingFollowingPubkey) && pubkey !== followingFollowingPubkey) {
-              edges.add({ from: pubkey, to: pubkey + "_" + followingFollowingPubkey, id: pubkey + "-" + followingFollowingPubkey });
-            }
-          })
-        })*/
-
     
         setGraphData({ nodes, edges });
         setLoading(false);
@@ -233,25 +171,10 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     };
 
     fetchData();
-  }, [pool, keyValue]);
+  }, [pool, keyValue, metadata]);
 
   useEffect(() => {
     if (graphData && networkRef.current) {
-      /*const options = {
-        nodes: {
-          shape: 'circularImage',
-          borderWidth: 2,
-          borderWidthSelected: 4,
-          size: 30,
-          font: { color: 'white' }
-        },
-        edges: {
-          width: 1,
-        },
-        physics: {
-          stabilization: false,
-        },
-      };*/
       const options = {
         nodes: {
           shape: 'circularImage',
@@ -283,7 +206,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       const newNetwork = new Network(container, graphData, options);
       setNetwork(newNetwork);
     }
-  }, [graphData]);
+  }, [graphData, metadata]);
 
   const getCurrentUserPubkey = async () => {
     if (nostrExists) {
@@ -296,33 +219,54 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
 
   const fetchMetadata = async (pubkeys: string[]) => {
     const metadata: { [key: string]: any } = {};
-    await new Promise<void>((resolve) => {
-      pool?.subscribeManyEose(
-        RELAYS,
-        [{ kinds: [0], authors: pubkeys }],
-        {
-          onevent(event) {
-            try {
-              const eventMetadata = JSON.parse(event.content);
-              metadata[event.pubkey] = {
-                name: eventMetadata.name || 'Unknown',
-                picture: eventMetadata.picture || ''
-              };
-            } catch (error) {
-              console.error("Error parsing metadata:", error);
+    const chunkSize = 100; // Adjust this value based on your needs
+  
+    const chunks = [];
+    for (let i = 0; i < pubkeys.length; i += chunkSize) {
+      chunks.push(pubkeys.slice(i, i + chunkSize));
+    }
+  
+    for (const chunk of chunks) {
+      await new Promise<void>((resolve) => {
+        pool?.subscribeManyEose(
+          RELAYS,
+          [{ kinds: [0], authors: chunk }],
+          {
+            onevent(event) {
+              try {
+                if (!metadata[event.pubkey]) {
+                  const eventMetadata = JSON.parse(event.content);
+                  metadata[event.pubkey] = {
+                    name: eventMetadata.name || 'Unknown',
+                    picture: eventMetadata.picture || ''
+                  };
+                  setProgress(prev => prev + 1);
+                }
+              } catch (error) {
+                console.error("Error parsing metadata:", error);
+              }
+            },
+            onclose() {
+              resolve();
             }
-          },
-          onclose() {
-            resolve();
           }
-        }
-      );
-    });
+        );
+      });
+    }
     return metadata;
   };
 
   if (loading) {
-    return <div className="h-screen"><Loading vCentered={false} /></div>;
+    return (
+      <div className="h-screen flex flex-col items-center justify-center">
+        <Loading vCentered={false} />
+        <p className="mt-2 text-sm text-gray-500">
+          {progress && totalUsers && ((progress / totalUsers) * 100) > 100
+            ? "Please wait..."
+            : `Loading social graph: ${progress && totalUsers && ((progress / totalUsers) * 100).toFixed(1)}%`}
+        </p>
+      </div>
+    );
   }
 
   if (error) {
