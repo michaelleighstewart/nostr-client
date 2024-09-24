@@ -179,7 +179,7 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
 }
 
 export const fetchData = async (pool: SimplePool | null, _since: number, append: boolean = false, _until: number = 0,
-    _isLoggedIn: boolean, _nostrExists: boolean | null, _keyValue: string | null,
+    isLoggedIn: boolean, _nostrExists: boolean | null, _keyValue: string | null,
     setLoading: React.Dispatch<React.SetStateAction<boolean>>,
     setLoadingMore: React.Dispatch<React.SetStateAction<boolean>>,
     setError: React.Dispatch<React.SetStateAction<string | null>>,
@@ -250,8 +250,16 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                         repliedEvent: null
                                     };
                                     extendedEventToAdd = extendedEvent;
-                                    fetchedEvents.push(extendedEventToAdd);
-                                    if (selectedAlgorithm.byoPosts) onEventReceived(extendedEventToAdd);
+                                    if (!isLoggedIn) {
+                                        fetchedEvents.push(extendedEventToAdd);
+                                        onEventReceived(extendedEventToAdd);
+                                    }
+                                    else {
+                                        if (selectedAlgorithm.byoPosts) {
+                                            fetchedEvents.push(extendedEventToAdd);
+                                            onEventReceived(extendedEventToAdd);
+                                        }
+                                    }
                                 }
                                 else {
                                     // Get the original note referenced in the first 'e' tag
@@ -286,8 +294,16 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                                 };
                                                 extendedEventToAdd = extendedEvent;
                                                 replyEvents.push(extendedEvent);
-                                                fetchedEvents.push(extendedEventToAdd);
-                                                onEventReceived(extendedEvent);
+                                                if (!isLoggedIn) {
+                                                    fetchedEvents.push(extendedEventToAdd);
+                                                    onEventReceived(extendedEvent)
+                                                }
+                                                else {
+                                                    if (selectedAlgorithm.byoReplies) {
+                                                        fetchedEvents.push(extendedEventToAdd);
+                                                        onEventReceived(extendedEvent);
+                                                    }
+                                                }
                                             }
                                         });
                                     }
@@ -327,14 +343,26 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                         repliedEvent: null
                                     };
                                     extendedEventToAdd = extendedEvent;
-                                    repostEvents.push(extendedEvent);
-                                    if (selectedAlgorithm.byoReposts) onEventReceived(extendedEvent);
+                                    
+                                    if (!isLoggedIn) {
+                                        repostEvents.push(extendedEventToAdd);
+                                        fetchedEvents.push(extendedEventToAdd);
+                                        onEventReceived(extendedEventToAdd);
+
+                                    }
+                                    else {
+                                        if (selectedAlgorithm.byoReposts) {
+                                            repostEvents.push(extendedEventToAdd);
+                                            fetchedEvents.push(extendedEventToAdd);
+                                            onEventReceived(extendedEvent);
+                                        }
+                                    }
                                     } catch (error) {
                                     console.error("Error parsing reposted content:", error);
                                     }
                                 }
                             }
-                            fetchedEvents.push(extendedEventToAdd);
+                            //fetchedEvents.push(extendedEventToAdd);
                         }
 
 
