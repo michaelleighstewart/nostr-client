@@ -13,7 +13,7 @@ interface BYOAlgorithmProps {
 }
 
 interface AlgorithmSettings {
-  id: string;
+  algoId: string;
   name: string;
   byoDegrees: number;
   byoPosts: boolean;
@@ -80,7 +80,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
     };
 
     const getDefaultAlgorithm = () => ({
-      id: 'default',
+      algoId: 'default',
       name: '',
       byoDegrees: 1,
       byoPosts: true,
@@ -102,7 +102,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
   const handleSettingChange = (setting: keyof AlgorithmSettings, value: number | boolean | string) => {
     setAlgorithms(prevAlgorithms => 
       prevAlgorithms.map(algo => 
-        algo.id === selectedAlgorithm ? { ...algo, [setting]: value } : algo
+        algo.algoId === selectedAlgorithm ? { ...algo, [setting]: value } : algo
       )
     );
     if (setting === 'name') {
@@ -113,7 +113,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
   const handleSaveSettings = async () => {
     if (!userPublicKey || !selectedAlgorithm) return;
 
-    const algorithmToSave = algorithms.find(algo => algo.id === selectedAlgorithm);
+    const algorithmToSave = algorithms.find(algo => algo.algoId === selectedAlgorithm);
     if (!algorithmToSave) return;
 
     if (!algorithmToSave.name.trim()) {
@@ -124,7 +124,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
     try {
       const authHeader = await createAuthHeader('POST', '/byo-algo', nostrExists ?? false, keyValue);
       const response = await fetch(API_URLS.BYO_ALGORITHM, {
-        method: algorithmToSave.id === 'new' ? 'POST' : 'PATCH',
+        method: algorithmToSave.algoId === 'new' ? 'POST' : 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + authHeader,
@@ -132,15 +132,15 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
         body: JSON.stringify({
           userId: userPublicKey,
           ...algorithmToSave,
-          ...(algorithmToSave.id !== 'new' && { id: algorithmToSave.id }),
+          ...(algorithmToSave.algoId !== 'new' && { id: algorithmToSave.algoId }),
         }),
       });
 
       if (response.ok) {
         showCustomToast('Algorithm saved successfully!', 'success');
-        if (algorithmToSave.id === 'default') {
+        if (algorithmToSave.algoId === 'default') {
           const newAlgorithm = await response.json();
-          setAlgorithms(prevAlgorithms => [...prevAlgorithms.filter(algo => algo.id !== 'default'), newAlgorithm]);
+          setAlgorithms(prevAlgorithms => [...prevAlgorithms.filter(algo => algo.algoId !== 'default'), newAlgorithm]);
           setSelectedAlgorithm(newAlgorithm.id);
         }
       } else {
@@ -154,7 +154,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
 
   const handleAddNew = () => {
     const newAlgorithm: AlgorithmSettings = {
-      id: 'new',
+      algoId: 'new',
       name: '',
       byoDegrees: 1,
       byoPosts: true,
@@ -170,7 +170,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
     return <Loading vCentered={false} />;
   }
 
-  const currentAlgorithm = algorithms.find(algo => algo.id === selectedAlgorithm) || algorithms[0];
+  const currentAlgorithm = algorithms.find(algo => algo.algoId === selectedAlgorithm) || algorithms[0];
 
   return (
     <div className="py-16 px-4 max-w-2xl mx-auto">
@@ -183,7 +183,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
           className="w-full p-2 border rounded text-black"
         >
           {algorithms.map(algo => (
-            <option key={algo.id} value={algo.id}>{algo.name || 'New Algorithm'}</option>
+            <option key={algo.algoId} value={algo.algoId}>{algo.name || 'New Algorithm'}</option>
           ))}
         </select>
         <button
@@ -245,7 +245,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
           className="w-full py-2 px-4 bg-[#535bf2]-600 text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
           disabled={!currentAlgorithm.name.trim()}
         >
-          {currentAlgorithm.id === 'new' ? 'Create Algorithm' : 'Update Algorithm'}
+          {currentAlgorithm.algoId === 'new' ? 'Create Algorithm' : 'Update Algorithm'}
         </button>
       </div>
     </div>
