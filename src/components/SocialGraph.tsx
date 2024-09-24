@@ -17,7 +17,8 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const networkRef = useRef<HTMLDivElement>(null);
-  const [_network, setNetwork] = useState<Network | null>(null);
+  const [network, setNetwork] = useState<Network | null>(null);
+  const [graphData, setGraphData] = useState<{ nodes: any; edges: any } | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,40 +69,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           uniqueFollowing.map((pubkey: string) => ({ from: userPubkey, to: pubkey, id: `${userPubkey}-${pubkey}` }))
         );
     
-        const data = { nodes, edges };
-    
-        const options = {
-          nodes: {
-            shape: 'circularImage',
-            borderWidth: 2,
-            borderWidthSelected: 4,
-            size: 30,
-            font: { color: 'white' }
-          },
-          edges: {
-            width: 1,
-          },
-          physics: {
-            stabilization: false,
-          },
-        };
-    
-        // Create a new div element to hold the network
-        const container = document.createElement('div');
-        container.style.height = '600px';
-        container.style.width = '100%';
-    
-        // Append the container to the networkRef element
-        if (networkRef.current) {
-          networkRef.current.appendChild(container);
-        }
-    
-        const newNetwork = new Network(container, {
-          nodes: data.nodes.get(),
-          edges: data.edges.get()
-        }, options);
-        setNetwork(newNetwork);
-    
+        setGraphData({ nodes, edges });
         setLoading(false);
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -111,7 +79,31 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     };
 
     fetchData();
-  }, []);
+  }, [pool, keyValue]);
+
+  useEffect(() => {
+    if (graphData && networkRef.current) {
+      const options = {
+        nodes: {
+          shape: 'circularImage',
+          borderWidth: 2,
+          borderWidthSelected: 4,
+          size: 30,
+          font: { color: 'white' }
+        },
+        edges: {
+          width: 1,
+        },
+        physics: {
+          stabilization: false,
+        },
+      };
+
+      const container = networkRef.current;
+      const newNetwork = new Network(container, graphData, options);
+      setNetwork(newNetwork);
+    }
+  }, [graphData]);
 
   const getCurrentUserPubkey = async () => {
     if (nostrExists) {
@@ -159,7 +151,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
 
   return (
     <div className="py-16">
-      <div ref={networkRef}></div>
+      <div ref={networkRef} style={{ height: '600px', width: '100%' }}></div>
     </div>
   );
 };
