@@ -49,7 +49,7 @@ export const getFollowing = async (pool: SimplePool, isLoggedIn: boolean, nostrE
         {
           onevent(event) {
             followers.push(...event.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]));
-            resolve(followers);
+            //resolve(followers);
           },
           onclose() {
             resolve(followers);
