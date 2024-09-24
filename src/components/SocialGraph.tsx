@@ -37,28 +37,32 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     // Add nodes and edges for expanded nodes
     expandedNodes.forEach(nodeId => {
       if (followingFollowingData[nodeId]) {
-        const newNodes = followingFollowingData[nodeId].map(pubkey => ({
-          id: nodeId + "_" + pubkey,
-          label: metadata[pubkey]?.name || nip19.npubEncode(pubkey).slice(0, 8),
-          shape: 'circularImage',
-          image: metadata[pubkey]?.picture || 'default-profile-picture.jpg',
-          size: 15,
-          font: { color: 'white' }
-        }));
-  
-        const newEdges = followingFollowingData[nodeId].map(pubkey => ({
-          from: nodeId,
-          to: nodeId + "_" + pubkey,
-          id: nodeId + "-" + pubkey
-        }));
-        // Filter out nodes that already exist in graphData.nodes
-        const existingNodeIds = new Set(graphData.nodes.getIds());
-        const filteredNewNodes = newNodes.filter(node => !existingNodeIds.has(node.id));
-        graphData.nodes.add(filteredNewNodes);
-        // Filter out edges that already exist in graphData.edges
-        const existingEdgeIds = new Set(graphData.edges.getIds());
-        const filteredNewEdges = newEdges.filter(edge => !existingEdgeIds.has(edge.id));
-        graphData.edges.add(filteredNewEdges);
+        followingFollowingData[nodeId].forEach(pubkey => {
+          const existingNode = graphData.nodes.get(pubkey);
+          if (existingNode) {
+            // If the node already exists, just add an edge
+            graphData.edges.add({
+              from: nodeId,
+              to: pubkey,
+              id: nodeId + "-" + pubkey
+            });
+          } else {
+            // If the node doesn't exist, create a new node and edge
+            graphData.nodes.add({
+              id: pubkey,
+              label: metadata[pubkey]?.name || nip19.npubEncode(pubkey).slice(0, 8),
+              shape: 'circularImage',
+              image: metadata[pubkey]?.picture || 'default-profile-picture.jpg',
+              size: 15,
+              font: { color: 'white' }
+            });
+            graphData.edges.add({
+              from: nodeId,
+              to: pubkey,
+              id: nodeId + "-" + pubkey
+            });
+          }
+        });
       }
     });
   }, [graphData, expandedNodes, followingFollowingData, metadata]);
@@ -105,15 +109,20 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     
       try {
         const userPubkey = await getCurrentUserPubkey();
+        //console.log("getting following for", keyValue);
         const following = await getFollowing(pool, true, nostrExists ?? false, keyValue ?? "", () => {}, null);
     
         const uniqueFollowing = Array.from(new Set(following));
+        console.log("got unique following", uniqueFollowing)
 
         await Promise.all(
           uniqueFollowing.map(async (pubkey) => {
+            //console.log("getting following following for", pubkey)
             let followers = await getFollowing(pool, true, nostrExists ?? false, keyValue ?? "", () => {}, pubkey);
+            console.log("got following following", followers);
             // Remove the current pubkey from followers
             followers = followers.filter(follower => follower !== pubkey);
+            console.log("filtered", followers)
             followingFollowingMap[pubkey] = followers;
           })
         );
@@ -157,6 +166,8 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           }
         });
     
+        let edgesSet = uniqueFollowing.map((pubkey: string) => ({ from: userPubkey, to: pubkey, id: `${userPubkey}-${pubkey}` }));
+        console.log("edgesset", edgesSet);
         const edges = new DataSet(
           uniqueFollowing.map((pubkey: string) => ({ from: userPubkey, to: pubkey, id: `${userPubkey}-${pubkey}` }))
         );
