@@ -68,6 +68,46 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         const edges = new DataSet(
           uniqueFollowing.map((pubkey: string) => ({ from: userPubkey, to: pubkey, id: `${userPubkey}-${pubkey}` }))
         );
+
+
+        uniqueFollowing.forEach(async (pubkey: string) => {
+          /*getFollowing(pool, true, nostrExists ?? false, pubkey, () => {}, null).then(followingOfFollowing => {
+            followingOfFollowing.forEach(followedPubkey => {
+              if (!nodes.get(followedPubkey)) {
+                nodes.add({
+                  id: followedPubkey,
+                  label: metadata[followedPubkey]?.name || nip19.npubEncode(followedPubkey).slice(0, 8),
+                  shape: 'circularImage',
+                  image: metadata[followedPubkey]?.picture || 'default-profile-picture.jpg',
+                  size: 15,
+                  font: { color: 'white' }
+                } as any);
+              }
+              if (!edges.get(`${pubkey}-${followedPubkey}`)) {
+                edges.add({ from: pubkey, to: followedPubkey, id: `${pubkey}-${followedPubkey}` });
+              }
+            });
+          });*/
+          const followingFollowing = await getFollowing(pool, true, nostrExists ?? false, pubkey, () => {}, pubkey);
+          // Limit to the first 5 following
+          const limitedFollowingFollowing = followingFollowing;//.slice(0, 6);
+          limitedFollowingFollowing.forEach(followingFollowingPubkey => {
+            if (!nodes.get(followingFollowingPubkey) && pubkey !== followingFollowingPubkey) {
+              nodes.add({
+                id: pubkey + "_" + followingFollowingPubkey,
+                label: metadata[followingFollowingPubkey]?.name || nip19.npubEncode(followingFollowingPubkey).slice(0, 8),
+                shape: 'circularImage',
+                image: metadata[followingFollowingPubkey]?.picture || 'default-profile-picture.jpg',
+                size: 15,
+                font: { color: 'white' }
+              } as any)
+            }
+            if (!edges.get(pubkey + "_" + followingFollowingPubkey) && pubkey !== followingFollowingPubkey) {
+              edges.add({ from: pubkey, to: pubkey + "_" + followingFollowingPubkey, id: pubkey + "-" + followingFollowingPubkey });
+            }
+          })
+        })
+
     
         setGraphData({ nodes, edges });
         setLoading(false);
@@ -83,7 +123,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
 
   useEffect(() => {
     if (graphData && networkRef.current) {
-      const options = {
+      /*const options = {
         nodes: {
           shape: 'circularImage',
           borderWidth: 2,
@@ -97,6 +137,27 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         physics: {
           stabilization: false,
         },
+      };*/
+      const options = {
+        nodes: {
+          shape: 'circularImage',
+          borderWidth: 2,
+          borderWidthSelected: 4,
+          size: 30,
+          font: { color: 'white' }
+        },
+        edges: {
+          width: 1,
+          color: { color: 'rgba(255,255,255,0.5)' }
+        },
+        physics: {
+          stabilization: false,
+          barnesHut: {
+            gravitationalConstant: -80000,
+            springConstant: 0.001,
+            springLength: 200
+          }
+        }
       };
 
       const container = networkRef.current;
