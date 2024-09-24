@@ -176,7 +176,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           //  : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
           //let filter = { id: '9e2b9f66a4af0035b0a447e33a348790ec2d95defb3f385fea67037fff73b24a'};
           let filter = isLoggedIn
-          ? constructFilterFromBYOAlgo(selectedAlgorithm, newFollowing, oneWeekAgo, props.pool)
+          ? await constructFilterFromBYOAlgo(selectedAlgorithm, newFollowing, oneWeekAgo, props.pool)
           : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
           
           const fetchedEvents = await fetchData(props.pool, 0, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",

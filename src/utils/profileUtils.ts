@@ -42,12 +42,21 @@ export const getFollowing = async (pool: SimplePool, isLoggedIn: boolean, nostrE
     }
     if (pk && !followers.includes(pk)) followers.push(pk);
     setUserPublicKey(pk);
-    const followersRet = await pool.querySync(RELAYS, { authors: [pk], kinds: [3] });
-    if (followersRet.length > 0) {
-      const firstEvent = followersRet[0];
-      return firstEvent.tags.map(tag => tag[1]);
-    }
-    return followers;
+    return new Promise((resolve) => {
+      pool.subscribeManyEose(
+        RELAYS,
+        [{ authors: [pk], kinds: [3] }],
+        {
+          onevent(event) {
+            followers.push(...event.tags.filter(tag => tag[0] === 'p').map(tag => tag[1]));
+            resolve(followers);
+          },
+          onclose() {
+            resolve(followers);
+          }
+        }
+      );
+    });
 }
 
 export const fetchUserMetadata = async (pool: SimplePool | null, userPublicKey: string, 
