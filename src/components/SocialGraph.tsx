@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Network } from 'vis-network';
 import { DataSet } from 'vis-data';
 import { SimplePool, getPublicKey, nip19 } from 'nostr-tools';
@@ -17,8 +17,120 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const networkRef = useRef<HTMLDivElement>(null);
-  const [_network, setNetwork] = useState<Network | null>(null);
+  const [network, setNetwork] = useState<Network | null>(null);
   const [graphData, setGraphData] = useState<{ nodes: any; edges: any } | null>(null);
+  const [followingFollowingData, setFollowingFollowingData] = useState<{[key: string]: string[]}>({});
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+
+  const updateGraph = useCallback(() => {
+    if (!graphData) return;
+  
+    // Remove all followingFollowing nodes and edges
+    const nodesToRemove = graphData.nodes.get().filter((node: { id: string | string[]; }) => node.id.includes("_")).map((node: { id: any; }) => node.id);
+    const edgesToRemove = graphData.edges.get().filter((edge: { id: string | string[]; }) => edge.id.includes("_")).map((edge: { id: any; }) => edge.id);
+    graphData.nodes.remove(nodesToRemove);
+    graphData.edges.remove(edgesToRemove);
+  
+    // Add nodes and edges for expanded nodes
+    expandedNodes.forEach(nodeId => {
+      if (followingFollowingData[nodeId]) {
+        const newNodes = followingFollowingData[nodeId].map(pubkey => ({
+          id: nodeId + "_" + pubkey,
+          //label: metadata[pubkey]?.name || nip19.npubEncode(pubkey).slice(0, 8),
+          label: nip19.npubEncode(pubkey).slice(0, 8),
+          shape: 'circularImage',
+          //image: metadata[pubkey]?.picture || 'default-profile-picture.jpg',
+          image: 'default-profile-picture.jpg',
+          size: 15,
+          font: { color: 'white' }
+        }));
+  
+        const newEdges = followingFollowingData[nodeId].map(pubkey => ({
+          from: nodeId,
+          to: nodeId + "_" + pubkey,
+          id: nodeId + "-" + pubkey
+        }));
+        // Filter out nodes that already exist in graphData.nodes
+        const existingNodeIds = new Set(graphData.nodes.getIds());
+        const filteredNewNodes = newNodes.filter(node => !existingNodeIds.has(node.id));
+        graphData.nodes.add(filteredNewNodes);
+        // Filter out edges that already exist in graphData.edges
+        const existingEdgeIds = new Set(graphData.edges.getIds());
+        const filteredNewEdges = newEdges.filter(edge => !existingEdgeIds.has(edge.id));
+        graphData.edges.add(filteredNewEdges);
+      }
+    });
+  }, [graphData, expandedNodes, followingFollowingData]);
+  
+  useEffect(() => {
+    updateGraph();
+  }, [expandedNodes, updateGraph]);
+
+  const handleClick = useCallback((params: any) => {
+    const nodeId = params.nodes[0];
+    if (nodeId && followingFollowingData[nodeId]) {
+      setExpandedNodes(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(nodeId)) {
+          newSet.delete(nodeId);
+        } else {
+          newSet.add(nodeId);
+        }
+        return newSet;
+      });
+    }
+  }, [followingFollowingData]);
+  
+  useEffect(() => {
+    if (network && graphData) {
+      network.on("click", handleClick);
+    }
+    return () => {
+      if (network) {
+        network.off("click", handleClick);
+      }
+    };
+  }, [network, graphData, handleClick]);
+
+  //a bit clunky
+  /*useEffect(() => {
+    if (network && graphData) {
+      network.on("zoom", (params) => {
+        const scale = params.scale;
+        const nodeIds = network.getNodeAt({x: params.pointer.x, y: params.pointer.y}) as string;
+  
+        if (scale > 1.5 && nodeIds && followingFollowingData[nodeIds]) {
+          // Show followingFollowing nodes and edges
+          const newNodes = followingFollowingData[nodeIds].map(pubkey => ({
+            id: nodeIds + "_" + pubkey,
+            //label: metadata[pubkey]?.name || nip19.npubEncode(pubkey).slice(0, 8),
+            label: nip19.npubEncode(pubkey).slice(0, 8),
+            shape: 'circularImage',
+            //image: metadata[pubkey]?.picture || 'default-profile-picture.jpg',
+            image: 'default-profile-picture.jpg',
+            size: 15,
+            font: { color: 'white' }
+          }));
+  
+          const newEdges = followingFollowingData[nodeIds].map(pubkey => ({
+            from: nodeIds,
+            to: nodeIds + "_" + pubkey,
+            id: nodeIds + "-" + pubkey
+          }));
+  
+          graphData.nodes.add(newNodes);
+          graphData.edges.add(newEdges);
+        } else {
+          // Hide followingFollowing nodes and edges
+          const nodesToRemove = graphData.nodes.get().filter((node: { id: string | string[]; }) => node.id.includes("_")).map((node: { id: any; }) => node.id);
+          const edgesToRemove = graphData.edges.get().filter((edge: { id: string | string[]; }) => edge.id.includes("_")).map((edge: { id: any; }) => edge.id);
+  
+          graphData.nodes.remove(nodesToRemove);
+          graphData.edges.remove(edgesToRemove);
+        }
+      });
+    }
+  }, [network, graphData, followingFollowingData]);*/
 
   useEffect(() => {
     const fetchData = async () => {
@@ -27,12 +139,27 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         setLoading(false);
         return;
       }
+
+      const followingFollowingMap: {[key: string]: string[]} = {};
     
       try {
         const userPubkey = await getCurrentUserPubkey();
         const following = await getFollowing(pool, true, nostrExists ?? false, keyValue ?? "", () => {}, null);
     
         const uniqueFollowing = Array.from(new Set(following));
+
+        await Promise.all(
+          uniqueFollowing.map(async (pubkey) => {
+            let followers = await getFollowing(pool, true, nostrExists ?? false, keyValue ?? "", () => {}, pubkey);
+            // Remove the current pubkey from followers
+            followers = followers.filter(follower => follower !== pubkey);
+            followingFollowingMap[pubkey] = followers;
+          })
+        );
+      
+        setFollowingFollowingData(followingFollowingMap);
+
+
         const allPubkeys = [userPubkey, ...uniqueFollowing];
     
         const metadata = await fetchMetadata(allPubkeys);
@@ -70,24 +197,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         );
 
 
-        uniqueFollowing.forEach(async (pubkey: string) => {
-          /*getFollowing(pool, true, nostrExists ?? false, pubkey, () => {}, null).then(followingOfFollowing => {
-            followingOfFollowing.forEach(followedPubkey => {
-              if (!nodes.get(followedPubkey)) {
-                nodes.add({
-                  id: followedPubkey,
-                  label: metadata[followedPubkey]?.name || nip19.npubEncode(followedPubkey).slice(0, 8),
-                  shape: 'circularImage',
-                  image: metadata[followedPubkey]?.picture || 'default-profile-picture.jpg',
-                  size: 15,
-                  font: { color: 'white' }
-                } as any);
-              }
-              if (!edges.get(`${pubkey}-${followedPubkey}`)) {
-                edges.add({ from: pubkey, to: followedPubkey, id: `${pubkey}-${followedPubkey}` });
-              }
-            });
-          });*/
+        /*uniqueFollowing.forEach(async (pubkey: string) => {
           const followingFollowing = await getFollowing(pool, true, nostrExists ?? false, pubkey, () => {}, pubkey);
           // Limit to the first 5 following
           const limitedFollowingFollowing = followingFollowing;//.slice(0, 6);
@@ -106,7 +216,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
               edges.add({ from: pubkey, to: pubkey + "_" + followingFollowingPubkey, id: pubkey + "-" + followingFollowingPubkey });
             }
           })
-        })
+        })*/
 
     
         setGraphData({ nodes, edges });
@@ -157,6 +267,11 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
             springConstant: 0.001,
             springLength: 200
           }
+        },
+        interaction: {
+          hover: true,
+          hoverConnectedEdges: true,
+          selectConnectedEdges: true,
         }
       };
 
