@@ -21,6 +21,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const [graphData, setGraphData] = useState<{ nodes: any; edges: any } | null>(null);
   const [followingFollowingData, setFollowingFollowingData] = useState<{[key: string]: string[]}>({});
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [metadata, setMetadata] = useState<{[key: string]: any}>({});
 
   const updateGraph = useCallback(() => {
     if (!graphData) return;
@@ -36,11 +37,11 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       if (followingFollowingData[nodeId]) {
         const newNodes = followingFollowingData[nodeId].map(pubkey => ({
           id: nodeId + "_" + pubkey,
-          //label: metadata[pubkey]?.name || nip19.npubEncode(pubkey).slice(0, 8),
-          label: nip19.npubEncode(pubkey).slice(0, 8),
+          label: metadata[pubkey]?.name || nip19.npubEncode(pubkey).slice(0, 8),
+          //label: nip19.npubEncode(pubkey).slice(0, 8),
           shape: 'circularImage',
-          //image: metadata[pubkey]?.picture || 'default-profile-picture.jpg',
-          image: 'default-profile-picture.jpg',
+          image: metadata[pubkey]?.picture || 'default-profile-picture.jpg',
+          //image: 'default-profile-picture.jpg',
           size: 15,
           font: { color: 'white' }
         }));
@@ -159,11 +160,14 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       
         setFollowingFollowingData(followingFollowingMap);
 
+        const allPubkeys = new Set([userPubkey, ...uniqueFollowing]);
+        Object.values(followingFollowingMap).forEach(followers => {
+          followers.forEach(follower => allPubkeys.add(follower));
+        });
+    
+        const metadata = await fetchMetadata(Array.from(allPubkeys));
+        setMetadata(metadata);
 
-        const allPubkeys = [userPubkey, ...uniqueFollowing];
-    
-        const metadata = await fetchMetadata(allPubkeys);
-    
         const nodes = new DataSet();
         
         // Add the user node if it doesn't exist
