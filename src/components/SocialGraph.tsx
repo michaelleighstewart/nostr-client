@@ -6,6 +6,7 @@ import Loading from './Loading';
 import { getFollowing } from '../utils/profileUtils';
 import { bech32Decoder } from '../utils/helperFunctions';
 import { RELAYS } from '../utils/constants';
+import { API_URLS } from '../utils/apiConstants';
 
 interface SocialGraphProps {
   keyValue: string;
@@ -24,6 +25,24 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const [metadata, setMetadata] = useState<{[key: string]: any}>({});
   const [progress, setProgress] = useState<number>(0);
   const [totalUsers, setTotalUsers] = useState<number>(0);
+
+  const isNetworkInitialized = useRef(false);
+
+  const fetchSocialGraphFromAPI = async (npub: string) => {
+    try {
+      const response = await fetch(`${API_URLS.API_URL}social-graph?npub=${npub}&degrees=2`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null; // Graph not found, we'll generate it on the fly
+        }
+        throw new Error('Failed to fetch social graph');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching social graph:', error);
+      return null;
+    }
+  };
 
   const updateGraph = useCallback(() => {
     if (!graphData) return;
@@ -109,71 +128,147 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     
       try {
         const userPubkey = await getCurrentUserPubkey();
-        //console.log("getting following for", keyValue);
-        const following = await getFollowing(pool, true, nostrExists ?? false, keyValue ?? "", () => {}, null);
-    
-        const uniqueFollowing = Array.from(new Set(following));
-        console.log("got unique following", uniqueFollowing)
+        const userNpub = nip19.npubEncode(userPubkey);
 
-        await Promise.all(
-          uniqueFollowing.map(async (pubkey) => {
-            //console.log("getting following following for", pubkey)
-            let followers = await getFollowing(pool, true, nostrExists ?? false, keyValue ?? "", () => {}, pubkey);
-            console.log("got following following", followers);
-            // Remove the current pubkey from followers
-            followers = followers.filter(follower => follower !== pubkey);
-            console.log("filtered", followers)
-            followingFollowingMap[pubkey] = followers;
-          })
-        );
-      
-        setFollowingFollowingData(followingFollowingMap);
+        const apiGraphData = await fetchSocialGraphFromAPI(userNpub);
 
-        const allPubkeys = new Set([userPubkey, ...uniqueFollowing]);
-        Object.values(followingFollowingMap).forEach(followers => {
-          followers.forEach(follower => allPubkeys.add(follower));
-        });
-    
-        setTotalUsers(allPubkeys.size);
-        const metadataRetrieved = await fetchMetadata(Array.from(allPubkeys));
-        setMetadata(metadataRetrieved);
+        if (apiGraphData) {
+          // If we got data from the API, use it to set up the graph
+          //setFollowingFollowingData(apiGraphData.followingFollowingMap);
+          //setMetadata(apiGraphData.metadata);
+          
+          //const nodes = new DataSet(apiGraphData.nodes);
+          //const edges = new DataSet(apiGraphData.edges);
 
-        const nodes = new DataSet();
-        
-        // Add the user node if it doesn't exist
-        if (!nodes.get(userPubkey)) {
-          nodes.add({
-            id: userPubkey,
-            label: `${metadataRetrieved[userPubkey]?.name || 'Unknown'} (You)`,
-            shape: 'circularImage',
-            image: metadataRetrieved[userPubkey]?.picture || 'default-profile-picture.jpg',
-            size: 30,
-            font: { color: 'white' }
-          } as any);
-        }
-        
-        // Add following nodes if they don't exist
-        uniqueFollowing.forEach((pubkey: string) => {
-          if (!nodes.get(pubkey)) {
+          //root node
+          const nodes = new DataSet();
+          const edges = new DataSet();
+          const followingFollowingMap: {[key: string]: string[]} = {};
+          const metadataMap: {[key: string]: any} = {};
+          if (!nodes.get(apiGraphData.user.pubkey)) {
             nodes.add({
-              id: pubkey,
-              label: metadataRetrieved[pubkey]?.name || nip19.npubEncode(pubkey).slice(0, 8),
+              id: apiGraphData.user.pubkey,
+              label: apiGraphData.user?.name || nip19.npubEncode(apiGraphData.user.pubkey).slice(0, 8),
               shape: 'circularImage',
-              image: metadataRetrieved[pubkey]?.picture || 'default-profile-picture.jpg',
+              image: apiGraphData.user?.picture || 'default-profile-picture.jpg',
               size: 20,
               font: { color: 'white' }
             } as any);
           }
-        });
-    
-        let edgesSet = uniqueFollowing.map((pubkey: string) => ({ from: userPubkey, to: pubkey, id: `${userPubkey}-${pubkey}` }));
-        console.log("edgesset", edgesSet);
-        const edges = new DataSet(
-          uniqueFollowing.map((pubkey: string) => ({ from: userPubkey, to: pubkey, id: `${userPubkey}-${pubkey}` }))
-        );
-    
+          metadataMap[apiGraphData.user.pubkey] = {
+            name: apiGraphData.user?.name,
+            picture: apiGraphData.user?.picture
+          };
+
+
+        // Add first-order follows
+        for (const follow of apiGraphData.follows) {
+          nodes.add({
+            id: follow.pubkey,
+            label: follow.name || nip19.npubEncode(follow.pubkey).slice(0, 8),
+            shape: 'circularImage',
+            image: follow.picture || 'default-profile-picture.jpg',
+            size: 20,
+            font: { color: 'white' }
+          } as any);
+
+          edges.add({
+            id: `${apiGraphData.user.pubkey}-${follow.pubkey}`,
+            from: apiGraphData.user.pubkey,
+            to: follow.pubkey
+          } as any);
+
+          metadataMap[follow.pubkey] = {
+            name: follow.name,
+            picture: follow.picture
+          };
+
+          followingFollowingMap[follow.pubkey] = follow.follows.map((ff: { pubkey: any; }) => ff.pubkey);
+        }
+
+        // Add second-order follows to metadata but not to graph
+        for (const follow of apiGraphData.follows) {
+          for (const followFollow of follow.follows) {
+            if (!metadataMap[followFollow.pubkey]) {
+              metadataMap[followFollow.pubkey] = {
+                name: followFollow.name,
+                picture: followFollow.picture
+              };
+            }
+          }
+        }
+
+        setFollowingFollowingData(followingFollowingMap);
+        setMetadata(metadataMap);
         setGraphData({ nodes, edges });
         setLoading(false);
+        } else {
+          //console.log("getting following for", keyValue);
+          const following = await getFollowing(pool, true, nostrExists ?? false, keyValue ?? "", () => {}, null);
+      
+          const uniqueFollowing = Array.from(new Set(following));
+          console.log("got unique following", uniqueFollowing)
+
+          await Promise.all(
+            uniqueFollowing.map(async (pubkey) => {
+              //console.log("getting following following for", pubkey)
+              let followers = await getFollowing(pool, true, nostrExists ?? false, keyValue ?? "", () => {}, pubkey);
+              console.log("got following following", followers);
+              // Remove the current pubkey from followers
+              followers = followers.filter(follower => follower !== pubkey);
+              console.log("filtered", followers)
+              followingFollowingMap[pubkey] = followers;
+            })
+          );
+        
+          setFollowingFollowingData(followingFollowingMap);
+
+          const allPubkeys = new Set([userPubkey, ...uniqueFollowing]);
+          Object.values(followingFollowingMap).forEach(followers => {
+            followers.forEach(follower => allPubkeys.add(follower));
+          });
+      
+          setTotalUsers(allPubkeys.size);
+          const metadataRetrieved = await fetchMetadata(Array.from(allPubkeys));
+          setMetadata(metadataRetrieved);
+
+          const nodes = new DataSet();
+          
+          // Add the user node if it doesn't exist
+          if (!nodes.get(userPubkey)) {
+            nodes.add({
+              id: userPubkey,
+              label: `${metadataRetrieved[userPubkey]?.name || 'Unknown'} (You)`,
+              shape: 'circularImage',
+              image: metadataRetrieved[userPubkey]?.picture || 'default-profile-picture.jpg',
+              size: 30,
+              font: { color: 'white' }
+            } as any);
+          }
+          
+          // Add following nodes if they don't exist
+          uniqueFollowing.forEach((pubkey: string) => {
+            if (!nodes.get(pubkey)) {
+              nodes.add({
+                id: pubkey,
+                label: metadataRetrieved[pubkey]?.name || nip19.npubEncode(pubkey).slice(0, 8),
+                shape: 'circularImage',
+                image: metadataRetrieved[pubkey]?.picture || 'default-profile-picture.jpg',
+                size: 20,
+                font: { color: 'white' }
+              } as any);
+            }
+          });
+      
+          let edgesSet = uniqueFollowing.map((pubkey: string) => ({ from: userPubkey, to: pubkey, id: `${userPubkey}-${pubkey}` }));
+          console.log("edgesset", edgesSet);
+          const edges = new DataSet(
+            uniqueFollowing.map((pubkey: string) => ({ from: userPubkey, to: pubkey, id: `${userPubkey}-${pubkey}` }))
+          );
+      
+          setGraphData({ nodes, edges });
+          setLoading(false);
+        }
       } catch (err) {
         console.error('Error fetching data:', err);
         setError('Error fetching data');
@@ -182,10 +277,10 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     };
 
     fetchData();
-  }, [pool, keyValue, metadata]);
+  }, []);
 
   useEffect(() => {
-    if (graphData && networkRef.current) {
+    if (graphData && networkRef.current && !isNetworkInitialized.current) {
       const options = {
         nodes: {
           shape: 'circularImage',
@@ -199,25 +294,51 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           color: { color: 'rgba(255,255,255,0.5)' }
         },
         physics: {
-          stabilization: false,
+          enabled: true,
+          stabilization: {
+            enabled: true,
+            iterations: 200,
+            updateInterval: 50,
+            onlyDynamicEdges: false,
+            fit: true
+          },
           barnesHut: {
-            gravitationalConstant: -80000,
-            springConstant: 0.001,
-            springLength: 200
-          }
+            gravitationalConstant: -2000,
+            centralGravity: 0.3,
+            springLength: 95,
+            springConstant: 0.04,
+            damping: 0.09
+          },
+          minVelocity: 0.75
         },
         interaction: {
           hover: true,
           hoverConnectedEdges: true,
           selectConnectedEdges: true,
+          dragNodes: true,
+          dragView: true
         }
       };
-
+  
       const container = networkRef.current;
       const newNetwork = new Network(container, graphData, options);
       setNetwork(newNetwork);
+  
+      newNetwork.once("stabilizationIterationsDone", function () {
+        newNetwork.setOptions({ physics: { enabled: false } });
+        newNetwork.fit(); // This will zoom to fit all nodes
+      });
+  
+      isNetworkInitialized.current = true;
     }
-  }, [graphData, metadata]);
+  }, [graphData]);
+  
+  // Add this new useEffect to update the network when graphData changes
+  useEffect(() => {
+    if (network && graphData && isNetworkInitialized.current) {
+      network.setData(graphData);
+    }
+  }, [network, graphData]);
 
   const getCurrentUserPubkey = async () => {
     if (nostrExists) {
