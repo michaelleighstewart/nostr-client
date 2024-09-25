@@ -136,7 +136,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 }
                 try {
                   const authHeader = await createAuthHeader('GET', '/byo-algo', props.nostrExists ?? false, props.keyValue ?? "");
-                  const response = await fetch(`${API_URLS.BYO_ALGORITHM}?userId=${pk}`,
+                  const response = await fetch(`${API_URLS.API_URL}byo-algo?userId=${pk}`,
                     {
                       headers: {
                         'Content-Type': 'application/json',

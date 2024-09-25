@@ -6,6 +6,7 @@ import Loading from "./Loading";
 import { Link, useLocation } from "react-router-dom";
 import { UserCircleIcon, UserPlusIcon, CheckIcon } from '@heroicons/react/24/solid';
 import Ostrich from "./Ostrich";
+import { API_URLS } from "../utils/apiConstants";
 
 interface PeopleToFollowProps {
     keyValue: string;
@@ -195,35 +196,61 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     }, [currentIndex]);
 
     const handleFollow = async (person: Person) => {
-       if (!props.pool || !props.keyValue) return;
-        person.loadingFollowing = true;
-        const event: { kind: number; created_at: number; tags: string[][]; content: string; pubkey?: string; sig?: string } = {
-            kind: 3,
-            created_at: Math.floor(Date.now() / 1000),
-            tags: [...followingList.map(npub => ['p', npub]), ['p', nip19.decode(person.npub).data as string]],
-            content: '',
-        };
-
-        if (props.nostrExists) {
-            await (window as any).nostr.signEvent(event).then(async (eventToSend: any) => {
-              await props.pool?.publish(RELAYS, eventToSend);
-            });
-        }
-        else {
-            let sk = props.keyValue;
-            let skDecoded = bech32Decoder('nsec', sk);
-            let eventFinal = finalizeEvent(event, skDecoded);
-            await props.pool?.publish(RELAYS, eventFinal);
-        }
-        setFollowingList(prev => {
-            const newFollowingList = [...prev, nip19.decode(person.npub).data as string];
-            if (prev.length === 0 && newFollowingList.length === 1) {
-                setShowOstrich(true);
-            }
-            return newFollowingList;
-        });
-        setPeopleToFollow(prev => prev.map(p => p.npub === person.npub ? { ...p, loadingFollowing: false } : p));
-    };
+        if (!props.pool || !props.keyValue) return;
+         person.loadingFollowing = true;
+         const event: { kind: number; created_at: number; tags: string[][]; content: string; pubkey?: string; sig?: string } = {
+             kind: 3,
+             created_at: Math.floor(Date.now() / 1000),
+             tags: [...followingList.map(npub => ['p', npub]), ['p', nip19.decode(person.npub).data as string]],
+             content: '',
+         };
+     
+         try {
+             if (props.nostrExists) {
+                 await (window as any).nostr.signEvent(event).then(async (eventToSend: any) => {
+                   await props.pool?.publish(RELAYS, eventToSend);
+                 });
+             }
+             else {
+                 let sk = props.keyValue;
+                 let skDecoded = bech32Decoder('nsec', sk);
+                 let eventFinal = finalizeEvent(event, skDecoded);
+                 await props.pool?.publish(RELAYS, eventFinal);
+             }
+             setFollowingList(prev => {
+                 const newFollowingList = [...prev, nip19.decode(person.npub).data as string];
+                 if (prev.length === 0 && newFollowingList.length === 1) {
+                     setShowOstrich(true);
+                 }
+                 return newFollowingList;
+             });
+             setPeopleToFollow(prev => prev.map(p => p.npub === person.npub ? { ...p, loadingFollowing: false } : p));
+     
+             // Call the batch-processor API
+             const response = await fetch(API_URLS.API_URL + 'batch-processor', {
+                 method: 'POST',
+                 headers: {
+                     'Content-Type': 'application/json',
+                 },
+                 body: JSON.stringify({
+                     type: 'social_graph_processor',
+                     npub: person.npub,
+                 }),
+             });
+     
+             if (!response.ok) {
+                 throw new Error('Failed to call batch-processor API');
+             }
+     
+             // You can handle the API response here if needed
+             // const data = await response.json();
+             // console.log('Batch-processor API response:', data);
+     
+         } catch (error) {
+             console.error('Error following user or calling batch-processor API:', error);
+             // You might want to show a toast or some other notification here
+         }
+     };
 
     const handleCustomHashtagSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
