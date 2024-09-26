@@ -3,6 +3,7 @@ import { SimplePool, nip19, nip04, finalizeEvent } from 'nostr-tools';
 import { bech32Decoder } from '../utils/helperFunctions';
 import { showCustomToast } from './CustomToast';
 import { RELAYS } from '../utils/constants';
+import { getMetadataFromCache, setMetadataToCache } from '../utils/cachingUtils';
 
 interface NewMessageDialogProps {
   isOpen: boolean;
@@ -13,16 +14,68 @@ interface NewMessageDialogProps {
   initialRecipientNpub?: string;
 }
 
+interface UserInfo {
+  name: string;
+  picture: string;
+}
+
 const NewMessageDialog: React.FC<NewMessageDialogProps> = ({ isOpen, onClose, pool, nostrExists, keyValue, initialRecipientNpub }) => {
   const [recipientNpub, setRecipientNpub] = useState('');
   const [messageContent, setMessageContent] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [recipientInfo, setRecipientInfo] = useState<UserInfo | null>(null);
 
   useEffect(() => {
     if (initialRecipientNpub) {
       setRecipientNpub(initialRecipientNpub);
+      fetchUserMetadata(initialRecipientNpub);
     }
   }, [initialRecipientNpub]);
+
+  const fetchUserMetadata = async (npub: string) => {
+    if (!pool) return;
+
+    try {
+      const pubkey = nip19.decode(npub).data as string;
+
+      // Check cache first
+      const cachedMetadata = getMetadataFromCache(pubkey);
+      if (cachedMetadata) {
+        setRecipientInfo({
+          name: cachedMetadata.name || '',
+          picture: cachedMetadata.picture || '',
+        });
+        return;
+      }
+
+      const metadata = await pool.querySync(RELAYS, {
+        kinds: [0],
+        authors: [pubkey],
+      });
+
+      if (metadata && metadata.length > 0) {
+        const content = JSON.parse(metadata[0].content);
+        const userInfo = {
+          name: content.name || '',
+          picture: content.picture || '',
+        };
+        setMetadataToCache(pubkey, userInfo);
+        setRecipientInfo(userInfo);
+      }
+    } catch (error) {
+      console.error('Error fetching user metadata:', error);
+    }
+  };
+
+  const handleRecipientChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newNpub = e.target.value;
+    setRecipientNpub(newNpub);
+    if (newNpub.startsWith('npub1')) {
+      fetchUserMetadata(newNpub);
+    } else {
+      setRecipientInfo(null);
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!pool || !recipientNpub || !messageContent.trim()) return;
@@ -65,6 +118,7 @@ const NewMessageDialog: React.FC<NewMessageDialogProps> = ({ isOpen, onClose, po
       onClose();
       setRecipientNpub('');
       setMessageContent('');
+      setRecipientInfo(null);
     } catch (error) {
       console.error('Error sending message:', error);
       showCustomToast("Failed to send message", "error");
@@ -81,13 +135,42 @@ const NewMessageDialog: React.FC<NewMessageDialogProps> = ({ isOpen, onClose, po
         <div className="mt-3 text-center">
           <h3 className="text-lg leading-6 font-medium text-white">Send New Message</h3>
           <div className="mt-2 px-7 py-3">
-            <input
-              type="text"
-              value={recipientNpub}
-              onChange={(e) => setRecipientNpub(e.target.value)}
-              placeholder="Recipient's npub"
-              className="px-8 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-black"
-            />
+            {initialRecipientNpub ? (
+              recipientInfo && (
+                <div className="mt-2 flex items-center justify-center pb-32">
+                  {recipientInfo.picture && (
+                    <img
+                      src={recipientInfo.picture}
+                      alt={recipientInfo.name || "Recipient"}
+                      className="w-8 h-8 rounded-full mr-2"
+                    />
+                  )}
+                  <span className="text-white">{recipientInfo.name || "Unknown"}</span>
+                </div>
+              )
+            ) : (
+              <>
+                <input
+                  type="text"
+                  value={recipientNpub}
+                  onChange={handleRecipientChange}
+                  placeholder="Recipient's npub"
+                  className="px-8 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-black"
+                />
+                {recipientInfo && (
+                  <div className="mt-2 flex items-center">
+                    {recipientInfo.picture && (
+                      <img
+                        src={recipientInfo.picture}
+                        alt={recipientInfo.name || "Recipient"}
+                        className="w-8 h-8 rounded-full mr-2"
+                      />
+                    )}
+                    <span className="text-white">{recipientInfo.name || "Unknown"}</span>
+                  </div>
+                )}
+              </>
+            )}
             <textarea
               value={messageContent}
               onChange={(e) => setMessageContent(e.target.value)}
