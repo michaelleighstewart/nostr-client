@@ -7,6 +7,7 @@ import { UserPlusIcon, CheckIcon } from '@heroicons/react/24/outline';
 import Loading from './Loading';
 import { showCustomToast } from './CustomToast';
 import { bech32Decoder } from '../utils/helperFunctions';
+import { API_URLS } from '../utils/apiConstants';
 
 interface SearchProps {
   pool: SimplePool | null;
@@ -151,41 +152,49 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
     }
   };
 
-  const handleFollow = async (npub: string, _name: string) => {
-    if (!pool || !currentUserPubkey) return;
-
-    const pubkey = nip19.decode(npub).data as string;
+  const handleFollow = async (pubkey: string) => {
+    if (!pool) return;
 
     const event = {
-      kind: 3,
-      created_at: Math.floor(Date.now() / 1000),
-      tags: [...followingList.map(pk => ['p', pk]), ['p', pubkey]],
-      content: '',
+        kind: 3,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [...followingList.map(pk => ['p', pk]), ['p', pubkey]],
+        content: '',
     };
 
     try {
-      if (nostrExists) {
-        const signedEvent = await (window as any).nostr.signEvent(event);
-        await pool.publish(RELAYS, signedEvent);
-      } else {
-        const skDecoded = bech32Decoder("nsec", keyValue);
-        const signedEvent = finalizeEvent(event, skDecoded);
-        await pool.publish(RELAYS, signedEvent);
-      }
+        if (nostrExists) {
+            const signedEvent = await (window as any).nostr.signEvent(event);
+            await pool.publish(RELAYS, signedEvent);
+        } else {
+            const skDecoded = bech32Decoder("nsec", keyValue);
+            const signedEvent = finalizeEvent(event, skDecoded);
+            await pool.publish(RELAYS, signedEvent);
+        }
 
-      setFollowingList(prevList => [...prevList, pubkey]);
-      setSearchResults(prevResults =>
-        prevResults.map(result =>
-          result.npub === npub ? { ...result, isFollowing: true } : result
-        )
-      );
+        setFollowingList(prevList => [...prevList, pubkey]);
+        // Update UI to show that the user is now following
 
-      showCustomToast("Successfully followed user!");
+        // Call the batch-processor API
+        const response = await fetch(API_URLS.API_URL + 'batch-processor', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                type: 'social_graph_processor',
+                npub: nip19.npubEncode(pubkey),
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to call batch-processor API');
+        }
     } catch (error) {
-      console.error("Error following user:", error);
-      showCustomToast("Failed to follow user. Please try again.");
+        console.error("Error following user or calling batch-processor API:", error);
+        // Show error message to user
     }
-  };
+};
 
   const showFollowFunctionality = true;
 

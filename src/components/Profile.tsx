@@ -13,6 +13,7 @@ import { fetchMetadataReactionsAndReplies, fetchData } from "../utils/noteUtils"
 import NewMessageDialog from "./NewMessageDialog";
 import { Helmet } from 'react-helmet';
 import { getMetadataFromCache, setMetadataToCache } from "../utils/cachingUtils";
+import { API_URLS } from "../utils/apiConstants";
 
 interface ProfileProps {
     keyValue: string;
@@ -165,14 +166,14 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
 
     const handleFollow = async () => {
         if (!pool) return;
-
+    
         const event = {
             kind: 3,
             created_at: Math.floor(Date.now() / 1000),
             tags: [...followingList.map(pk => ['p', pk]), ['p', pubkey]],
             content: '',
         };
-
+    
         try {
             if (nostrExists) {
                 const signedEvent = await (window as any).nostr.signEvent(event);
@@ -182,12 +183,28 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 const signedEvent = finalizeEvent(event, skDecoded);
                 await pool.publish(RELAYS, signedEvent);
             }
-
+    
             setFollowingList(prevList => [...prevList, pubkey]);
             setIsFollowing(true);
             showCustomToast("Successfully followed user!");
+    
+            // Call the batch-processor API
+            const response = await fetch(API_URLS.API_URL + 'batch-processor', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    type: 'social_graph_processor',
+                    npub: nip19.npubEncode(pubkey),
+                }),
+            });
+    
+            if (!response.ok) {
+                throw new Error('Failed to call batch-processor API');
+            }
         } catch (error) {
-            console.error("Error following user:", error);
+            console.error("Error following user or calling batch-processor API:", error);
             showCustomToast("Failed to follow user. Please try again.");
         }
     };
