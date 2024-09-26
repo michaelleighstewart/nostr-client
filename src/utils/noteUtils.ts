@@ -255,7 +255,13 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                         onEventReceived(extendedEventToAdd);
                                     }
                                     else {
-                                        if (selectedAlgorithm.byoPosts) {
+                                        if (selectedAlgorithm) {
+                                            if (selectedAlgorithm.byoPosts) {
+                                                fetchedEvents.push(extendedEventToAdd);
+                                                onEventReceived(extendedEventToAdd);
+                                            }
+                                        }
+                                        else {
                                             fetchedEvents.push(extendedEventToAdd);
                                             onEventReceived(extendedEventToAdd);
                                         }
@@ -299,7 +305,13 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                                     onEventReceived(extendedEvent)
                                                 }
                                                 else {
-                                                    if (selectedAlgorithm.byoReplies) {
+                                                    if (selectedAlgorithm) {
+                                                        if (selectedAlgorithm.byoReplies) {
+                                                            fetchedEvents.push(extendedEventToAdd);
+                                                            onEventReceived(extendedEvent);
+                                                        }
+                                                    }
+                                                    else {
                                                         fetchedEvents.push(extendedEventToAdd);
                                                         onEventReceived(extendedEvent);
                                                     }
@@ -351,7 +363,14 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
 
                                     }
                                     else {
-                                        if (selectedAlgorithm.byoReposts) {
+                                        if (selectedAlgorithm) {
+                                            if (selectedAlgorithm.byoReposts) {
+                                                repostEvents.push(extendedEventToAdd);
+                                                fetchedEvents.push(extendedEventToAdd);
+                                                onEventReceived(extendedEvent);
+                                            }
+                                        }
+                                        else {
                                             repostEvents.push(extendedEventToAdd);
                                             fetchedEvents.push(extendedEventToAdd);
                                             onEventReceived(extendedEvent);
