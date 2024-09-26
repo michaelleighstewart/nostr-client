@@ -6,7 +6,7 @@ import { useDebounce } from "use-debounce";
 import { bech32Decoder, getBase64, sendMessage } from "../utils/helperFunctions";
 import { ExtendedEvent, Metadata, Reaction, User } from "../utils/interfaces";
 import Loading from "./Loading";
-import { fetchUserMetadata, getFollowing } from "../utils/profileUtils";
+import { fetchUserMetadata } from "../utils/profileUtils";
 import { fetchMetadataReactionsAndReplies, fetchData } from '../utils/noteUtils';
 import Ostrich from "./Ostrich";
 import { showCustomToast } from "./CustomToast";
@@ -164,7 +164,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           //const newFollowing = await getFollowing(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey, null);
           let newFollowing: string[] = [];
           let pk = "";
-          let fetchedFromAPI = false;
           if (props.nostrExists) {
             pk = await (window as any).nostr.getPublicKey()
           }
@@ -177,7 +176,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             const npubEncoded = bech32.encode('npub', npubWords);
             const followingAPI = await fetch(`${API_URLS.API_URL}social-graph?npub=${npubEncoded}&degrees=1`);
             if (followingAPI.ok) {
-              fetchedFromAPI = true;
               const apiData = await followingAPI.json();
               if (apiData && apiData.follows) {
                 const metadataToCache: Record<string, Metadata> = {};
