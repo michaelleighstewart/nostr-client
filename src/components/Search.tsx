@@ -154,10 +154,13 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
   const handleFollow = async (pubkey: string) => {
     if (!pool) return;
 
+    // Convert pubkey from npub to hex format
+    const pkDecoded = nip19.decode(pubkey).data as string;
+
     const event = {
         kind: 3,
         created_at: Math.floor(Date.now() / 1000),
-        tags: [...followingList.map(pk => ['p', pk]), ['p', pubkey]],
+        tags: [...followingList.map(pk => ['p', pk]), ['p', pkDecoded.toString()]],
         content: '',
     };
 
@@ -171,8 +174,12 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
             await pool.publish(RELAYS, signedEvent);
         }
 
-        setFollowingList(prevList => [...prevList, pubkey]);
-        // Update UI to show that the user is now following
+        setFollowingList(prevList => [...prevList, pkDecoded.toString()]);
+        setSearchResults(prevResults =>
+          prevResults.map(result =>
+            result.npub === pubkey ? { ...result, isFollowing: true } : result
+          )
+        );
 
         // Call the batch-processor API
         const response = await fetch(API_URLS.API_URL + 'batch-processor', {
@@ -182,7 +189,7 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
             },
             body: JSON.stringify({
                 type: 'social_graph_processor',
-                npub: nip19.npubEncode(pubkey),
+                npub: pubkey,
             }),
         });
 
