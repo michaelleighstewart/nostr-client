@@ -19,7 +19,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const [error, setError] = useState<string | null>(null);
   const networkRef = useRef<HTMLDivElement>(null);
   const [network, setNetwork] = useState<Network | null>(null);
-  const [graphData, setGraphData] = useState<{ nodes: any; edges: any } | null>(null);
+  const [graphData, setGraphData] = useState<{ nodes: DataSet; edges: DataSet } | null>(null);
   const [followingFollowingData, setFollowingFollowingData] = useState<{[key: string]: string[]}>({});
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [metadata, setMetadata] = useState<{[key: string]: any}>({});
@@ -60,11 +60,13 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           const existingNode = graphData.nodes.get(pubkey);
           if (existingNode) {
             // If the node already exists, just add an edge
-            graphData.edges.add({
-              from: nodeId,
-              to: pubkey,
-              id: nodeId + "-" + pubkey
-            });
+            if (!graphData.edges.get(nodeId + "-" + pubkey)) {
+              graphData.edges.add({
+                from: nodeId,
+                to: pubkey,
+                id: nodeId + "-" + pubkey
+              });
+            }
           } else {
             // If the node doesn't exist, create a new node and edge
             graphData.nodes.add({
@@ -133,14 +135,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         const apiGraphData = await fetchSocialGraphFromAPI(userNpub);
 
         if (apiGraphData) {
-          // If we got data from the API, use it to set up the graph
-          //setFollowingFollowingData(apiGraphData.followingFollowingMap);
-          //setMetadata(apiGraphData.metadata);
-          
-          //const nodes = new DataSet(apiGraphData.nodes);
-          //const edges = new DataSet(apiGraphData.edges);
-
-          //root node
           const nodes = new DataSet();
           const edges = new DataSet();
           const followingFollowingMap: {[key: string]: string[]} = {};
@@ -160,50 +154,48 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
             picture: apiGraphData.user?.picture
           };
 
+          // Add first-order follows
+          for (const follow of apiGraphData.follows) {
+            nodes.add({
+              id: follow.pubkey,
+              label: follow.name || nip19.npubEncode(follow.pubkey).slice(0, 8),
+              shape: 'circularImage',
+              image: follow.picture || 'default-profile-picture.jpg',
+              size: 20,
+              font: { color: 'white' }
+            } as any);
 
-        // Add first-order follows
-        for (const follow of apiGraphData.follows) {
-          nodes.add({
-            id: follow.pubkey,
-            label: follow.name || nip19.npubEncode(follow.pubkey).slice(0, 8),
-            shape: 'circularImage',
-            image: follow.picture || 'default-profile-picture.jpg',
-            size: 20,
-            font: { color: 'white' }
-          } as any);
+            edges.add({
+              id: `${apiGraphData.user.pubkey}-${follow.pubkey}`,
+              from: apiGraphData.user.pubkey,
+              to: follow.pubkey
+            } as any);
 
-          edges.add({
-            id: `${apiGraphData.user.pubkey}-${follow.pubkey}`,
-            from: apiGraphData.user.pubkey,
-            to: follow.pubkey
-          } as any);
+            metadataMap[follow.pubkey] = {
+              name: follow.name,
+              picture: follow.picture
+            };
 
-          metadataMap[follow.pubkey] = {
-            name: follow.name,
-            picture: follow.picture
-          };
+            followingFollowingMap[follow.pubkey] = follow.follows.map((ff: { pubkey: any; }) => ff.pubkey);
+          }
 
-          followingFollowingMap[follow.pubkey] = follow.follows.map((ff: { pubkey: any; }) => ff.pubkey);
-        }
-
-        // Add second-order follows to metadata but not to graph
-        for (const follow of apiGraphData.follows) {
-          for (const followFollow of follow.follows) {
-            if (!metadataMap[followFollow.pubkey]) {
-              metadataMap[followFollow.pubkey] = {
-                name: followFollow.name,
-                picture: followFollow.picture
-              };
+          // Add second-order follows to metadata but not to graph
+          for (const follow of apiGraphData.follows) {
+            for (const followFollow of follow.follows) {
+              if (!metadataMap[followFollow.pubkey]) {
+                metadataMap[followFollow.pubkey] = {
+                  name: followFollow.name,
+                  picture: followFollow.picture
+                };
+              }
             }
           }
-        }
 
-        setFollowingFollowingData(followingFollowingMap);
-        setMetadata(metadataMap);
-        setGraphData({ nodes, edges });
-        setLoading(false);
+          setFollowingFollowingData(followingFollowingMap);
+          setMetadata(metadataMap);
+          setGraphData({ nodes, edges });
+          setLoading(false);
         } else {
-          //console.log("getting following for", keyValue);
           const following = await getFollowing(pool, true, nostrExists ?? false, keyValue ?? "", () => {}, null);
       
           const uniqueFollowing = Array.from(new Set(following));
@@ -211,10 +203,8 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
 
           await Promise.all(
             uniqueFollowing.map(async (pubkey) => {
-              //console.log("getting following following for", pubkey)
               let followers = await getFollowing(pool, true, nostrExists ?? false, keyValue ?? "", () => {}, pubkey);
               console.log("got following following", followers);
-              // Remove the current pubkey from followers
               followers = followers.filter(follower => follower !== pubkey);
               console.log("filtered", followers)
               followingFollowingMap[pubkey] = followers;
@@ -234,7 +224,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
 
           const nodes = new DataSet();
           
-          // Add the user node if it doesn't exist
           if (!nodes.get(userPubkey)) {
             nodes.add({
               id: userPubkey,
@@ -246,7 +235,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
             } as any);
           }
           
-          // Add following nodes if they don't exist
           uniqueFollowing.forEach((pubkey: string) => {
             if (!nodes.get(pubkey)) {
               nodes.add({
@@ -260,8 +248,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
             }
           });
       
-          let edgesSet = uniqueFollowing.map((pubkey: string) => ({ from: userPubkey, to: pubkey, id: `${userPubkey}-${pubkey}` }));
-          console.log("edgesset", edgesSet);
           const edges = new DataSet(
             uniqueFollowing.map((pubkey: string) => ({ from: userPubkey, to: pubkey, id: `${userPubkey}-${pubkey}` }))
           );
@@ -326,14 +312,13 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   
       newNetwork.once("stabilizationIterationsDone", function () {
         newNetwork.setOptions({ physics: { enabled: false } });
-        newNetwork.fit(); // This will zoom to fit all nodes
+        newNetwork.fit();
       });
   
       isNetworkInitialized.current = true;
     }
   }, [graphData]);
   
-  // Add this new useEffect to update the network when graphData changes
   useEffect(() => {
     if (network && graphData && isNetworkInitialized.current) {
       network.setData(graphData);
@@ -351,7 +336,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
 
   const fetchMetadata = async (pubkeys: string[]) => {
     const metadata: { [key: string]: any } = {};
-    const chunkSize = 100; // Adjust this value based on your needs
+    const chunkSize = 100;
   
     const chunks = [];
     for (let i = 0; i < pubkeys.length; i += chunkSize) {
