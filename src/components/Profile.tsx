@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { SimplePool } from "nostr-tools";
-import { useLocation, Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { bech32Decoder } from "../utils/helperFunctions";
 import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";
 import { getPublicKey, finalizeEvent, nip19 } from "nostr-tools";
