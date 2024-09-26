@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { SimplePool, finalizeEvent, getPublicKey, nip19 } from "nostr-tools";
+import { SimplePool, finalizeEvent, nip19 } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import { bech32Decoder } from "../utils/helperFunctions";
 import Loading from "./Loading";
@@ -7,6 +7,7 @@ import { Link, useLocation } from "react-router-dom";
 import { UserCircleIcon, UserPlusIcon, CheckIcon } from '@heroicons/react/24/solid';
 import Ostrich from "./Ostrich";
 import { API_URLS } from "../utils/apiConstants";
+import { getUserPublicKey } from "../utils/profileUtils";
 
 interface PeopleToFollowProps {
     keyValue: string;
@@ -58,20 +59,9 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
         }
     }, [location]);
 
-    async function getCurrentUserPubkey() {
-        if (props.nostrExists) {
-            return await (window as any).nostr.getPublicKey();
-        } else {
-            const sk = props.keyValue;
-            const skDecoded = bech32Decoder('nsec', sk);
-            return getPublicKey(skDecoded);
-        }
-    }
-
     async function fetchFollowingList() {
         if (!props.pool) return;
-
-        const pubkey = await getCurrentUserPubkey();
+        const pubkey = await getUserPublicKey(props.nostrExists ?? false, props.keyValue);
         
         const followingListSubscription = props.pool.subscribeManyEose(
             RELAYS,

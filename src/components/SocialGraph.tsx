@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Network } from 'vis-network';
 import { DataSet } from 'vis-data';
-import { SimplePool, getPublicKey, nip19 } from 'nostr-tools';
+import { SimplePool, nip19 } from 'nostr-tools';
 import Loading from './Loading';
-import { getFollowing } from '../utils/profileUtils';
-import { bech32Decoder } from '../utils/helperFunctions';
+import { getFollowing, getUserPublicKey } from '../utils/profileUtils';
 import { RELAYS } from '../utils/constants';
 import { API_URLS } from '../utils/apiConstants';
 
@@ -133,7 +132,8 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       const followingFollowingMap: {[key: string]: string[]} = {};
     
       try {
-        const userPubkey = await getCurrentUserPubkey();
+        //const userPubkey = await getCurrentUserPubkey();
+        const userPubkey = await getUserPublicKey(nostrExists ?? false, keyValue)
         const userNpub = nip19.npubEncode(userPubkey);
 
         const apiGraphData = await fetchSocialGraphFromAPI(userNpub);
@@ -328,15 +328,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       network.setData(graphData);
     }
   }, [network, graphData]);
-
-  const getCurrentUserPubkey = async () => {
-    if (nostrExists) {
-      return await (window as any).nostr.getPublicKey();
-    } else {
-      const skDecoded = bech32Decoder('nsec', keyValue);
-      return getPublicKey(skDecoded);
-    }
-  };
 
   const fetchMetadata = async (pubkeys: string[]) => {
     const metadata: { [key: string]: any } = {};

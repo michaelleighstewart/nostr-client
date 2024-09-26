@@ -5,6 +5,7 @@ import Loading from './Loading';
 import { API_URLS } from '../utils/apiConstants';
 import { showCustomToast } from "./CustomToast";
 import { createAuthHeader } from '../utils/authUtils';
+import { getUserPublicKey } from '../utils/profileUtils';
 
 interface BYOAlgorithmProps {
   keyValue: string;
@@ -31,14 +32,8 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
 
   useEffect(() => {
     const fetchUserPublicKey = async () => {
-      if (nostrExists) {
-        const pubkey = await (window as any).nostr.getPublicKey();
-        setUserPublicKey(pubkey);
-      } else if (keyValue) {
-        const skDecoded = bech32Decoder('nsec', keyValue);
-        const pubkey = getPublicKey(skDecoded);
-        setUserPublicKey(pubkey);
-      }
+      const pubkey = await getUserPublicKey(nostrExists ?? false, keyValue);
+      setUserPublicKey(pubkey)
       setLoading(false);
     };
 

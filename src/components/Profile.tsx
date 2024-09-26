@@ -36,7 +36,6 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
     const [replies, setReplies] = useState<Record<string, ExtendedEvent[]>>({});
     const [reposts, setReposts] = useState<Record<string, ExtendedEvent[]>>({});
-    //const location = useLocation();
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [loadingProfile, setLoadingProfile] = useState(true);
     const [loadingPosts, setLoadingPosts] = useState(true);
@@ -109,16 +108,12 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 fetchedPubkey = getPublicKey(skDecoded);
             }
             setPubkey(fetchedPubkey);
-        
-            // Get current user's pubkey
             if (nostrExists) {
                 currentUserPubkey = await (window as any).nostr.getPublicKey();
             } else {
                 const skDecoded = bech32Decoder("nsec", keyValue);
                 currentUserPubkey = getPublicKey(skDecoded);
             }
-        
-            // Fetch following list
             const followEvents = await pool.querySync(
                 RELAYS,
                 { kinds: [3], authors: [currentUserPubkey] }
@@ -151,8 +146,6 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 }
                 setLoadingProfile(false);
             }
-        
-            // Fetch notes
             const filter = { kinds: [1, 5, 6], authors: [fetchedPubkey], limit: 10 };
             await fetchData(pool, 0, false, 0, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
                 setLoading, setLoadingMore, setError, () => {}, [], repostEvents, replyEvents, setLastFetchedTimestamp, 
@@ -165,7 +158,8 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
 
     useEffect(() => {
         if (!pool || streamedEvents.length === 0) return;
-        fetchMetadataReactionsAndReplies(pool, streamedEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
+        fetchMetadataReactionsAndReplies(pool, streamedEvents, repostEvents, replyEvents, setMetadata, setReactions, 
+            setReplies, setReposts);
     }, [pool, streamedEvents]);
 
 
@@ -219,8 +213,6 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
         
         setLoadingMore(false);
     };
-
-    // Sort posts and reposts by date
     const sortedPosts = [...streamedEvents].sort((a, b) => {
         const dateA = a.repostedEvent ? a.repostedEvent.created_at : a.created_at;
         const dateB = b.repostedEvent ? b.repostedEvent.created_at : b.created_at;

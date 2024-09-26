@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import Loading from "./Loading";
 import { showCustomToast } from "./CustomToast";
 import { API_URLS } from "../utils/apiConstants";
+import { getUserPublicKey } from "../utils/profileUtils";
 
 interface EditProfileProps {
     keyValue: string;
@@ -34,16 +35,8 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
         setLoading(true);
         const fetchData = async() => {
             let authors = [];
-            if (props.nostrExists) {
-                let pk = await (window as any).nostr.getPublicKey();
-                authors.push(pk);
-            }
-            else {
-                let sk = props.keyValue;
-                let skDecoded = bech32Decoder('nsec', sk);
-                let pk = getPublicKey(skDecoded);
-                authors.push(pk);
-            }
+            let pk = await getUserPublicKey(props.nostrExists ?? false, props.keyValue);
+            authors.push(pk);
             const subMeta = props.pool?.subscribeMany(RELAYS, [
                 {
                 kinds: [0],
