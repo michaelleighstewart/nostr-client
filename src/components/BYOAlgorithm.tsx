@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SimplePool, getPublicKey } from 'nostr-tools';
-import { bech32Decoder } from '../utils/helperFunctions';
+import { SimplePool } from 'nostr-tools';
 import Loading from './Loading';
 import { API_URLS } from '../utils/apiConstants';
 import { showCustomToast } from "./CustomToast";
