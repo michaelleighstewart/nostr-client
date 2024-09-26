@@ -1,12 +1,12 @@
 import '../App.css';
-import { getPublicKey, SimplePool } from "nostr-tools";
+import { SimplePool } from "nostr-tools";
 import { useState, useEffect, useRef, useCallback } from "react";
 import NotesList from "./NotesList";
 import { useDebounce } from "use-debounce";
-import { bech32Decoder, getBase64, sendMessage } from "../utils/helperFunctions";
+import { getBase64, sendMessage } from "../utils/helperFunctions";
 import { ExtendedEvent, Metadata, Reaction, User } from "../utils/interfaces";
 import Loading from "./Loading";
-import { fetchUserMetadata, getFollowing } from "../utils/profileUtils";
+import { fetchUserMetadata, getFollowing, getUserPublicKey } from "../utils/profileUtils";
 import { fetchMetadataReactionsAndReplies, fetchData } from '../utils/noteUtils';
 import Ostrich from "./Ostrich";
 import { showCustomToast } from "./CustomToast";
@@ -58,8 +58,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [byoAlgo, setByoAlgo] = useState<any[]>([]);
     const [selectedAlgorithm, setSelectedAlgorithm] = useState<any | null>(null);
 
-    //const lastProcessedEventIndex = useRef(-1);
-
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
       setStreamedEvents(prev => {
         if (prev.some(e => e.id === event.id)) {
@@ -73,7 +71,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       const pubkeysToFetch = [event.pubkey];
 
       if (props.pool) {
-        //fetchMetadataReactionsAndReplies(props.pool, [event], repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
         fetchMetadataReactionsAndReplies(props.pool, [event], event.repostedEvent ? [event.repostedEvent] : [], 
           event.repliedEvent ? [event.repliedEvent] : [], setMetadata, setReactions, setReplies, setReposts);
       }
@@ -113,8 +110,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     useEffect(() => {
       const timer = setInterval(() => {
         setStreamedEvents(prev => [...prev].sort((a, b) => b.created_at - a.created_at));
-      }, 1000); // Sort every second
-    
+      }, 1000);
       return () => clearInterval(timer);
     }, []);
 
@@ -125,53 +121,37 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const fetchFollowersAndData = useCallback(async () => {
       if (!props.pool) return;
       let setAlgo = false;
-              // Fetch BYO algorithms
-              if (props.keyValue) {
-                let pk = "";
-                if (props.nostrExists) {
-                  pk = await (window as any).nostr.getPublicKey()
-                }
-                else {
-                  let skDecoded = bech32Decoder('nsec', props.keyValue);
-                  pk = getPublicKey(skDecoded);
-                }
-                setUserPublicKey(pk);
-                try {
-                  const authHeader = await createAuthHeader('GET', '/byo-algo', props.nostrExists ?? false, props.keyValue ?? "");
-                  const response = await fetch(`${API_URLS.API_URL}byo-algo?userId=${pk}`,
-                    {
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + authHeader,
-                      },
-                    }
-                  );
-                  if (response.ok) {
-                    const data = await response.json();
-                    setByoAlgo(data.algos);
-                    if (selectedAlgorithm === null) {
-                      setSelectedAlgorithm(data.algos[0]);
-                      setAlgo = true;
-                    }
-                  }
-                } catch (error) {
-                  console.error("Error fetching BYO algorithms:", error);
-                }
-              }
+      // Fetch BYO algorithms
+      if (props.keyValue) {
+        const pk = await getUserPublicKey(props.nostrExists ?? false, props.keyValue ?? null);
+        setUserPublicKey(pk);
+        try {
+          const authHeader = await createAuthHeader('GET', '/byo-algo', props.nostrExists ?? false, props.keyValue ?? "");
+          const response = await fetch(`${API_URLS.API_URL}byo-algo?userId=${pk}`,
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + authHeader,
+              },
+            }
+          );
+          if (response.ok) {
+            const data = await response.json();
+            setByoAlgo(data.algos);
+            if (selectedAlgorithm === null) {
+              setSelectedAlgorithm(data.algos[0]);
+              setAlgo = true;
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching BYO algorithms:", error);
+        }
+      }
       if (!setAlgo) {
         setLoading(true);
-        
         try {
-          //const newFollowing = await getFollowing(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey, null);
           let newFollowing: string[] = [];
-          let pk = "";
-          if (props.nostrExists) {
-            pk = await (window as any).nostr.getPublicKey()
-          }
-          else {
-            let skDecoded = bech32Decoder('nsec', props.keyValue);
-            pk = getPublicKey(skDecoded);
-          }
+         const pk = await getUserPublicKey(props.nostrExists ?? false, props.keyValue);
           try {
             const npubWords = bech32.toWords(new Uint8Array(pk.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
             const npubEncoded = bech32.encode('npub', npubWords);
@@ -187,17 +167,14 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                     about: follow.about
                   };
                 });
-                // Add the user's own metadata
                 metadataToCache[pk] = {
                   name: apiData.user.name,
                   picture: apiData.user.picture,
                   about: apiData.user.about
                 };
-                // Cache all the metadata
                 Object.entries(metadataToCache).forEach(([pubkey, metadata]) => {
                   setMetadataToCache(pubkey, metadata);
                 });
-                // Update the following list
                 newFollowing = apiData.follows.map((follow: any) => follow.pubkey);
               }
               else {
@@ -209,26 +186,16 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             }
           }
           catch {}
-
-
           try {
             if (props.keyValue) {
-              //let skDecoded = bech32Decoder('nsec', props.keyValue);
-              //let pk = getPublicKey(skDecoded);
               if (!newFollowing.includes(pk)) newFollowing.push(pk);
             }
           } catch (error) {}
           setFollowers(newFollowing);
-      
           const oneWeekAgo = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
-          //let filter = isLoggedIn
-          //  ? { kinds: [1, 5, 6], authors: newFollowers, limit: 10, since: oneWeekAgo }
-          //  : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
-          //let filter = { id: '9e2b9f66a4af0035b0a447e33a348790ec2d95defb3f385fea67037fff73b24a'};
           let filter = isLoggedIn
           ? await constructFilterFromBYOAlgo(selectedAlgorithm, newFollowing, oneWeekAgo, props.pool)
           : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
-          console.log("fetching data for 1", filter)
           const fetchedEvents = await fetchData(props.pool, 0, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
             setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
             setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived, selectedAlgorithm);
@@ -240,7 +207,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           setInitialLoadComplete(true);
         } catch (error) {
           console.error("Error fetching data:", error);
-          setError("Failed to load data. Please try again.");
+          //setError("Failed to load data. Please try again.");
         } finally {
           setLoading(false);
         }
@@ -266,8 +233,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       let filter = isLoggedIn
         ? { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, authors: followers, limit: 10, until: lastFetchedTimestamp }
         : { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, limit: 10, until: lastFetchedTimestamp };
-    
-      console.log("Fetching data for 2", filter)
+
       const fetchedEvents = await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
         setLoading, setLoadingMore, setError, setStreamedEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, 
         setInitialLoadComplete, filter, handleEventReceived, selectedAlgorithm);
@@ -519,8 +485,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 }}
                 className={`px-32 py-2 mx-8 -mb-px ${
                   selectedAlgorithm?.algoId === algo.algoId
-                    ? 'bg-[#242424] border-t border-l border-r border-blue-500 text-white rounded-t-md' // Active tab with raised effect
-                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white rounded-t-md border-transparent' // Inactive tabs with flat appearance
+                    ? 'bg-[#242424] border-t border-l border-r border-blue-500 text-white rounded-t-md'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white rounded-t-md border-transparent'
                 }`}
               >
                 {algo.name || 'Algorithm'}

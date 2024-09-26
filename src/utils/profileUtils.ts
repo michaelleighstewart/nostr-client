@@ -4,6 +4,16 @@ import { RELAYS } from "./constants";
 import { Metadata } from "./interfaces";
 import { getMetadataFromCache, setMetadataToCache } from './cachingUtils';
 
+export async function getUserPublicKey(nostrExists: boolean, keyValue: string | null): Promise<string> {
+  if (nostrExists) {
+    return await (window as any).nostr.getPublicKey();
+  } else if (keyValue) {
+    const skDecoded = bech32Decoder('nsec', keyValue);
+    return getPublicKey(skDecoded);
+  }
+  throw new Error("Unable to get user public key");
+}
+
 export const getFollowing = async (pool: SimplePool, isLoggedIn: boolean, nostrExists: boolean | null, keyValue: string | null, 
   setUserPublicKey: (pk: string) => void, publicKeyOverride: string | null): Promise<string[]> => {
     if (!isLoggedIn) return [];
