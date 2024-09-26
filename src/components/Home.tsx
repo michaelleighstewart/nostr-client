@@ -6,7 +6,7 @@ import { useDebounce } from "use-debounce";
 import { bech32Decoder, getBase64, sendMessage } from "../utils/helperFunctions";
 import { ExtendedEvent, Metadata, Reaction, User } from "../utils/interfaces";
 import Loading from "./Loading";
-import { fetchUserMetadata } from "../utils/profileUtils";
+import { fetchUserMetadata, getFollowing } from "../utils/profileUtils";
 import { fetchMetadataReactionsAndReplies, fetchData } from '../utils/noteUtils';
 import Ostrich from "./Ostrich";
 import { showCustomToast } from "./CustomToast";
@@ -135,6 +135,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                   let skDecoded = bech32Decoder('nsec', props.keyValue);
                   pk = getPublicKey(skDecoded);
                 }
+                setUserPublicKey(pk);
                 try {
                   const authHeader = await createAuthHeader('GET', '/byo-algo', props.nostrExists ?? false, props.keyValue ?? "");
                   const response = await fetch(`${API_URLS.API_URL}byo-algo?userId=${pk}`,
@@ -177,7 +178,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             const followingAPI = await fetch(`${API_URLS.API_URL}social-graph?npub=${npubEncoded}&degrees=1`);
             if (followingAPI.ok) {
               const apiData = await followingAPI.json();
-              if (apiData && apiData.follows) {
+              if (apiData && apiData.follows && apiData.follows.length > 0) {
                 const metadataToCache: Record<string, Metadata> = {};
                 apiData.follows.forEach((follow: any) => {
                   metadataToCache[follow.pubkey] = {
@@ -199,6 +200,12 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 // Update the following list
                 newFollowing = apiData.follows.map((follow: any) => follow.pubkey);
               }
+              else {
+                newFollowing = await getFollowing(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey, null);
+              }
+            }
+            else {
+              newFollowing = await getFollowing(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey, null);
             }
           }
           catch {}
