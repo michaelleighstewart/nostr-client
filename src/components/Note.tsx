@@ -37,7 +37,6 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   const [allReactions, setAllReactions] = useState<Record<string, Reaction[]>>({});
   const [allReplies, setAllReplies] = useState<Record<string, ExtendedEvent[]>>({});
   const [allReposts, setAllReposts] = useState<Record<string, ExtendedEvent[]>>({});
-  
 
   useEffect(() => {
     if (!pool || !id) return;
@@ -262,12 +261,8 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
     }
   };
 
-  if (loading) {
+  if (loading || !post) {
     return <div className="h-screen"><Loading vCentered={false} /></div>;
-  }
-
-  if (!post) {
-    return <div>Post not found</div>;
   }
 
   const title = `Note by ${metadata[post.pubkey]?.name || post.pubkey.slice(0, 8)} on Ghostcopywrite`;
