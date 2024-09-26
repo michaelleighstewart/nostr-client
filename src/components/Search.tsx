@@ -5,7 +5,6 @@ import { RELAYS } from '../utils/constants';
 import { UserCircleIcon } from '@heroicons/react/24/solid';
 import { UserPlusIcon, CheckIcon } from '@heroicons/react/24/outline';
 import Loading from './Loading';
-import { showCustomToast } from './CustomToast';
 import { bech32Decoder } from '../utils/helperFunctions';
 import { API_URLS } from '../utils/apiConstants';
 
@@ -243,7 +242,7 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
               </Link>
               {showFollowFunctionality && (
               <button
-                onClick={() => handleFollow(result.npub, result.name || 'Unknown')}
+                onClick={() => handleFollow(result.npub)}
                 className={`mt-4 flex items-center justify-center px-8 py-2 text-white rounded ${
                   result.isFollowing ? 'bg-green-500' : 'bg-[#535bf2]-500'
                 }`}
