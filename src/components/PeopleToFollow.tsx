@@ -42,6 +42,8 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     const [showOstrich, setShowOstrich] = useState(false);
     const location = useLocation();
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
+    const poolRef = useRef(props.pool);
+    const keyValueRef = useRef(props.keyValue);
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -60,10 +62,10 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     }, [location]);
 
     async function fetchFollowingList() {
-        if (!props.pool) return;
-        const pubkey = await getUserPublicKey(props.nostrExists ?? false, props.keyValue);
+        if (!poolRef.current) return;
+        const pubkey = await getUserPublicKey(props.nostrExists ?? false, keyValueRef.current);
         
-        const followingListSubscription = props.pool.subscribeManyEose(
+        const followingListSubscription = poolRef.current.subscribeManyEose(
             RELAYS,
             [{ kinds: [3], authors: [pubkey] }],
             {
@@ -78,7 +80,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                 }
             }
         );
-
+    
         return () => {
             followingListSubscription?.close();
         };
@@ -126,12 +128,12 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     }, [metadata]);
 
     async function setupFollowingList() {
-        if (!props.pool) return;
-
+        if (!poolRef.current) return;
+    
         setPeopleToFollow([]);
         setSearchingPeople(true);
         
-        const peopleSubscription = props.pool.subscribeManyEose(RELAYS, 
+        const peopleSubscription = poolRef.current.subscribeManyEose(RELAYS, 
             [{ kinds: [1], limit: 5, '#t': [selectedHashtag] }],
             {
                 onevent(event) {
@@ -153,16 +155,18 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                 }
             }
         );
-
+    
         return () => {
             peopleSubscription?.close();
         };
     }
 
     useEffect(() => {
+        poolRef.current = props.pool;
+        keyValueRef.current = props.keyValue;
         setupFollowingList();
         fetchFollowingList();
-    }, [selectedHashtag, props.pool, props.keyValue, props.nostrExists]);
+    }, [selectedHashtag, props.nostrExists]);
 
     useEffect(() => {
         const timer = setInterval(() => {

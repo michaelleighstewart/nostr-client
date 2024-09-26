@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { RELAYS } from '../utils/constants';
 import { bech32Decoder } from '../utils/helperFunctions';
 import Loading from './Loading';
 import { SimplePool, Event, getPublicKey, SubCloser } from 'nostr-tools';
 import NewMessageDialog from './NewMessageDialog';
+import { getMetadataFromCache, setMetadataToCache } from '../utils/cachingUtils';
 
 interface MessagesProps {
   keyValue: string;
@@ -28,8 +29,13 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const subscriptionMap = new Map<string, SubCloser>(); // To store subscriptions
+  const poolRef = useRef(pool);
+  const keyValueRef = useRef(keyValue);
 
   useEffect(() => {
+    poolRef.current = pool;
+    keyValueRef.current = keyValue;
+
     const fetchMessages = async () => {
       if (!pool) return;
 
@@ -108,37 +114,53 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
     };
 
     fetchMessages();
-  }, [keyValue, pool, nostrExists]);
+  }, [nostrExists]);
+
+
+  useEffect(() => {
+    messageGroups.forEach(group => {
+      if (!group.userInfo) {
+        fetchUserMetadata(group.pubkey);
+      }
+    });
+  }, [messageGroups]);
 
   const fetchUserMetadata = async (pubkey: string) => {
     if (!pool) return;
-
+    
+    // Check cache first
+    const cachedMetadata = getMetadataFromCache(pubkey);
+    if (cachedMetadata) {
+      const userInfo: UserInfo = {
+        name: cachedMetadata.name || '',
+        picture: cachedMetadata.picture || '',
+      };
+      updateMessageGroupsWithUserInfo(pubkey, userInfo);
+      return;
+    }
+  
     const metadata = await pool.querySync(RELAYS, {
       kinds: [0],
       authors: [pubkey],
     });
-
+  
     if (metadata && metadata.length > 0) {
       const content = JSON.parse(metadata[0].content);
-      setMessageGroups((prevGroups) => {
-        const groupIndex = prevGroups.findIndex(group => group.pubkey === pubkey);
-        if (groupIndex > -1) {
-          const updatedGroup = {
-            ...prevGroups[groupIndex],
-            userInfo: {
-              name: content.name || '',
-              picture: content.picture || '',
-            },
-          };
-          return [
-            ...prevGroups.slice(0, groupIndex),
-            updatedGroup,
-            ...prevGroups.slice(groupIndex + 1),
-          ];
-        }
-        return prevGroups;
-      });
+      const userInfo = {
+        name: content.name || '',
+        picture: content.picture || '',
+      };
+      setMetadataToCache(pubkey, userInfo);
+      updateMessageGroupsWithUserInfo(pubkey, userInfo);
     }
+  };
+
+  const updateMessageGroupsWithUserInfo = (pubkey: string, userInfo: UserInfo) => {
+    setMessageGroups((prevGroups) => {
+      return prevGroups.map(group => 
+        group.pubkey === pubkey ? { ...group, userInfo } : group
+      );
+    });
   };
 
   if (loading) return <div className="h-screen"><Loading vCentered={false} /></div>;
