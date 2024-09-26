@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { SimplePool, Event, nip19 } from "nostr-tools";
 import { useParams, Link } from "react-router-dom";
 import { RELAYS } from "../utils/constants";
@@ -26,6 +26,7 @@ const Following: React.FC<FollowingProps> = ({ pool }) => {
     const [loading, setLoading] = useState(true);
     const [userMetadata, setUserMetadata] = useState<UserMetadata>({});
     const { npub } = useParams<{ npub: string }>();
+    const poolRef = useRef(pool);
 
     useEffect(() => {
         const fetchUserMetadata = async () => {
@@ -58,6 +59,7 @@ const Following: React.FC<FollowingProps> = ({ pool }) => {
             }
         };
 
+        poolRef.current = pool;
         const fetchFollowing = async () => {
             setLoading(true);
             if (!pool || !npub) return;
@@ -124,7 +126,7 @@ const Following: React.FC<FollowingProps> = ({ pool }) => {
 
         fetchUserMetadata();
         fetchFollowing();
-    }, [pool, npub]);
+    }, []);
 
     if (loading) {
         return <div className="h-screen"><Loading vCentered={false} /></div>;

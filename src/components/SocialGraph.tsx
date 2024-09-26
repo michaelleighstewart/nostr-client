@@ -27,6 +27,8 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const [totalUsers, setTotalUsers] = useState<number>(0);
 
   const isNetworkInitialized = useRef(false);
+  const poolRef = useRef(pool);
+  const keyValueRef = useRef(keyValue);
 
   const fetchSocialGraphFromAPI = async (npub: string) => {
     try {
@@ -119,6 +121,8 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   }, [network, graphData, handleClick]);
 
   useEffect(() => {
+    poolRef.current = pool;
+    keyValueRef.current = keyValue;
     const fetchData = async () => {
       if (!pool) {
         setError('Pool is not initialized');

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { SimplePool } from "nostr-tools";
 import { useLocation, Link, useParams } from "react-router-dom";
 import { bech32Decoder } from "../utils/helperFunctions";
@@ -36,7 +36,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
     const [replies, setReplies] = useState<Record<string, ExtendedEvent[]>>({});
     const [reposts, setReposts] = useState<Record<string, ExtendedEvent[]>>({});
-    const location = useLocation();
+    //const location = useLocation();
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [loadingProfile, setLoadingProfile] = useState(true);
     const [loadingPosts, setLoadingPosts] = useState(true);
@@ -53,6 +53,8 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [npubFromUrl, setNpubFromUrl] = useState<string | undefined>(undefined);
+    const poolRef = useRef(pool);
+    const keyValueRef = useRef(keyValue);
 
     const { npub } = useParams<{ npub: string }>();
 
@@ -77,6 +79,8 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     }, []);
 
     useEffect(() => {
+        poolRef.current = pool;
+        keyValueRef.current = keyValue;
         const fetchProfileData = async () => {
             setLoadingProfile(true);
             setProfileData(null);
@@ -157,7 +161,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
         };
 
         fetchProfileData();
-    }, [pool, npub, keyValue, nostrExists, location.search]);
+    }, [nostrExists]);
 
     useEffect(() => {
         if (!pool || streamedEvents.length === 0) return;
