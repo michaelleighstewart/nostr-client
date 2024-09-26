@@ -19,6 +19,7 @@ import { debounce } from 'lodash';
 import { API_URLS } from '../utils/apiConstants';
 import { constructFilterFromBYOAlgo } from '../utils/algoUtils';
 import { createAuthHeader } from '../utils/authUtils';
+import { bech32 } from 'bech32';
 
 interface HomeProps {
   keyValue: string;
@@ -160,11 +161,55 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         setLoading(true);
         
         try {
-          const newFollowing = await getFollowing(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey, null);
+          //const newFollowing = await getFollowing(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey, null);
+          let newFollowing: string[] = [];
+          let pk = "";
+          let fetchedFromAPI = false;
+          if (props.nostrExists) {
+            pk = await (window as any).nostr.getPublicKey()
+          }
+          else {
+            let skDecoded = bech32Decoder('nsec', props.keyValue);
+            pk = getPublicKey(skDecoded);
+          }
+          try {
+            const npubWords = bech32.toWords(new Uint8Array(pk.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
+            const npubEncoded = bech32.encode('npub', npubWords);
+            const followingAPI = await fetch(`${API_URLS.API_URL}social-graph?npub=${npubEncoded}&degrees=1`);
+            if (followingAPI.ok) {
+              fetchedFromAPI = true;
+              const apiData = await followingAPI.json();
+              if (apiData && apiData.follows) {
+                const metadataToCache: Record<string, Metadata> = {};
+                apiData.follows.forEach((follow: any) => {
+                  metadataToCache[follow.pubkey] = {
+                    name: follow.name,
+                    picture: follow.picture,
+                    about: follow.about
+                  };
+                });
+                // Add the user's own metadata
+                metadataToCache[pk] = {
+                  name: apiData.user.name,
+                  picture: apiData.user.picture,
+                  about: apiData.user.about
+                };
+                // Cache all the metadata
+                Object.entries(metadataToCache).forEach(([pubkey, metadata]) => {
+                  setMetadataToCache(pubkey, metadata);
+                });
+                // Update the following list
+                newFollowing = apiData.follows.map((follow: any) => follow.pubkey);
+              }
+            }
+          }
+          catch {}
+
+
           try {
             if (props.keyValue) {
-              let skDecoded = bech32Decoder('nsec', props.keyValue);
-              let pk = getPublicKey(skDecoded);
+              //let skDecoded = bech32Decoder('nsec', props.keyValue);
+              //let pk = getPublicKey(skDecoded);
               if (!newFollowing.includes(pk)) newFollowing.push(pk);
             }
           } catch (error) {}
@@ -178,7 +223,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           let filter = isLoggedIn
           ? await constructFilterFromBYOAlgo(selectedAlgorithm, newFollowing, oneWeekAgo, props.pool)
           : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
-          
+          console.log("fetching data for 1", filter)
           const fetchedEvents = await fetchData(props.pool, 0, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
             setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
             setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived, selectedAlgorithm);
@@ -217,6 +262,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         ? { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, authors: followers, limit: 10, until: lastFetchedTimestamp }
         : { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, limit: 10, until: lastFetchedTimestamp };
     
+      console.log("Fetching data for 2", filter)
       const fetchedEvents = await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
         setLoading, setLoadingMore, setError, setStreamedEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, 
         setInitialLoadComplete, filter, handleEventReceived, selectedAlgorithm);
