@@ -1,6 +1,6 @@
 import '../App.css';
 import { SimplePool } from "nostr-tools";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import NotesList from "./NotesList";
 import { useDebounce } from "use-debounce";
 import { getBase64, sendMessage } from "../utils/helperFunctions";
@@ -42,7 +42,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [error, setError] = useState<string | null>(null);
     const [posting, setPosting] = useState(false);
     const [message, setMessage] = useState('');
-    const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(props.nostrExists || !!props.keyValue);
     const [lastFetchedTimestamp, setLastFetchedTimestamp] = useState<number>(Math.floor(Date.now() / 1000));
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
     const [showOstrich, setShowOstrich] = useState(false);
@@ -57,6 +56,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [_hasNotes, setHasNotes] = useState(false);
     const [byoAlgo, setByoAlgo] = useState<any[]>([]);
     const [selectedAlgorithm, setSelectedAlgorithm] = useState<any | null>(null);
+    const isLoggedIn = useMemo(() => props.nostrExists || !!props.keyValue, [props.nostrExists, props.keyValue]);
+    const keyValueRef = useRef<string | null>(null);
 
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
       setStreamedEvents(prev => {
@@ -114,19 +115,15 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       return () => clearInterval(timer);
     }, []);
 
-    useEffect(() => {
-      setIsLoggedIn(props.nostrExists || !!props.keyValue);
-    }, [props.nostrExists, props.keyValue, loadingMore]);
-
     const fetchFollowersAndData = useCallback(async () => {
-      if (!props.pool) return;
+      if (!props.pool || !keyValueRef.current || initialLoadComplete) return;
       let setAlgo = false;
       // Fetch BYO algorithms
-      if (props.keyValue) {
-        const pk = await getUserPublicKey(props.nostrExists ?? false, props.keyValue ?? null);
+      if (keyValueRef.current) {
+        const pk = await getUserPublicKey(props.nostrExists ?? false, keyValueRef.current);
         setUserPublicKey(pk);
         try {
-          const authHeader = await createAuthHeader('GET', '/byo-algo', props.nostrExists ?? false, props.keyValue ?? "");
+          const authHeader = await createAuthHeader('GET', '/byo-algo', props.nostrExists ?? false, keyValueRef.current);
           const response = await fetch(`${API_URLS.API_URL}byo-algo?userId=${pk}`,
             {
               headers: {
@@ -151,7 +148,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         setLoading(true);
         try {
           let newFollowing: string[] = [];
-         const pk = await getUserPublicKey(props.nostrExists ?? false, props.keyValue);
+          const pk = await getUserPublicKey(props.nostrExists ?? false, keyValueRef.current);
           try {
             const npubWords = bech32.toWords(new Uint8Array(pk.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
             const npubEncoded = bech32.encode('npub', npubWords);
@@ -178,25 +175,25 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 newFollowing = apiData.follows.map((follow: any) => follow.pubkey);
               }
               else {
-                newFollowing = await getFollowing(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey, null);
+                newFollowing = await getFollowing(props.pool, isLoggedIn, props.nostrExists ?? false, keyValueRef.current, setUserPublicKey, null);
               }
             }
             else {
-              newFollowing = await getFollowing(props.pool, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "", setUserPublicKey, null);
+              newFollowing = await getFollowing(props.pool, isLoggedIn, props.nostrExists ?? false, keyValueRef.current, setUserPublicKey, null);
             }
           }
           catch {}
           try {
-            if (props.keyValue) {
+            if (keyValueRef.current) {
               if (!newFollowing.includes(pk)) newFollowing.push(pk);
             }
           } catch (error) {}
           setFollowers(newFollowing);
           const oneWeekAgo = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
           let filter = isLoggedIn
-          ? await constructFilterFromBYOAlgo(selectedAlgorithm, newFollowing, oneWeekAgo, props.pool)
-          : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
-          const fetchedEvents = await fetchData(props.pool, 0, false, 0, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
+            ? await constructFilterFromBYOAlgo(selectedAlgorithm, newFollowing, oneWeekAgo, props.pool)
+            : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
+          const fetchedEvents = await fetchData(props.pool, 0, false, 0, isLoggedIn, props.nostrExists ?? false, keyValueRef.current,
             setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
             setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived, selectedAlgorithm);
           
@@ -207,24 +204,22 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           setInitialLoadComplete(true);
         } catch (error) {
           console.error("Error fetching data:", error);
-          //setError("Failed to load data. Please try again.");
         } finally {
           setLoading(false);
         }
       }
-    }, [props.pool, props.keyValue, props.nostrExists, isLoggedIn, userPublicKey, handleEventReceived, streamedEvents, selectedAlgorithm]);
-
-    useEffect(() => {
-      fetchFollowersAndData();
-    }, []);
+    }, [props.pool, props.nostrExists, isLoggedIn, selectedAlgorithm, initialLoadComplete]);
 
     useEffect(() => {
       fetchUserMetadata(props.pool, userPublicKey ?? "", setShowOstrich, setMetadata);
     }, [userPublicKey]);
 
     useEffect(() => {
-      fetchFollowersAndData();
-    }, [selectedAlgorithm]);
+      if (props.pool && (props.nostrExists || props.keyValue) && !initialLoadComplete) {
+        keyValueRef.current = props.keyValue;
+        fetchFollowersAndData();
+      }
+    }, [props.pool, props.nostrExists, props.keyValue, initialLoadComplete, fetchFollowersAndData]);
 
     const debouncedLoadMore = debounce(async () => {
       if (!props.pool) return;
