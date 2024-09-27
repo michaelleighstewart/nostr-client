@@ -7,6 +7,21 @@ import { getFollowing, getUserPublicKey } from '../utils/profileUtils';
 import { RELAYS } from '../utils/constants';
 import { API_URLS } from '../utils/apiConstants';
 
+/*const removeSecondDegreeFollows = (graphData: { nodes: DataSet<any>; edges: DataSet<any> }, clickedNodeId: string) => {
+  const nodesToRemove: any[] = [];
+  const edgesToRemove: any[] = [];
+
+  graphData.edges.forEach((edge) => {
+    if (edge.from === clickedNodeId) {
+      nodesToRemove.push(edge.to);
+      edgesToRemove.push(edge.id);
+    }
+  });
+
+  graphData.nodes.remove(nodesToRemove);
+  graphData.edges.remove(edgesToRemove);
+};*/
+
 interface SocialGraphProps {
   keyValue: string;
   pool: SimplePool | null;
@@ -28,31 +43,112 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const isNetworkInitialized = useRef(false);
   const poolRef = useRef(pool);
   const keyValueRef = useRef(keyValue);
-
-  const fetchSocialGraphFromAPI = async (npub: string) => {
+  const handleNodeClick = async (nodeId: string) => {
+    const pk = await getUserPublicKey(nostrExists ?? false, keyValue);
+    if (nodeId === (await pk).toString()) return; // Don't fetch for the user's own node
+  
+    const nodeNpub = nip19.npubEncode(nodeId);
     try {
-      const response = await fetch(`${API_URLS.API_URL}social-graph?npub=${npub}&degrees=2`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          return null; // Graph not found, we'll generate it on the fly
-        }
-        throw new Error('Failed to fetch social graph');
+      const apiGraphData = await fetchSocialGraphFromAPI(nodeNpub, 1);
+      if (apiGraphData) {
+        updateGraphWithNewData(apiGraphData, nodeId);
       }
-      return await response.json();
     } catch (error) {
-      console.error('Error fetching social graph:', error);
-      return null;
+      console.error('Error fetching data for clicked node:', error);
+      // Optionally, show an error message to the user
     }
+  };
+
+  const updateGraphWithNewData = (apiGraphData: any, clickedNodeId: string) => {
+    if (!graphData) return;
+
+    const updatedNodes = new DataSet(graphData.nodes.get());
+    const updatedEdges = new DataSet(graphData.edges.get());
+
+    // Check if the clicked node is a second-degree follow
+    const isSecondDegreeFollow = !updatedNodes.get(clickedNodeId);
+
+    // Update clicked node if it doesn't exist
+    if (!isSecondDegreeFollow && !updatedNodes.get(clickedNodeId)) {
+      updatedNodes.add({
+        id: clickedNodeId,
+        label: apiGraphData.user.name || nip19.npubEncode(clickedNodeId).slice(0, 8),
+        shape: 'circularImage',
+        image: apiGraphData.user.picture || 'default-profile-picture.jpg',
+        size: 20,
+        font: { color: 'white' }
+      });
+    }
+  
+    // Add or update first-order follows only if the clicked node is not a second-degree follow
+    if (!isSecondDegreeFollow) {
+      for (const follow of apiGraphData.follows) {
+        if (!updatedNodes.get(follow.pubkey)) {
+          updatedNodes.add({
+            id: follow.pubkey,
+            label: follow.name || nip19.npubEncode(follow.pubkey).slice(0, 8),
+            shape: 'circularImage',
+            image: follow.picture || 'default-profile-picture.jpg',
+            size: 15,
+            font: { color: 'white' }
+          });
+        }
+    
+        const edgeId = `${clickedNodeId}-${follow.pubkey}`;
+        if (!updatedEdges.get(edgeId)) {
+          updatedEdges.add({
+            id: edgeId,
+            from: clickedNodeId,
+            to: follow.pubkey
+          });
+        }
+      }
+    }
+  
+    // Update metadata
+    if (!isSecondDegreeFollow) {
+      setMetadata(prevMetadata => ({
+        ...prevMetadata,
+        [clickedNodeId]: {
+          name: apiGraphData.user.name,
+          picture: apiGraphData.user.picture
+        },
+        ...apiGraphData.follows.reduce((acc: any, follow: any) => {
+          acc[follow.pubkey] = {
+            name: follow.name,
+            picture: follow.picture
+          };
+          return acc;
+        }, {})
+      }));
+      // Update the graph data
+      setGraphData({ nodes: updatedNodes, edges: updatedEdges });
+
+      // Refresh the network to display new nodes and edges
+      if (network) {
+        network.setData({ nodes: updatedNodes, edges: updatedEdges });
+        network.redraw();
+      }
+    }
+  };
+
+  const fetchSocialGraphFromAPI = async (npub: string, degrees: number = 2) => {
+    const response = await fetch(`${API_URLS.API_URL}social-graph?npub=${npub}&degrees=${degrees}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch social graph data');
+    }
+    return await response.json();
   };
 
   const updateGraph = useCallback(() => {
     if (!graphData) return;
   
     // Remove all followingFollowing nodes and edges
-    const nodesToRemove = graphData.nodes.get().filter((node: { id: string | string[]; }) => node.id.includes("_")).map((node: { id: any; }) => node.id);
+    const nodesToRemove = graphData.nodes.get().filter((node: { id: string | string[]; }) => node.id.includes("-")).map((node: { id: any; }) => node.id);
     const edgesToRemove = graphData.edges.get().filter((edge: { id: string | string[]; }) => edge.id.includes("_")).map((edge: { id: any; }) => edge.id);
     graphData.nodes.remove(nodesToRemove);
     graphData.edges.remove(edgesToRemove);
+
   
     // Add nodes and edges for expanded nodes
     expandedNodes.forEach(nodeId => {
@@ -87,7 +183,13 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         });
       }
     });
-  }, [graphData, expandedNodes, followingFollowingData, metadata]);
+
+    // Refresh the network to display changes
+    if (network) {
+      network.setData(graphData);
+      network.redraw();
+    }
+  }, [graphData, expandedNodes, followingFollowingData, metadata, network]);
   
   useEffect(() => {
     updateGraph();
@@ -136,7 +238,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         const userPubkey = await getUserPublicKey(nostrExists ?? false, keyValue)
         const userNpub = nip19.npubEncode(userPubkey);
 
-        const apiGraphData = await fetchSocialGraphFromAPI(userNpub);
+        const apiGraphData = await fetchSocialGraphFromAPI(userNpub, 1);
 
         if (apiGraphData) {
           const nodes = new DataSet();
@@ -180,17 +282,21 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
               picture: follow.picture
             };
 
-            followingFollowingMap[follow.pubkey] = follow.follows.map((ff: { pubkey: any; }) => ff.pubkey);
+            if (follow.follows) {
+              followingFollowingMap[follow.pubkey] = follow.follows.map((ff: { pubkey: any; }) => ff.pubkey);
+            }
           }
 
           // Add second-order follows to metadata but not to graph
           for (const follow of apiGraphData.follows) {
-            for (const followFollow of follow.follows) {
-              if (!metadataMap[followFollow.pubkey]) {
-                metadataMap[followFollow.pubkey] = {
-                  name: followFollow.name,
-                  picture: followFollow.picture
-                };
+            if (follow.follows) {
+              for (const followFollow of follow.follows) {
+                if (!metadataMap[followFollow.pubkey]) {
+                  metadataMap[followFollow.pubkey] = {
+                    name: followFollow.name,
+                    picture: followFollow.picture
+                  };
+                }
               }
             }
           }
@@ -317,6 +423,12 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       newNetwork.once("stabilizationIterationsDone", function () {
         newNetwork.setOptions({ physics: { enabled: false } });
         newNetwork.fit();
+      });
+
+      newNetwork.on("click", function (params) {
+        if (params.nodes.length > 0) {
+          handleNodeClick(params.nodes[0]);
+        }
       });
   
       isNetworkInitialized.current = true;
