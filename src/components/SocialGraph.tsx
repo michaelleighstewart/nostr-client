@@ -146,7 +146,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           if (!nodes.get(apiGraphData.user.pubkey)) {
             nodes.add({
               id: apiGraphData.user.pubkey,
-              label: apiGraphData.user?.name || nip19.npubEncode(apiGraphData.user.pubkey).slice(0, 8),
+              label: (apiGraphData.user?.name || nip19.npubEncode(apiGraphData.user.pubkey).slice(0, 8)) + ' (You)',
               shape: 'circularImage',
               image: apiGraphData.user?.picture || 'default-profile-picture.jpg',
               size: 20,
