@@ -45,7 +45,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
 
       try {
         const authHeader = await createAuthHeader('GET', '/byo-algo', nostrExists ?? false, keyValue);
-        const response = await fetch(`${API_URLS.API_URL}by-algo?userId=${userPublicKey}`, {
+        const response = await fetch(`${API_URLS.API_URL}byo-algo?userId=${userPublicKey}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
