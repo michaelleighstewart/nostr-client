@@ -189,6 +189,10 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
             showCustomToast("Successfully followed user!");
     
             // Call the batch-processor API
+            const currentUserPubkey = nostrExists 
+            ? await (window as any).nostr.getPublicKey()
+            : getPublicKey(bech32Decoder("nsec", keyValue));
+        
             const response = await fetch(API_URLS.API_URL + 'batch-processor', {
                 method: 'POST',
                 headers: {
@@ -196,7 +200,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 },
                 body: JSON.stringify({
                     type: 'social_graph_processor',
-                    npub: nip19.npubEncode(pubkey),
+                    npub: nip19.npubEncode(currentUserPubkey),
                 }),
             });
     

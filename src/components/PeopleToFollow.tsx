@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { SimplePool, finalizeEvent, nip19 } from "nostr-tools";
+import { SimplePool, finalizeEvent, getPublicKey, nip19 } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import { bech32Decoder } from "../utils/helperFunctions";
 import Loading from "./Loading";
@@ -221,16 +221,20 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
              setPeopleToFollow(prev => prev.map(p => p.npub === person.npub ? { ...p, loadingFollowing: false } : p));
      
              // Call the batch-processor API
-             const response = await fetch(API_URLS.API_URL + 'batch-processor', {
-                 method: 'POST',
-                 headers: {
-                     'Content-Type': 'application/json',
-                 },
-                 body: JSON.stringify({
-                     type: 'social_graph_processor',
-                     npub: person.npub,
-                 }),
-             });
+             const currentUserPubkey = props.nostrExists 
+             ? await (window as any).nostr.getPublicKey()
+             : getPublicKey(bech32Decoder("nsec", props.keyValue));
+         
+            const response = await fetch(API_URLS.API_URL + 'batch-processor', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    type: 'social_graph_processor',
+                    npub: nip19.npubEncode(currentUserPubkey),
+                }),
+            });
      
              if (!response.ok) {
                  throw new Error('Failed to call batch-processor API');
