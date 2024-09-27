@@ -213,21 +213,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   useEffect(() => {
     updateGraph();
   }, [expandedNodes, updateGraph, metadata]);
-
-  const handleClick = useCallback((params: any) => {
-    const nodeId = params.nodes[0];
-    if (nodeId && followingFollowingData[nodeId]) {
-      setExpandedNodes(prev => {
-        const newSet = new Set(prev);
-        if (newSet.has(nodeId)) {
-          newSet.delete(nodeId);
-        } else {
-          newSet.add(nodeId);
-        }
-        return newSet;
-      });
-    }
-  }, [followingFollowingData]);
   
   useEffect(() => {
     if (network && graphData) {
