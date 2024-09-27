@@ -7,21 +7,6 @@ import { getFollowing, getUserPublicKey } from '../utils/profileUtils';
 import { RELAYS } from '../utils/constants';
 import { API_URLS } from '../utils/apiConstants';
 
-/*const removeSecondDegreeFollows = (graphData: { nodes: DataSet<any>; edges: DataSet<any> }, clickedNodeId: string) => {
-  const nodesToRemove: any[] = [];
-  const edgesToRemove: any[] = [];
-
-  graphData.edges.forEach((edge) => {
-    if (edge.from === clickedNodeId) {
-      nodesToRemove.push(edge.to);
-      edgesToRemove.push(edge.id);
-    }
-  });
-
-  graphData.nodes.remove(nodesToRemove);
-  graphData.edges.remove(edgesToRemove);
-};*/
-
 interface SocialGraphProps {
   keyValue: string;
   pool: SimplePool | null;
@@ -43,19 +28,53 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const isNetworkInitialized = useRef(false);
   const poolRef = useRef(pool);
   const keyValueRef = useRef(keyValue);
+
+
+  const removeSecondDegreeNodes = (nodeId: string) => {
+    if (!graphData) return;
+  
+    const nodesToRemove: string[] = [];
+    const edgesToRemove: string[] = [];
+  
+    graphData.edges.forEach((edge: any) => {
+      if (edge.from === nodeId) {
+        nodesToRemove.push(edge.to);
+        edgesToRemove.push(edge.id);
+      }
+    });
+  
+    graphData.nodes.remove(nodesToRemove);
+    graphData.edges.remove(edgesToRemove);
+  
+    setGraphData({ ...graphData });
+  };
+
   const handleNodeClick = async (nodeId: string) => {
     const pk = await getUserPublicKey(nostrExists ?? false, keyValue);
     if (nodeId === (await pk).toString()) return; // Don't fetch for the user's own node
   
-    const nodeNpub = nip19.npubEncode(nodeId);
-    try {
-      const apiGraphData = await fetchSocialGraphFromAPI(nodeNpub, 1);
-      if (apiGraphData) {
-        updateGraphWithNewData(apiGraphData, nodeId);
+    setExpandedNodes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(nodeId)) {
+        newSet.delete(nodeId);
+      } else {
+        newSet.add(nodeId);
       }
-    } catch (error) {
-      console.error('Error fetching data for clicked node:', error);
-      // Optionally, show an error message to the user
+      return newSet;
+    });
+
+    if (!expandedNodes.has(nodeId)) {
+      const nodeNpub = nip19.npubEncode(nodeId);
+      try {
+        const apiGraphData = await fetchSocialGraphFromAPI(nodeNpub, 1);
+        if (apiGraphData) {
+          updateGraphWithNewData(apiGraphData, nodeId);
+        }
+      } catch (error) {
+        console.error('Error fetching data for clicked node:', error);
+      }
+    } else {
+      removeSecondDegreeNodes(nodeId);
     }
   };
 
@@ -212,14 +231,18 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   
   useEffect(() => {
     if (network && graphData) {
-      network.on("click", handleClick);
+      network.on("click", (params) => {
+        if (params.nodes.length > 0) {
+          handleNodeClick(params.nodes[0]);
+        }
+      });
     }
     return () => {
       if (network) {
-        network.off("click", handleClick);
+        network.off("click");
       }
     };
-  }, [network, graphData, handleClick]);
+  }, [network, graphData, handleNodeClick]);
 
   useEffect(() => {
     poolRef.current = pool;
