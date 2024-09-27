@@ -200,7 +200,11 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 },
                 body: JSON.stringify({
                     type: 'social_graph_processor',
-                    npub: nip19.npubEncode(currentUserPubkey),
+                    params: {
+                        npub: nip19.npubEncode(currentUserPubkey),
+                        to_create: nip19.npubEncode(pubkey),
+                        fill_missing: false
+                    }
                 }),
             });
     

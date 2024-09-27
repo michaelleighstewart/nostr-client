@@ -187,14 +187,18 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
         : getPublicKey(bech32Decoder("nsec", keyValue));
     
         const response = await fetch(API_URLS.API_URL + 'batch-processor', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                type: 'social_graph_processor',
-                npub: nip19.npubEncode(currentUserPubkey),
-            }),
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+              type: 'social_graph_processor',
+              params: {
+                  npub: nip19.npubEncode(currentUserPubkey),
+                  to_create: pubkey,
+                  fill_missing: false
+              }
+          }),
         });
 
         if (!response.ok) {

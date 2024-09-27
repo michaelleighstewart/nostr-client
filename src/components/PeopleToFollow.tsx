@@ -225,28 +225,27 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
              ? await (window as any).nostr.getPublicKey()
              : getPublicKey(bech32Decoder("nsec", props.keyValue));
          
-            const response = await fetch(API_URLS.API_URL + 'batch-processor', {
+             const response = await fetch(API_URLS.API_URL + 'batch-processor', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     type: 'social_graph_processor',
-                    npub: nip19.npubEncode(currentUserPubkey),
+                    params: {
+                        npub: nip19.npubEncode(currentUserPubkey),
+                        to_create: person.npub,
+                        fill_missing: false
+                    }
                 }),
             });
      
-             if (!response.ok) {
-                 throw new Error('Failed to call batch-processor API');
-             }
-     
-             // You can handle the API response here if needed
-             // const data = await response.json();
-             // console.log('Batch-processor API response:', data);
+            if (!response.ok) {
+                throw new Error('Failed to call batch-processor API');
+            }
      
          } catch (error) {
              console.error('Error following user or calling batch-processor API:', error);
-             // You might want to show a toast or some other notification here
          }
      };
 
