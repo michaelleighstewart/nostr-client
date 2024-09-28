@@ -218,6 +218,155 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
             ? chunkArray(filter.authors, 50)
             : [filter.authors];
 
+            const handleKind1Event = (event: Event, extendedEventToAdd: ExtendedEvent) => {
+                if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
+                    const extendedEvent: ExtendedEvent = {
+                        ...event,
+                        id: event.id,
+                        pubkey: event.pubkey,
+                        created_at: event.created_at,
+                        content: event.content,
+                        tags: event.tags,
+                        deleted: false,
+                        repostedEvent: null,
+                        repliedEvent: null
+                    };
+                    extendedEventToAdd = extendedEvent;
+                    if (!isLoggedIn) {
+                        fetchedEvents.push(extendedEventToAdd);
+                        onEventReceived(extendedEventToAdd);
+                    }
+                    else {
+                        if (selectedAlgorithm) {
+                            if (selectedAlgorithm.byoPosts) {
+                                fetchedEvents.push(extendedEventToAdd);
+                                onEventReceived(extendedEventToAdd);
+                            }
+                        }
+                        else {
+                            fetchedEvents.push(extendedEventToAdd);
+                            onEventReceived(extendedEventToAdd);
+                        }
+                    }
+                }
+                else {
+                    // Get the original note referenced in the first 'e' tag
+                    const replyToId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                    if (replyToId && selectedAlgorithm.byoReplies) {
+                        // Fetch the original note
+                        pool?.get(RELAYS, {
+                            ids: [replyToId]
+                        }).then(originalEvent => {
+                            if (originalEvent) {
+                                const repliedEvent: ExtendedEvent = {
+                                    ...originalEvent,
+                                    id: originalEvent.id,
+                                    pubkey: originalEvent.pubkey,
+                                    created_at: originalEvent.created_at,
+                                    content: originalEvent.content,
+                                    tags: originalEvent.tags,
+                                    deleted: false,
+                                    repostedEvent: null,
+                                    repliedEvent: null
+                                };
+                                const extendedEvent: ExtendedEvent = {
+                                    ...event,
+                                    id: event.id,
+                                    pubkey: event.pubkey,
+                                    created_at: event.created_at,
+                                    content: event.content,
+                                    tags: event.tags,
+                                    deleted: false,
+                                    repostedEvent: null,
+                                    repliedEvent: repliedEvent
+                                };
+                                extendedEventToAdd = extendedEvent;
+                                replyEvents.push(extendedEvent);
+                                if (!isLoggedIn) {
+                                    fetchedEvents.push(extendedEventToAdd);
+                                    onEventReceived(extendedEvent)
+                                }
+                                else {
+                                    if (selectedAlgorithm) {
+                                        if (selectedAlgorithm.byoReplies) {
+                                            fetchedEvents.push(extendedEventToAdd);
+                                            onEventReceived(extendedEvent);
+                                        }
+                                    }
+                                    else {
+                                        fetchedEvents.push(extendedEventToAdd);
+                                        onEventReceived(extendedEvent);
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            };
+            
+            const handleKind5Event = (event: Event) => {
+                const deletedIds = event.tags
+                    .filter(tag => tag[0] === 'e')
+                    .map(tag => tag[1]);
+                setDeletedNoteIds(prev => new Set([...prev, ...deletedIds]));
+            };
+            
+            const handleKind6Event = (event: Event, extendedEventToAdd: ExtendedEvent) => {
+                if (!events.some(e => e.id === event.id)) {
+                    const repostedId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                    if (repostedId) {
+                        try {
+                            const repostedContent = JSON.parse(event.content);
+                            const repostedEvent: ExtendedEvent = {
+                                ...event,
+                                id: repostedContent.id,
+                                pubkey: repostedContent.pubkey,
+                                created_at: repostedContent.created_at,
+                                content: repostedContent.content,
+                                tags: repostedContent.tags,
+                                deleted: false,
+                                repostedEvent: null,
+                                repliedEvent: null
+                            };
+                        const extendedEvent: ExtendedEvent = {
+                            id: event.id,
+                            pubkey: event.pubkey,
+                            created_at: event.created_at,
+                            content: "",
+                            tags: event.tags,
+                            deleted: false,
+                            repostedEvent: repostedEvent,
+                            repliedEvent: null
+                        };
+                        extendedEventToAdd = extendedEvent;
+                        
+                        if (!isLoggedIn) {
+                            repostEvents.push(extendedEventToAdd);
+                            fetchedEvents.push(extendedEventToAdd);
+                            onEventReceived(extendedEventToAdd);
+
+                        }
+                        else {
+                            if (selectedAlgorithm) {
+                                if (selectedAlgorithm.byoReposts) {
+                                    repostEvents.push(extendedEventToAdd);
+                                    fetchedEvents.push(extendedEventToAdd);
+                                    onEventReceived(extendedEvent);
+                                }
+                            }
+                            else {
+                                repostEvents.push(extendedEventToAdd);
+                                fetchedEvents.push(extendedEventToAdd);
+                                onEventReceived(extendedEvent);
+                            }
+                        }
+                        } catch (error) {
+                        console.error("Error parsing reposted content:", error);
+                        }
+                    }
+                }
+            };
+
 
         const createSubscription = (authorChunk: string[]) => {
             return new Promise<void>((resolve) => {
@@ -228,7 +377,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                     {
                         onevent(event: Event) {
                             if (fetchedEvents.some(e => e.id === event.id)) {
-                                return; // Skip this event if it's already in fetchedEvents
+                                return;
                             }
                             let extendedEventToAdd: ExtendedEvent = {
                                 ...event,
@@ -241,155 +390,14 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                             );
 
                             if (event.kind === 1) {
-                                if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
-                                    const extendedEvent: ExtendedEvent = {
-                                        ...event,
-                                        id: event.id,
-                                        pubkey: event.pubkey,
-                                        created_at: event.created_at,
-                                        content: event.content,
-                                        tags: event.tags,
-                                        deleted: false,
-                                        repostedEvent: null,
-                                        repliedEvent: null
-                                    };
-                                    extendedEventToAdd = extendedEvent;
-                                    if (!isLoggedIn) {
-                                        fetchedEvents.push(extendedEventToAdd);
-                                        onEventReceived(extendedEventToAdd);
-                                    }
-                                    else {
-                                        if (selectedAlgorithm) {
-                                            if (selectedAlgorithm.byoPosts) {
-                                                fetchedEvents.push(extendedEventToAdd);
-                                                onEventReceived(extendedEventToAdd);
-                                            }
-                                        }
-                                        else {
-                                            fetchedEvents.push(extendedEventToAdd);
-                                            onEventReceived(extendedEventToAdd);
-                                        }
-                                    }
-                                }
-                                else {
-                                    // Get the original note referenced in the first 'e' tag
-                                    const replyToId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                                    if (replyToId && selectedAlgorithm.byoReplies) {
-                                        // Fetch the original note
-                                        pool?.get(RELAYS, {
-                                            ids: [replyToId]
-                                        }).then(originalEvent => {
-                                            if (originalEvent) {
-                                                const repliedEvent: ExtendedEvent = {
-                                                    ...originalEvent,
-                                                    id: originalEvent.id,
-                                                    pubkey: originalEvent.pubkey,
-                                                    created_at: originalEvent.created_at,
-                                                    content: originalEvent.content,
-                                                    tags: originalEvent.tags,
-                                                    deleted: false,
-                                                    repostedEvent: null,
-                                                    repliedEvent: null
-                                                };
-                                                const extendedEvent: ExtendedEvent = {
-                                                    ...event,
-                                                    id: event.id,
-                                                    pubkey: event.pubkey,
-                                                    created_at: event.created_at,
-                                                    content: event.content,
-                                                    tags: event.tags,
-                                                    deleted: false,
-                                                    repostedEvent: null,
-                                                    repliedEvent: repliedEvent
-                                                };
-                                                extendedEventToAdd = extendedEvent;
-                                                replyEvents.push(extendedEvent);
-                                                if (!isLoggedIn) {
-                                                    fetchedEvents.push(extendedEventToAdd);
-                                                    onEventReceived(extendedEvent)
-                                                }
-                                                else {
-                                                    if (selectedAlgorithm) {
-                                                        if (selectedAlgorithm.byoReplies) {
-                                                            fetchedEvents.push(extendedEventToAdd);
-                                                            onEventReceived(extendedEvent);
-                                                        }
-                                                    }
-                                                    else {
-                                                        fetchedEvents.push(extendedEventToAdd);
-                                                        onEventReceived(extendedEvent);
-                                                    }
-                                                }
-                                            }
-                                        });
-                                    }
-                                }
+                                handleKind1Event(event, extendedEventToAdd);
                             } else if (event.kind === 5) {
-                                const deletedIds = event.tags
-                                    .filter(tag => tag[0] === 'e')
-                                    .map(tag => tag[1]);
-                                setDeletedNoteIds(prev => new Set([...prev, ...deletedIds]));
+                                handleKind5Event(event);
                             }
                             else if (event.kind === 6) {
-                                if (!events.some(e => e.id === event.id)) {
-                                const repostedId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                                //if (!events.some(e => e.id === event.id)) {
-                                if (repostedId) {
-                                    try {
-                                        const repostedContent = JSON.parse(event.content);
-                                        const repostedEvent: ExtendedEvent = {
-                                            ...event,
-                                            id: repostedContent.id,
-                                            pubkey: repostedContent.pubkey,
-                                            created_at: repostedContent.created_at,
-                                            content: repostedContent.content,
-                                            tags: repostedContent.tags,
-                                            deleted: false,
-                                            repostedEvent: null,
-                                            repliedEvent: null
-                                        };
-                                    const extendedEvent: ExtendedEvent = {
-                                        id: event.id,
-                                        pubkey: event.pubkey,
-                                        created_at: event.created_at,
-                                        content: "",
-                                        tags: event.tags,
-                                        deleted: false,
-                                        repostedEvent: repostedEvent,
-                                        repliedEvent: null
-                                    };
-                                    extendedEventToAdd = extendedEvent;
-                                    
-                                    if (!isLoggedIn) {
-                                        repostEvents.push(extendedEventToAdd);
-                                        fetchedEvents.push(extendedEventToAdd);
-                                        onEventReceived(extendedEventToAdd);
-
-                                    }
-                                    else {
-                                        if (selectedAlgorithm) {
-                                            if (selectedAlgorithm.byoReposts) {
-                                                repostEvents.push(extendedEventToAdd);
-                                                fetchedEvents.push(extendedEventToAdd);
-                                                onEventReceived(extendedEvent);
-                                            }
-                                        }
-                                        else {
-                                            repostEvents.push(extendedEventToAdd);
-                                            fetchedEvents.push(extendedEventToAdd);
-                                            onEventReceived(extendedEvent);
-                                        }
-                                    }
-                                    } catch (error) {
-                                    console.error("Error parsing reposted content:", error);
-                                    }
-                                }
+                                handleKind6Event(event, extendedEventToAdd);
                             }
-                            //fetchedEvents.push(extendedEventToAdd);
-                        }
 
-
-                            // Check if we have received the initial 10 events
                             if (!initialEventsReceived && fetchedEvents.length >= 10) {
                                 initialEventsReceived = true;
                                 const initialEvents = fetchedEvents.slice(0, 10);
@@ -397,7 +405,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                 setLoading(false);
                                 setInitialLoadComplete(true);
                             } else if (initialEventsReceived) {
-                                // If we've already received the initial events, process new ones immediately
                                 onEventReceived(extendedEventToAdd);
                             }
                         },
@@ -412,7 +419,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                         {
                             onevent(event: Event) {
                                 if (fetchedEvents.some(e => e.id === event.id)) {
-                                    return; // Skip this event if it's already in fetchedEvents
+                                    return;
                                 }
                                 let extendedEventToAdd: ExtendedEvent = {
                                     ...event,
@@ -425,155 +432,13 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                 );
     
                                 if (event.kind === 1) {
-                                    if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
-                                        const extendedEvent: ExtendedEvent = {
-                                            ...event,
-                                            id: event.id,
-                                            pubkey: event.pubkey,
-                                            created_at: event.created_at,
-                                            content: event.content,
-                                            tags: event.tags,
-                                            deleted: false,
-                                            repostedEvent: null,
-                                            repliedEvent: null
-                                        };
-                                        extendedEventToAdd = extendedEvent;
-                                        if (!isLoggedIn) {
-                                            fetchedEvents.push(extendedEventToAdd);
-                                            onEventReceived(extendedEventToAdd);
-                                        }
-                                        else {
-                                            if (selectedAlgorithm) {
-                                                if (selectedAlgorithm.byoPosts) {
-                                                    fetchedEvents.push(extendedEventToAdd);
-                                                    onEventReceived(extendedEventToAdd);
-                                                }
-                                            }
-                                            else {
-                                                fetchedEvents.push(extendedEventToAdd);
-                                                onEventReceived(extendedEventToAdd);
-                                            }
-                                        }
-                                    }
-                                    else {
-                                        // Get the original note referenced in the first 'e' tag
-                                        const replyToId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                                        if (replyToId && selectedAlgorithm.byoReplies) {
-                                            // Fetch the original note
-                                            pool?.get(RELAYS, {
-                                                ids: [replyToId]
-                                            }).then(originalEvent => {
-                                                if (originalEvent) {
-                                                    const repliedEvent: ExtendedEvent = {
-                                                        ...originalEvent,
-                                                        id: originalEvent.id,
-                                                        pubkey: originalEvent.pubkey,
-                                                        created_at: originalEvent.created_at,
-                                                        content: originalEvent.content,
-                                                        tags: originalEvent.tags,
-                                                        deleted: false,
-                                                        repostedEvent: null,
-                                                        repliedEvent: null
-                                                    };
-                                                    const extendedEvent: ExtendedEvent = {
-                                                        ...event,
-                                                        id: event.id,
-                                                        pubkey: event.pubkey,
-                                                        created_at: event.created_at,
-                                                        content: event.content,
-                                                        tags: event.tags,
-                                                        deleted: false,
-                                                        repostedEvent: null,
-                                                        repliedEvent: repliedEvent
-                                                    };
-                                                    extendedEventToAdd = extendedEvent;
-                                                    replyEvents.push(extendedEvent);
-                                                    if (!isLoggedIn) {
-                                                        fetchedEvents.push(extendedEventToAdd);
-                                                        onEventReceived(extendedEvent)
-                                                    }
-                                                    else {
-                                                        if (selectedAlgorithm) {
-                                                            if (selectedAlgorithm.byoReplies) {
-                                                                fetchedEvents.push(extendedEventToAdd);
-                                                                onEventReceived(extendedEvent);
-                                                            }
-                                                        }
-                                                        else {
-                                                            fetchedEvents.push(extendedEventToAdd);
-                                                            onEventReceived(extendedEvent);
-                                                        }
-                                                    }
-                                                }
-                                            });
-                                        }
-                                    }
+                                    handleKind1Event(event, extendedEventToAdd);
                                 } else if (event.kind === 5) {
-                                    const deletedIds = event.tags
-                                        .filter(tag => tag[0] === 'e')
-                                        .map(tag => tag[1]);
-                                    setDeletedNoteIds(prev => new Set([...prev, ...deletedIds]));
+                                    handleKind5Event(event);
                                 }
                                 else if (event.kind === 6) {
-                                    if (!events.some(e => e.id === event.id)) {
-                                    const repostedId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                                    //if (!events.some(e => e.id === event.id)) {
-                                    if (repostedId) {
-                                        try {
-                                            const repostedContent = JSON.parse(event.content);
-                                            const repostedEvent: ExtendedEvent = {
-                                                ...event,
-                                                id: repostedContent.id,
-                                                pubkey: repostedContent.pubkey,
-                                                created_at: repostedContent.created_at,
-                                                content: repostedContent.content,
-                                                tags: repostedContent.tags,
-                                                deleted: false,
-                                                repostedEvent: null,
-                                                repliedEvent: null
-                                            };
-                                        const extendedEvent: ExtendedEvent = {
-                                            id: event.id,
-                                            pubkey: event.pubkey,
-                                            created_at: event.created_at,
-                                            content: "",
-                                            tags: event.tags,
-                                            deleted: false,
-                                            repostedEvent: repostedEvent,
-                                            repliedEvent: null
-                                        };
-                                        extendedEventToAdd = extendedEvent;
-                                        
-                                        if (!isLoggedIn) {
-                                            repostEvents.push(extendedEventToAdd);
-                                            fetchedEvents.push(extendedEventToAdd);
-                                            onEventReceived(extendedEventToAdd);
-    
-                                        }
-                                        else {
-                                            if (selectedAlgorithm) {
-                                                if (selectedAlgorithm.byoReposts) {
-                                                    repostEvents.push(extendedEventToAdd);
-                                                    fetchedEvents.push(extendedEventToAdd);
-                                                    onEventReceived(extendedEvent);
-                                                }
-                                            }
-                                            else {
-                                                repostEvents.push(extendedEventToAdd);
-                                                fetchedEvents.push(extendedEventToAdd);
-                                                onEventReceived(extendedEvent);
-                                            }
-                                        }
-                                        } catch (error) {
-                                        console.error("Error parsing reposted content:", error);
-                                        }
-                                    }
+                                    handleKind6Event(event, extendedEventToAdd);
                                 }
-                                //fetchedEvents.push(extendedEventToAdd);
-                            }
-    
-    
-                                // Check if we have received the initial 10 events
                                 if (!initialEventsReceived && fetchedEvents.length >= 10) {
                                     initialEventsReceived = true;
                                     const initialEvents = fetchedEvents.slice(0, 10);
@@ -581,7 +446,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                     setLoading(false);
                                     setInitialLoadComplete(true);
                                 } else if (initialEventsReceived) {
-                                    // If we've already received the initial events, process new ones immediately
                                     onEventReceived(extendedEventToAdd);
                                 }
                             },
