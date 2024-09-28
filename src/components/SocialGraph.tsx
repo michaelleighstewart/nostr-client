@@ -153,6 +153,9 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
 
   const fetchSocialGraphFromAPI = async (npub: string, degrees: number = 2) => {
     const response = await fetch(`${API_URLS.API_URL}social-graph?npub=${npub}&degrees=${degrees}`);
+    if (response.status === 404) {
+      return null; // Return null instead of throwing an error for 404
+    }
     if (!response.ok) {
       throw new Error('Failed to fetch social graph data');
     }
@@ -432,7 +435,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         newNetwork.setOptions({ physics: { enabled: false } });
         newNetwork.fit();
       });
-
+  
       newNetwork.on("click", function (params) {
         if (params.nodes.length > 0) {
           handleNodeClick(params.nodes[0]);
