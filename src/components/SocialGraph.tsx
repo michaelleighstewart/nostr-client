@@ -6,6 +6,8 @@ import Loading from './Loading';
 import { getFollowing, getUserPublicKey } from '../utils/profileUtils';
 import { RELAYS } from '../utils/constants';
 import { API_URLS } from '../utils/apiConstants';
+import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { showCustomToast } from "./CustomToast";
 
 interface SocialGraphProps {
   keyValue: string;
@@ -24,6 +26,8 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const [metadata, setMetadata] = useState<{[key: string]: any}>({});
   const [progress, setProgress] = useState<number>(0);
   const [totalUsers, setTotalUsers] = useState<number>(0);
+  const [needsSynchronization, setNeedsSynchronization] = useState(false);
+  
 
   const isNetworkInitialized = useRef(false);
   const poolRef = useRef(pool);
@@ -154,7 +158,8 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const fetchSocialGraphFromAPI = async (npub: string, degrees: number = 2) => {
     const response = await fetch(`${API_URLS.API_URL}social-graph?npub=${npub}&degrees=${degrees}`);
     if (response.status === 404) {
-      return null; // Return null instead of throwing an error for 404
+      setNeedsSynchronization(true);
+      return null;
     }
     if (!response.ok) {
       throw new Error('Failed to fetch social graph data');
@@ -491,6 +496,37 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     return metadata;
   };
 
+  const handleSynchronize = async () => {
+    const userPubkey = await getUserPublicKey(nostrExists ?? false, keyValue);
+    const userNpub = nip19.npubEncode(userPubkey);
+  
+    try {
+      const response = await fetch(`${API_URLS.API_URL}batch-processor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'social_graph_processor',
+          params: {
+            npub: userNpub,
+            fill_missing: true
+          }
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to synchronize social graph');
+      }
+  
+      showCustomToast('Social graph synchronization started. This may take a few minutes.', 'success');
+      setNeedsSynchronization(false);
+    } catch (error) {
+      console.error('Error synchronizing social graph:', error);
+      showCustomToast('Failed to synchronize social graph. Please try again.', 'error');
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-screen flex flex-col items-center justify-center">
@@ -510,7 +546,23 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
 
   return (
     <div className="py-16">
-      <div ref={networkRef} style={{ height: '600px', width: '100%' }}></div>
+        {needsSynchronization && (
+        <div className="absolute bottom-0 left-0 right-0 bg-gray-800 p-4 z-10">
+          <p className="text-center mb-2">
+            We have not yet synchronized an optimized social graph for your account. Once generated, we can further improve your Nostr experience on Ghostcopywrite.
+          </p>
+          <div className="flex justify-center py-8">
+            <button
+              onClick={handleSynchronize}
+              className="flex items-center justify-center px-32 py-2 bg-[#535bf2] text-white rounded hover:bg-[#4349d6] transition duration-200"
+            >
+              <ArrowPathIcon className="h-5 w-5 mr-2 p-y" />
+              Synchronize now
+            </button>
+          </div>
+        </div>
+      )}
+      <div ref={networkRef} style={{ height: '600px', width: '100%', border: 'solid', color: 'light-gray' }}></div>
     </div>
   );
 };
