@@ -3,7 +3,7 @@ import { SimplePool, nip19, finalizeEvent, getPublicKey } from 'nostr-tools';
 import { Link } from 'react-router-dom';
 import { RELAYS } from '../utils/constants';
 import { UserCircleIcon } from '@heroicons/react/24/solid';
-import { UserPlusIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { UserPlusIcon, UserMinusIcon } from '@heroicons/react/24/outline';
 import Loading from './Loading';
 import { bech32Decoder } from '../utils/helperFunctions';
 import { API_URLS } from '../utils/apiConstants';
@@ -210,6 +210,65 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
     }
 };
 
+const handleUnfollow = async (pubkey: string) => {
+    if (!pool) return;
+
+    // Convert pubkey from npub to hex format
+    const pkDecoded = nip19.decode(pubkey).data as string;
+
+    const event = {
+        kind: 3,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: followingList.filter(pk => pk !== pkDecoded.toString()).map(pk => ['p', pk]),
+        content: '',
+    };
+
+    try {
+        if (nostrExists) {
+            const signedEvent = await (window as any).nostr.signEvent(event);
+            await pool.publish(RELAYS, signedEvent);
+        } else {
+            const skDecoded = bech32Decoder("nsec", keyValue);
+            const signedEvent = finalizeEvent(event, skDecoded);
+            await pool.publish(RELAYS, signedEvent);
+        }
+
+        setFollowingList(prevList => prevList.filter(pk => pk !== pkDecoded.toString()));
+        setSearchResults(prevResults =>
+          prevResults.map(result =>
+            result.npub === pubkey ? { ...result, isFollowing: false } : result
+          )
+        );
+
+        // Call the batch-processor API
+        const currentUserPubkey = nostrExists 
+        ? await (window as any).nostr.getPublicKey()
+        : getPublicKey(bech32Decoder("nsec", keyValue));
+    
+        const response = await fetch(API_URLS.API_URL + 'batch-processor', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+              type: 'social_graph_processor',
+              params: {
+                  npub: nip19.npubEncode(currentUserPubkey),
+                  to_remove: pubkey,
+                  fill_missing: false
+              }
+          }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to call batch-processor API');
+        }
+    } catch (error) {
+        console.error("Error unfollowing user or calling batch-processor API:", error);
+        // Show error message to user
+    }
+};
+
   const showFollowFunctionality = true;
 
   return (
@@ -256,24 +315,23 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
                 <p className="text-center font-semibold">{result.name || 'Unknown'}</p>
               </Link>
               {showFollowFunctionality && (
-              <button
-                onClick={() => handleFollow(result.npub)}
-                className={`mt-4 flex items-center justify-center px-8 py-2 text-white rounded ${
-                  result.isFollowing ? 'bg-green-500' : 'bg-[#535bf2]-500'
-                }`}
-                disabled={result.isFollowing}
-              >
-                {result.isFollowing ? (
-                  <>
-                    <CheckIcon className="h-5 w-5 mr-2" />
-                    Following
-                  </>
-                ) : (
-                  <>
-                    <UserPlusIcon className="h-5 w-5 mr-2" />
-                    Follow
-                  </>
-                )}
+                <button
+                  onClick={() => result.isFollowing ? handleUnfollow(result.npub) : handleFollow(result.npub)}
+                  className={`mt-4 flex items-center justify-center px-8 py-2 text-white rounded ${
+                    result.isFollowing ? 'bg-red-500 hover:bg-red-600' : 'bg-[#535bf2]-500 hover:bg-[#535bf2]-600'
+                  }`}
+                >
+                  {result.isFollowing ? (
+                    <>
+                      <UserMinusIcon className="h-5 w-5 mr-2" />
+                      Unfollow
+                    </>
+                  ) : (
+                    <>
+                      <UserPlusIcon className="h-5 w-5 mr-2" />
+                      Follow
+                    </>
+                  )}
                 </button>
               )}
             </div>
