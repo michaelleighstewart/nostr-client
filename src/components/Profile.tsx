@@ -7,7 +7,7 @@ import { getPublicKey, finalizeEvent, nip19 } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import NoteCard from "./NoteCard";
-import { UsersIcon, UserPlusIcon, ChatBubbleLeftRightIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { UsersIcon, UserPlusIcon, ChatBubbleLeftRightIcon, UserMinusIcon } from '@heroicons/react/24/outline';
 import { showCustomToast } from "./CustomToast";
 import { fetchMetadataReactionsAndReplies, fetchData } from "../utils/noteUtils";
 import NewMessageDialog from "./NewMessageDialog";
@@ -169,6 +169,60 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     }, [pool, streamedEvents]);
 
 
+    const handleUnfollow = async () => {
+        if (!pool) return;
+    
+        const event = {
+            kind: 3,
+            created_at: Math.floor(Date.now() / 1000),
+            tags: followingList.filter(pk => pk !== pubkey).map(pk => ['p', pk]),
+            content: '',
+        };
+    
+        try {
+            if (nostrExists) {
+                const signedEvent = await (window as any).nostr.signEvent(event);
+                await pool.publish(RELAYS, signedEvent);
+            } else {
+                const skDecoded = bech32Decoder("nsec", keyValue);
+                const signedEvent = finalizeEvent(event, skDecoded);
+                await pool.publish(RELAYS, signedEvent);
+            }
+    
+            setFollowingList(prevList => prevList.filter(pk => pk !== pubkey));
+            setIsFollowing(false);
+            showCustomToast("Successfully unfollowed user!");
+    
+            // Call the batch-processor API
+            const currentUserPubkey = nostrExists 
+                ? await (window as any).nostr.getPublicKey()
+                : getPublicKey(bech32Decoder("nsec", keyValue));
+            
+            const response = await fetch(API_URLS.API_URL + 'batch-processor', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    type: 'social_graph_processor',
+                    params: {
+                        npub: nip19.npubEncode(currentUserPubkey),
+                        to_remove: nip19.npubEncode(pubkey),
+                        fill_missing: false
+                    }
+                }),
+            });
+    
+            if (!response.ok) {
+                throw new Error('Failed to call batch-processor API');
+            }
+        } catch (error) {
+            console.error("Error unfollowing user or calling batch-processor API:", error);
+            showCustomToast("Failed to unfollow user. Please try again.");
+        }
+    };
+
+
     const handleFollow = async () => {
         if (!pool) return;
     
@@ -295,7 +349,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                         <div className="flex flex-col items-center sm:items-start">
                             <h1 className="text-3xl font-bold mb-4 sm:mb-2">{profileData?.name}</h1>
                             <div className="flex flex-col sm:flex-row items-center">
-                                {!isFollowing && (
+                            {!isFollowing ? (
                                     <button
                                         onClick={handleFollow}
                                         className="text-white font-bold py-2 px-6 rounded flex items-center mb-2 sm:mb-0 sm:mr-2"
@@ -303,14 +357,13 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                                         <UserPlusIcon className="h-5 w-5 mr-2" />
                                         Follow
                                     </button>
-                                )}
-                                {isFollowing && (
+                                ) : (
                                     <button
-                                        className="text-white font-bold py-2 px-6 rounded flex items-center mb-2 sm:mb-0 sm:mr-2 bg-green-500 cursor-not-allowed"
-                                        disabled
+                                        onClick={handleUnfollow}
+                                        className="text-white font-bold py-2 px-6 rounded flex items-center mb-2 sm:mb-0 sm:mr-2 bg-red-500 hover:bg-red-600"
                                     >
-                                        <CheckIcon className="h-5 w-5 mr-2" />
-                                        Following
+                                        <UserMinusIcon className="h-5 w-5 mr-2" />
+                                        Unfollow
                                     </button>
                                 )}
                                 <button
