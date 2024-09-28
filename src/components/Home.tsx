@@ -251,7 +251,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           
             await fetchData(props.pool, since, false, until, isLoggedIn, props.nostrExists ?? false, keyValueRef.current,
               setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
-              setUserPublicKey, setInitialLoadComplete, filterObj.filter, handleEventReceived, selectedAlgorithm);
+              setUserPublicKey, setInitialLoadComplete, filterObj.filter, handleEventReceived, selectedAlgorithm, range.name === '1 hour');
             
             allFetchedEvents.push(...newEvents);
             if (allFetchedEvents.length >= 10) break;
@@ -314,7 +314,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       
         await fetchData(props.pool, since, true, until, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
           setLoading, setLoadingMore, setError, setStreamedEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, 
-          setInitialLoadComplete, filter, handleNewEvent, selectedAlgorithm);
+          setInitialLoadComplete, filter, handleNewEvent, selectedAlgorithm, range.name === '1 hour');
         
         allFetchedEvents.push(...newEvents);
         if (allFetchedEvents.length >= 10) break;

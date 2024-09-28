@@ -193,7 +193,8 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
     setInitialLoadComplete: React.Dispatch<React.SetStateAction<boolean>>,
     filter: any,
     onEventReceived: (event: ExtendedEvent) => void,
-    selectedAlgorithm: any
+    selectedAlgorithm: any,
+    isRecentSubscription: boolean = false
 ) => {
     try {
         if (!append) {
@@ -221,7 +222,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
         const createSubscription = (authorChunk: string[]) => {
             return new Promise<void>((resolve) => {
                 const chunkFilter = { ...filter, authors: authorChunk };
-                const sub = pool?.subscribeMany(
+                const sub = isRecentSubscription ? pool?.subscribeMany(
                     RELAYS,
                     [chunkFilter],
                     {
@@ -404,8 +405,193 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                             sub?.close();
                             resolve();
                         }
-                    }
-                );
+                    })
+                    : pool?.subscribeManyEose(
+                        RELAYS,
+                        [filter],
+                        {
+                            onevent(event: Event) {
+                                if (fetchedEvents.some(e => e.id === event.id)) {
+                                    return; // Skip this event if it's already in fetchedEvents
+                                }
+                                let extendedEventToAdd: ExtendedEvent = {
+                                    ...event,
+                                    deleted: false,
+                                    repostedEvent: null,
+                                    repliedEvent: null
+                                };
+                                setLastFetchedTimestamp(prevTimestamp => 
+                                    Math.min(prevTimestamp, event.created_at)
+                                );
+    
+                                if (event.kind === 1) {
+                                    if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
+                                        const extendedEvent: ExtendedEvent = {
+                                            ...event,
+                                            id: event.id,
+                                            pubkey: event.pubkey,
+                                            created_at: event.created_at,
+                                            content: event.content,
+                                            tags: event.tags,
+                                            deleted: false,
+                                            repostedEvent: null,
+                                            repliedEvent: null
+                                        };
+                                        extendedEventToAdd = extendedEvent;
+                                        if (!isLoggedIn) {
+                                            fetchedEvents.push(extendedEventToAdd);
+                                            onEventReceived(extendedEventToAdd);
+                                        }
+                                        else {
+                                            if (selectedAlgorithm) {
+                                                if (selectedAlgorithm.byoPosts) {
+                                                    fetchedEvents.push(extendedEventToAdd);
+                                                    onEventReceived(extendedEventToAdd);
+                                                }
+                                            }
+                                            else {
+                                                fetchedEvents.push(extendedEventToAdd);
+                                                onEventReceived(extendedEventToAdd);
+                                            }
+                                        }
+                                    }
+                                    else {
+                                        // Get the original note referenced in the first 'e' tag
+                                        const replyToId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                                        if (replyToId && selectedAlgorithm.byoReplies) {
+                                            // Fetch the original note
+                                            pool?.get(RELAYS, {
+                                                ids: [replyToId]
+                                            }).then(originalEvent => {
+                                                if (originalEvent) {
+                                                    const repliedEvent: ExtendedEvent = {
+                                                        ...originalEvent,
+                                                        id: originalEvent.id,
+                                                        pubkey: originalEvent.pubkey,
+                                                        created_at: originalEvent.created_at,
+                                                        content: originalEvent.content,
+                                                        tags: originalEvent.tags,
+                                                        deleted: false,
+                                                        repostedEvent: null,
+                                                        repliedEvent: null
+                                                    };
+                                                    const extendedEvent: ExtendedEvent = {
+                                                        ...event,
+                                                        id: event.id,
+                                                        pubkey: event.pubkey,
+                                                        created_at: event.created_at,
+                                                        content: event.content,
+                                                        tags: event.tags,
+                                                        deleted: false,
+                                                        repostedEvent: null,
+                                                        repliedEvent: repliedEvent
+                                                    };
+                                                    extendedEventToAdd = extendedEvent;
+                                                    replyEvents.push(extendedEvent);
+                                                    if (!isLoggedIn) {
+                                                        fetchedEvents.push(extendedEventToAdd);
+                                                        onEventReceived(extendedEvent)
+                                                    }
+                                                    else {
+                                                        if (selectedAlgorithm) {
+                                                            if (selectedAlgorithm.byoReplies) {
+                                                                fetchedEvents.push(extendedEventToAdd);
+                                                                onEventReceived(extendedEvent);
+                                                            }
+                                                        }
+                                                        else {
+                                                            fetchedEvents.push(extendedEventToAdd);
+                                                            onEventReceived(extendedEvent);
+                                                        }
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    }
+                                } else if (event.kind === 5) {
+                                    const deletedIds = event.tags
+                                        .filter(tag => tag[0] === 'e')
+                                        .map(tag => tag[1]);
+                                    setDeletedNoteIds(prev => new Set([...prev, ...deletedIds]));
+                                }
+                                else if (event.kind === 6) {
+                                    if (!events.some(e => e.id === event.id)) {
+                                    const repostedId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                                    //if (!events.some(e => e.id === event.id)) {
+                                    if (repostedId) {
+                                        try {
+                                            const repostedContent = JSON.parse(event.content);
+                                            const repostedEvent: ExtendedEvent = {
+                                                ...event,
+                                                id: repostedContent.id,
+                                                pubkey: repostedContent.pubkey,
+                                                created_at: repostedContent.created_at,
+                                                content: repostedContent.content,
+                                                tags: repostedContent.tags,
+                                                deleted: false,
+                                                repostedEvent: null,
+                                                repliedEvent: null
+                                            };
+                                        const extendedEvent: ExtendedEvent = {
+                                            id: event.id,
+                                            pubkey: event.pubkey,
+                                            created_at: event.created_at,
+                                            content: "",
+                                            tags: event.tags,
+                                            deleted: false,
+                                            repostedEvent: repostedEvent,
+                                            repliedEvent: null
+                                        };
+                                        extendedEventToAdd = extendedEvent;
+                                        
+                                        if (!isLoggedIn) {
+                                            repostEvents.push(extendedEventToAdd);
+                                            fetchedEvents.push(extendedEventToAdd);
+                                            onEventReceived(extendedEventToAdd);
+    
+                                        }
+                                        else {
+                                            if (selectedAlgorithm) {
+                                                if (selectedAlgorithm.byoReposts) {
+                                                    repostEvents.push(extendedEventToAdd);
+                                                    fetchedEvents.push(extendedEventToAdd);
+                                                    onEventReceived(extendedEvent);
+                                                }
+                                            }
+                                            else {
+                                                repostEvents.push(extendedEventToAdd);
+                                                fetchedEvents.push(extendedEventToAdd);
+                                                onEventReceived(extendedEvent);
+                                            }
+                                        }
+                                        } catch (error) {
+                                        console.error("Error parsing reposted content:", error);
+                                        }
+                                    }
+                                }
+                                //fetchedEvents.push(extendedEventToAdd);
+                            }
+    
+    
+                                // Check if we have received the initial 10 events
+                                if (!initialEventsReceived && fetchedEvents.length >= 10) {
+                                    initialEventsReceived = true;
+                                    const initialEvents = fetchedEvents.slice(0, 10);
+                                    initialEvents.forEach(e => onEventReceived(e));
+                                    setLoading(false);
+                                    setInitialLoadComplete(true);
+                                } else if (initialEventsReceived) {
+                                    // If we've already received the initial events, process new ones immediately
+                                    onEventReceived(extendedEventToAdd);
+                                }
+                            },
+                            onclose() {
+                                sub?.close();
+                                resolve();
+                            }
+                        }
+                    );
+            
             });
         };
 
