@@ -89,40 +89,44 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     useEffect(() => { 
         if (!props.pool || peopleToFollow.length === 0) return;
         
-        const authors = peopleToFollow.map(person => nip19.decode(person.npub).data as string);
-        const newAuthors = authors.filter(author => !metadata[author]);
-        
-        if (newAuthors.length === 0) return;
-
-        props.pool.subscribeManyEose(RELAYS,     
-            [{ kinds: [0], authors: newAuthors }],
-            {
-                onevent(event) {
-                    const pubkey = event.pubkey;
-                    const eventMetadata = JSON.parse(event.content);
-                    setMetadata(prev => ({
-                        ...prev,
-                        [pubkey]: {
-                            name: eventMetadata.name || 'Unknown',
-                            picture: eventMetadata.picture
-                        }
-                    }));
-                },
-                onclose() {
-                    setLoading(false);
+        const fetchMetadata = async () => {
+            const authors = peopleToFollow.map(person => nip19.decode(person.npub).data as string);
+            const newAuthors = authors.filter(author => !metadata[author]);
+            
+            if (newAuthors.length === 0) return;
+    
+            await props.pool!.subscribeManyEose(RELAYS,     
+                [{ kinds: [0], authors: newAuthors }],
+                {
+                    onevent(event) {
+                        const pubkey = event.pubkey;
+                        const eventMetadata = JSON.parse(event.content);
+                        setMetadata(prev => ({
+                            ...prev,
+                            [pubkey]: {
+                                name: eventMetadata.name || 'Unknown',
+                                picture: eventMetadata.picture
+                            }
+                        }));
+                    },
+                    onclose() {
+                        setLoading(false);
+                    }
                 }
-            }
-        );
+            );
+        };
+    
+        fetchMetadata();
     }, [peopleToFollow, props.pool]);
-
+    
     useEffect(() => {
         setPeopleToFollow(prev => prev.map(person => {
             const pubkey = nip19.decode(person.npub).data as string;
             const personMetadata = metadata[pubkey];
             return personMetadata ? {
                 ...person,
-                name: personMetadata.name,
-                picture: personMetadata.picture
+                name: personMetadata.name || person.name,
+                picture: personMetadata.picture || person.picture
             } : person;
         }));
     }, [metadata]);
@@ -138,13 +142,16 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
             {
                 onevent(event) {
                     const npub = nip19.npubEncode(event.pubkey);
+                    const pubkey = event.pubkey;
                     setPeopleToFollow(prev => {
                         if (!prev.some(p => p.npub === npub)) {
+                            const existingMetadata = metadata[pubkey];
                             return [...prev, {
-                                name: 'Unknown',
+                                name: existingMetadata?.name || 'Unknown',
                                 npub: npub,
                                 loadingFollowing: false,
-                                content: event.content
+                                content: event.content,
+                                picture: existingMetadata?.picture
                             }];
                         }
                         return prev;
