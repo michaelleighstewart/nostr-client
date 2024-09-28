@@ -230,26 +230,26 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           setFollowers(newFollowing);
     
           const timeRanges = [
-            { name: '1 hour', seconds: 3600 },
-            { name: '6 hours', seconds: 21600 },
-            { name: '24 hours', seconds: 86400 },
-            { name: '1 week', seconds: 604800 }
+            { name: '1 hour', start: 0, end: 3600 },
+            { name: '6 hours', start: 3600, end: 21600 },
+            { name: '24 hours', start: 21600, end: 86400 },
+            { name: '1 week', start: 86400, end: 604800 }
           ];
-    
+          
           let allFetchedEvents: ExtendedEvent[] = [];
           const now = Math.floor(Date.now() / 1000);
-
           
           for (const range of timeRanges) {
-            const since = now - range.seconds;
+            const since = now - range.end;
+            const until = now - range.start;
             let filterObj = isLoggedIn
               ? await constructFilterFromBYOAlgo(selectedAlgorithm, newFollowing, since, props.pool)
-              : { filter: {kinds: [1, 5, 6], limit: 10, since: since}, followingStructure: [] };
+              : { filter: {kinds: [1, 5, 6], limit: 10, since: since, until: until}, followingStructure: [] };
             setFollowingStructure(filterObj.followingStructure);
             
             const newEvents: ExtendedEvent[] = [];
-    
-            await fetchData(props.pool, since, false, 0, isLoggedIn, props.nostrExists ?? false, keyValueRef.current,
+          
+            await fetchData(props.pool, since, false, until, isLoggedIn, props.nostrExists ?? false, keyValueRef.current,
               setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
               setUserPublicKey, setInitialLoadComplete, filterObj.filter, handleEventReceived, selectedAlgorithm);
             
@@ -287,22 +287,23 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       setLoadingMore(true);
     
       const timeRanges = [
-        { name: '1 hour', seconds: 3600 },
-        { name: '6 hours', seconds: 21600 },
-        { name: '24 hours', seconds: 86400 },
-        { name: '1 week', seconds: 604800 }
+        { name: '1 hour', start: 0, end: 3600 },
+        { name: '6 hours', start: 3600, end: 21600 },
+        { name: '24 hours', start: 21600, end: 86400 },
+        { name: '1 week', start: 86400, end: 604800 }
       ];
-    
+      
       let allFetchedEvents: ExtendedEvent[] = [];
       const oldestTimestamp = Math.min(...streamedEvents.map(e => e.created_at));
       const seenEventIds = new Set(streamedEvents.map(e => e.id));
-    
+      
       for (const range of timeRanges) {
-        const since = oldestTimestamp - range.seconds;
+        const since = oldestTimestamp - range.end;
+        const until = oldestTimestamp - range.start;
         let filter = isLoggedIn
-          ? { kinds: [1, 5, 6], since: since, authors: followers, limit: 50, until: oldestTimestamp }
-          : { kinds: [1, 5, 6], since: since, limit: 50, until: oldestTimestamp };
-    
+          ? { kinds: [1, 5, 6], since: since, until: until, authors: followers, limit: 50 }
+          : { kinds: [1, 5, 6], since: since, until: until, limit: 50 };
+      
         const newEvents: ExtendedEvent[] = [];
         const handleNewEvent = (event: ExtendedEvent) => {
           if (!seenEventIds.has(event.id)) {
@@ -310,8 +311,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             seenEventIds.add(event.id);
           }
         };
-    
-        await fetchData(props.pool, since, true, oldestTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
+      
+        await fetchData(props.pool, since, true, until, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
           setLoading, setLoadingMore, setError, setStreamedEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, 
           setInitialLoadComplete, filter, handleNewEvent, selectedAlgorithm);
         
