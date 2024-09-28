@@ -1,5 +1,6 @@
 import React from 'react';
 import { UserCircleIcon, ArrowRightIcon } from '@heroicons/react/24/solid';
+import { LinkIcon } from '@heroicons/react/24/solid';
 
 interface ConnectionInfoDialogProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ const ConnectionInfoDialog: React.FC<ConnectionInfoDialogProps> = ({ isOpen, onC
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
       <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-gray-800">
         <div className="mt-3 text-center">
+          <LinkIcon className="mx-auto h-64 w-64 text-[#535bf2]" />
           <div className="mt-2 px-7 py-3">
             <div className="flex items-center justify-center mb-4">
               {user.picture ? (
