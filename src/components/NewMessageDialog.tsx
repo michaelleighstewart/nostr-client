@@ -142,7 +142,7 @@ const NewMessageDialog: React.FC<NewMessageDialogProps> = ({ isOpen, onClose, po
                     <img
                       src={recipientInfo.picture}
                       alt={recipientInfo.name || "Recipient"}
-                      className="w-8 h-8 rounded-full mr-2"
+                      className="w-32 h-32 rounded-full mr-2"
                     />
                   )}
                   <span className="text-white">{recipientInfo.name || "Unknown"}</span>
