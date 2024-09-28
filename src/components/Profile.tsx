@@ -14,6 +14,7 @@ import NewMessageDialog from "./NewMessageDialog";
 import { Helmet } from 'react-helmet';
 import { getMetadataFromCache, setMetadataToCache } from "../utils/cachingUtils";
 import { API_URLS } from "../utils/apiConstants";
+import { useLayoutEffect } from "react";
 
 interface ProfileProps {
     keyValue: string;
@@ -77,6 +78,10 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
             fetchMetadataReactionsAndReplies(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], event.repliedEvent ? [event.repliedEvent] : [], setMetadata, setReactions, setReplies, setReposts);
         }
     }, []);
+
+    useLayoutEffect(() => {
+        window.scrollTo(0, 0);
+      }, []);
 
     useEffect(() => {
         poolRef.current = pool;
