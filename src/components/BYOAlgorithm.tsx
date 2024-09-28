@@ -5,6 +5,7 @@ import { API_URLS } from '../utils/apiConstants';
 import { showCustomToast } from "./CustomToast";
 import { createAuthHeader } from '../utils/authUtils';
 import { getUserPublicKey } from '../utils/profileUtils';
+import { PlusCircleIcon } from '@heroicons/react/24/outline';
 
 interface BYOAlgorithmProps {
   keyValue: string;
@@ -151,7 +152,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
       byoDegrees: 1,
       byoPosts: true,
       byoReposts: true,
-      byoReplies: false,
+      byoReplies: true,
       basedOn: 'Following',
     };
     setSelectedAlgorithm(null);
@@ -171,32 +172,35 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
 
   return (
     <div className="py-16 px-4 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold mb-8">Build Your Own Algorithm</h1>
-      {algorithms.length > 0 && !isCreatingNew && (
+      {!isCreatingNew && (
       <div className="mb-4">
         <label className="block text-sm font-medium mb-2">Select Algorithm</label>
-        <select
-          value={selectedAlgorithm || ''}
-          onChange={(e) => setSelectedAlgorithm(e.target.value)}
-          className="w-full p-2 border rounded text-black"
-        >
-          {algorithms.filter(algo => algo.algoId !== 'new').map(algo => (
-            <option key={algo.algoId} value={algo.algoId}>{algo.name || 'Unnamed Algorithm'}</option>
-          ))}
-        </select>
+        <div className="flex items-center space-x-2">
+          <select
+            value={selectedAlgorithm || ''}
+            onChange={(e) => setSelectedAlgorithm(e.target.value)}
+            className={`flex-grow p-2 border rounded text-black ${algorithms.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={algorithms.length === 0}
+          >
+            {algorithms.length === 0 ? (
+              <option value="">No algorithms available</option>
+            ) : (
+              algorithms.filter(algo => algo.algoId !== 'new').map(algo => (
+                <option key={algo.algoId} value={algo.algoId}>{algo.name || 'Unnamed Algorithm'}</option>
+              ))
+            )}
+          </select>
+          <PlusCircleIcon
+            onClick={handleAddNew}
+            className="h-6 w-6 text-[#535bf2] cursor-pointer hover:text-white transition duration-200"
+            title="Create New Algorithm"
+          />
+        </div>
       </div>
     )}
-      {!isCreatingNew && (
-        <button
-          onClick={handleAddNew}
-          className="w-full py-2 px-4 bg-[#535bf2]-600 text-white rounded hover:bg-[#535bf2]-700 transition duration-200 mb-4"
-        >
-          Create New Algorithm
-        </button>
-      )}
       {(algorithms.length > 0 || isCreatingNew) && (
         <div className="space-y-6">
-          <div>
+          <div className="py-8">
             <label className="block text-sm font-medium mb-2">Algorithm Name*</label>
             <input
               type="text"
@@ -207,7 +211,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
             />
             {nameError && <p className="text-red-500 text-sm mt-1">{nameError}</p>}
           </div>
-          <div>
+          <div className="py-8">
             <label className="block text-sm font-medium mb-2">Based On</label>
             <select
               value={currentAlgorithm.basedOn}
@@ -217,7 +221,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
               <option value="Following">Following</option>
             </select>
           </div>
-          <div>
+          <div className="py-8">
             <label className="block text-sm font-medium mb-2">Degrees of Separation</label>
             <input
               type="number"
@@ -228,24 +232,29 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
               className="w-full p-2 border rounded text-black"
             />
           </div>
-          {['byoPosts', 'byoReposts', 'byoReplies'].map((setting) => (
-            <div key={setting} className="flex items-center">
-              <input
-                type="checkbox"
-                id={setting}
-                checked={!!(currentAlgorithm as AlgorithmSettings)[setting as keyof AlgorithmSettings]}
-                onChange={(e) => handleSettingChange(setting as keyof AlgorithmSettings, e.target.checked)}
-                className="mr-2"
-              />
-              <label htmlFor={setting} className="text-sm font-medium">
-                Include {setting.slice(3)}
-              </label>
+          <div className="border rounded p-32 relative">
+            <span className="absolute -top-3 left-3 bg-[#242424] p-2 text-med font-medium">Include</span>
+            <div className="space-y-2">
+              {['byoPosts', 'byoReposts', 'byoReplies'].map((setting) => (
+                <div key={setting} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id={setting}
+                    checked={!!(currentAlgorithm as AlgorithmSettings)[setting as keyof AlgorithmSettings]}
+                    onChange={(e) => handleSettingChange(setting as keyof AlgorithmSettings, e.target.checked)}
+                    className="mr-2"
+                  />
+                  <label htmlFor={setting} className="text-sm font-medium">
+                    {setting.slice(3)}
+                  </label>
+                </div>
+              ))}
             </div>
-          ))}
-          <div className="flex space-x-4">
+          </div>
+          <div className="flex space-x-4 pt-16">
             <button
               onClick={handleSaveSettings}
-              className="flex-1 py-2 px-4 bg-[#535bf2]-600 text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
+              className="flex-1 py-2 px-4 mr-32 bg-[#535bf2]-600 text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
               disabled={!currentAlgorithm.name?.trim()}
             >
               {isCreatingNew ? 'Create Algorithm' : 'Update Algorithm'}
