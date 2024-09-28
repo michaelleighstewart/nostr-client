@@ -11,6 +11,8 @@ import { Metadata, Reaction, User, ExtendedEvent } from "../utils/interfaces";
 import VideoEmbed from "./VideoEmbed";
 import ProfilesModal from "./ProfilesModal";
 import Loading from "./Loading";
+import ConnectionInfoDialog from './ConnectionInfoDialog';
+import { QuestionMarkCircleIcon } from '@heroicons/react/24/solid';
 
 interface Props {
     id: string;
@@ -33,6 +35,10 @@ interface Props {
     allReposts: Record<string, ExtendedEvent[]> | null;
     isPreview: boolean;
     setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>;
+    connectionInfo: {
+      degree: number;
+      connectedThrough?: string;
+    } | null;
   }
   
   const NoteCard = React.memo(function NoteCard({
@@ -55,7 +61,8 @@ interface Props {
     reposts,
     allReposts,
     isPreview, 
-    setMetadata
+    setMetadata,
+    connectionInfo
   }: Props) {
     const [alreadyLiked, setAlreadyLiked] = useState(false);
     const [alreadyDisliked, setAlreadyDisliked] = useState(false);
@@ -72,7 +79,13 @@ interface Props {
     const [showLikesModal, setShowLikesModal] = useState(false);
     const [showDislikesModal, setShowDislikesModal] = useState(false);
     const [showRepostsModal, setShowRepostsModal] = useState(false);
+    const [isConnectionInfoOpen, setIsConnectionInfoOpen] = useState(false);
     const navigate = useNavigate();
+
+    const openConnectionInfo = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setIsConnectionInfoOpen(true);
+    };
 
     function checkReactions() {
       if (publicKey && localReactions) {
@@ -383,25 +396,35 @@ interface Props {
     }
     return (
       <div className="rounded p-16 border border-gray-600 bg-[#535bf2] bg-opacity-10 flex flex-col gap-16 break-words">
-        <div className="flex gap-12 items-center overflow-hidden">
-          {user.image ?
-          <Link to={`/profile/${userNpub}`}>
-            <img
-              src={user.image}
-              alt="note"
-              className="rounded-full w-40 aspect-square bg-gray-100 cursor-pointer"
-            />
-          </Link> : <></>}
-          <div>
-            <span
-              className="text-body3 text-white overflow-hidden text-ellipsis"
-            >
-              {user.name}
-            </span>
-            <span className="px-16 text-body5 text-gray-400">
-              {new Date(created_at * 1000).toISOString().split("T")[0]}
-            </span>
+        <div className="flex gap-12 items-center overflow-hidden justify-between">
+          <div className="flex gap-12 items-center overflow-hidden">
+            {user.image ?
+            <Link to={`/profile/${userNpub}`}>
+              <img
+                src={user.image}
+                alt="note"
+                className="rounded-full w-40 aspect-square bg-gray-100 cursor-pointer"
+              />
+            </Link> : <></>}
+            <div>
+              <span
+                className="text-body3 text-white overflow-hidden text-ellipsis"
+              >
+                {user.name}
+              </span>
+              <span className="px-16 text-body5 text-gray-400">
+                {new Date(created_at * 1000).toISOString().split("T")[0]}
+              </span>
+            </div>
           </div>
+          {connectionInfo && (
+            <div className="flex-shrink-0">
+              <QuestionMarkCircleIcon
+                className="w-6 h-6 text-[#535bf2] cursor-pointer hover:text-white"
+                onClick={openConnectionInfo}
+              />
+            </div>
+          )}
         </div>
         {repliedEvent && (
           <div className="mt-2 border-l-2 border-gray-500">
@@ -440,6 +463,7 @@ interface Props {
               reposts={allReposts?.[repostedEvent.id]?.length ?? 0}
               allReposts={allReposts}
               setMetadata={setMetadata}
+              connectionInfo={null}
             />
           </div>
         )}
@@ -646,8 +670,19 @@ interface Props {
                     reposts={allReposts?.[repliedEvent.id]?.length ?? 0}
                     allReposts={allReposts}
                     setMetadata={setMetadata}
+                    connectionInfo={null}
                   />
       ) : <></>}
+      <ConnectionInfoDialog
+        isOpen={isConnectionInfoOpen}
+        onClose={() => setIsConnectionInfoOpen(false)}
+        user={{
+          name: user.name || 'Unknown',
+          picture: user.image || '',
+          about: metadata?.[user.pubkey]?.about || '',
+        }}
+        connectionInfo={connectionInfo}
+      />
       </div>
     );
   })

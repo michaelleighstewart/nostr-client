@@ -432,6 +432,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                                             reposts={reposts?.[post.id]?.length || 0}
                                             allReposts={reposts}
                                             setMetadata={setMetadata}
+                                            connectionInfo={null}
                                         />
                                     </div>
                                 ))}

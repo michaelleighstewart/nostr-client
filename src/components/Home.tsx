@@ -1,5 +1,5 @@
 import '../App.css';
-import { SimplePool } from "nostr-tools";
+import { nip19, SimplePool } from "nostr-tools";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import NotesList from "./NotesList";
 import { useDebounce } from "use-debounce";
@@ -58,6 +58,42 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [selectedAlgorithm, setSelectedAlgorithm] = useState<any | null>(null);
     const isLoggedIn = useMemo(() => props.nostrExists || !!props.keyValue, [props.nostrExists, props.keyValue]);
     const keyValueRef = useRef<string | null>(null);
+    const [followingStructure, setFollowingStructure] = useState<any>(null);
+
+    const calculateConnectionInfo = (notePubkey: string) => {
+      if (followers.includes(notePubkey)) {
+        return { degree: 1 };
+      } else if (followingStructure) {
+        const secondDegreeConnection = followingStructure.find((fs: { following: string | string[]; }) => fs.following.includes(notePubkey));
+        if (secondDegreeConnection) {
+          const connectedThroughPubkey = secondDegreeConnection.id;
+          if (!metadata[connectedThroughPubkey] && props.pool) {
+            props.pool.subscribeManyEose(
+              RELAYS,
+              [{ kinds: [0], authors: [connectedThroughPubkey] }],
+              {
+                onevent(metadataEvent) {
+                  try {
+                    const newMetadata = JSON.parse(metadataEvent.content) as Metadata;
+                    setMetadata(prev => ({...prev, [connectedThroughPubkey]: newMetadata}));
+                    if (isLoggedIn) {
+                      setMetadataToCache(connectedThroughPubkey, newMetadata);
+                    }
+                  } catch (error) {
+                    console.error("Error parsing metadata:", error);
+                  }
+                }
+              }
+            );
+          }
+          return {
+            degree: 2,
+            connectedThrough: metadata[connectedThroughPubkey]?.name || nip19.npubEncode(connectedThroughPubkey)
+          };
+        }
+      }
+      return null;
+    };
 
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
       setStreamedEvents(prev => {
@@ -115,7 +151,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       return () => clearInterval(timer);
     }, []);
 
-    const fetchFollowersAndData = useCallback(async () => {
+    const fetchFollowingAndData = useCallback(async () => {
       if (!props.pool || !keyValueRef.current || initialLoadComplete) return;
       let setAlgo = false;
       // Fetch BYO algorithms
@@ -190,12 +226,13 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           } catch (error) {}
           setFollowers(newFollowing);
           const oneWeekAgo = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
-          let filter = isLoggedIn
+          let filterObj = isLoggedIn
             ? await constructFilterFromBYOAlgo(selectedAlgorithm, newFollowing, oneWeekAgo, props.pool)
-            : { kinds: [1, 5, 6], limit: 10, since: oneWeekAgo };
+            : { filter: {kinds: [1, 5, 6], limit: 10, since: oneWeekAgo}, followingStructure: [] };
+          setFollowingStructure(filterObj.followingStructure);
           const fetchedEvents = await fetchData(props.pool, 0, false, 0, isLoggedIn, props.nostrExists ?? false, keyValueRef.current,
             setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
-            setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived, selectedAlgorithm);
+            setUserPublicKey, setInitialLoadComplete, filterObj.filter, handleEventReceived, selectedAlgorithm);
           
           if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
             const newLastFetchedTimestamp = Math.min(...fetchedEvents.map(event => event.created_at));
@@ -217,9 +254,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     useEffect(() => {
       if (props.pool && (props.nostrExists || props.keyValue) && !initialLoadComplete) {
         keyValueRef.current = props.keyValue;
-        fetchFollowersAndData();
+        fetchFollowingAndData();
       }
-    }, [props.pool, props.nostrExists, props.keyValue, initialLoadComplete, fetchFollowersAndData]);
+    }, [props.pool, props.nostrExists, props.keyValue, initialLoadComplete, fetchFollowingAndData]);
 
     const debouncedLoadMore = debounce(async () => {
       if (!props.pool) return;
@@ -259,7 +296,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         const success = await sendMessage(props.pool, props.nostrExists, props.keyValue, message, setPosting, setMessage);
         if (success) {
           showCustomToast("Posted note successfully!");
-          await fetchFollowersAndData();
+          await fetchFollowingAndData();
         } else {
           showCustomToast("Failed to send post. Please try again.");
         }
@@ -457,7 +494,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 allReactions={null} 
                 allReplies={null} 
                 allReposts={null}
-                setMetadata={setMetadata}              
+                setMetadata={setMetadata}
+                connectionInfo={null}         
               />
             </div>
           </div>
@@ -500,7 +538,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 replies={replies} 
                 reposts={reposts} 
                 setMetadata={setMetadata}
-                initialLoadComplete={initialLoadComplete} 
+                initialLoadComplete={initialLoadComplete}
+                calculateConnectionInfo={calculateConnectionInfo}
               />
               {streamedEvents.length > 0 && initialLoadComplete && isLoggedIn && (
                 <div className="mt-8 mb-8 text-center">

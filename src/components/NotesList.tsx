@@ -15,9 +15,13 @@ interface Props {
     replies: Record<string, ExtendedEvent[]>;
     reposts: Record<string, ExtendedEvent[]>;
     initialLoadComplete: boolean;
+    calculateConnectionInfo: (notePubkey: string) => {
+        degree: number;
+        connectedThrough?: string;
+      } | null;
 }
 
-const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists, reactions, keyValue, replies, reposts, initialLoadComplete }: Props) => {
+const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists, reactions, keyValue, replies, reposts, initialLoadComplete, calculateConnectionInfo }: Props) => {
     const [visibleNotes, setVisibleNotes] = useState<ExtendedEvent[]>([]);
     const isLoggedIn = nostrExists || !!keyValue;
 
@@ -74,6 +78,7 @@ const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists,
                         reposts={reposts?.[note.id]?.length ?? 0}
                         allReposts={reposts}
                         setMetadata={setMetadata}
+                        connectionInfo={calculateConnectionInfo(note.pubkey)}
                     />
                 </div>
             ))}
