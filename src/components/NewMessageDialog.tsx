@@ -4,6 +4,7 @@ import { bech32Decoder } from '../utils/helperFunctions';
 import { showCustomToast } from './CustomToast';
 import { RELAYS } from '../utils/constants';
 import { getMetadataFromCache, setMetadataToCache } from '../utils/cachingUtils';
+import { EnvelopeIcon } from '@heroicons/react/24/solid';
 
 interface NewMessageDialogProps {
   isOpen: boolean;
@@ -133,7 +134,7 @@ const NewMessageDialog: React.FC<NewMessageDialogProps> = ({ isOpen, onClose, po
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
       <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-gray-800">
         <div className="mt-3 text-center">
-          <h3 className="text-lg leading-6 font-medium text-white">Send New Message</h3>
+          <EnvelopeIcon className="mx-auto h-64 w-64 text-[#535bf2]" />
           <div className="mt-2 px-7 py-3">
             {initialRecipientNpub ? (
               recipientInfo && (
@@ -142,7 +143,7 @@ const NewMessageDialog: React.FC<NewMessageDialogProps> = ({ isOpen, onClose, po
                     <img
                       src={recipientInfo.picture}
                       alt={recipientInfo.name || "Recipient"}
-                      className="w-32 h-32 rounded-full mr-2"
+                      className="w-64 h-64 rounded-full mr-2"
                     />
                   )}
                   <span className="text-white">{recipientInfo.name || "Unknown"}</span>
