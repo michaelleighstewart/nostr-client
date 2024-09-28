@@ -3,7 +3,7 @@ import { SimplePool, Event, nip19 } from "nostr-tools";
 import { useParams, Link } from "react-router-dom";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
-import { getFollowing } from "../utils/profileUtils";
+import { getFollowers } from "../utils/profileUtils";
 import { UserCircleIcon, ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { bech32Decoder } from "../utils/helperFunctions";
 
@@ -28,19 +28,17 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
     const [followers, setFollowers] = useState<FollowerData[]>([]);
     const [loading, setLoading] = useState(true);
     const [userMetadata, setUserMetadata] = useState<UserMetadata>({});
-    const { pubkey } = useParams<{ pubkey: string }>();
+    const { npub } = useParams<{ npub: string }>();
 
     useEffect(() => {
         const fetchUserMetadata = async () => {
-            if (!pool || !pubkey) return;
-            let pk = pubkey;
-            if (pubkey.startsWith('npub')) {
-                try {
-                    pk = bech32Decoder('npub', pubkey).toString('hex');
-                } catch (error) {
-                    console.error("Error decoding npub:", error);
-                    return;
-                }
+            if (!pool || !npub) return;
+            let pk: string;
+            try {
+                pk = bech32Decoder('npub', npub).toString('hex');
+            } catch (error) {
+                console.error("Error decoding npub:", error);
+                return;
             }
 
             const userEvent: Event | null = await pool.get(RELAYS, {
@@ -63,11 +61,19 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
 
         const fetchFollowers = async () => {
             setLoading(true);
-            if (!pool || !pubkey) return;
-
-            const allFollowing = await getFollowing(pool, true, _nostrExists, _keyValue, () => {}, pubkey);
-            const uniqueFollowers = Array.from(new Set(allFollowing));
-
+            if (!pool || !npub) return;
+      
+            let pk: string;
+            try {
+                pk = bech32Decoder('npub', npub).toString('hex');
+            } catch (error) {
+                console.error("Error decoding npub:", error);
+                return;
+            }
+      
+            const followerPubkeys = await getFollowers(pool, pk);
+            const uniqueFollowers = Array.from(new Set(followerPubkeys));
+      
             const followerProfiles: Event[] = [];
             await new Promise<void>((resolve) => {
                 pool.subscribeManyEose(
@@ -75,7 +81,7 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
                     [
                         {
                             kinds: [0],
-                            authors: Array.from(uniqueFollowers),
+                            authors: uniqueFollowers,
                         }
                     ],
                     {
@@ -89,7 +95,7 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
                 );
             });
 
-            const followerData: FollowerData[] = Array.from(uniqueFollowers).map(followerPubkey => {
+            const followerData: FollowerData[] = uniqueFollowers.map(followerPubkey => {
                 const profile = followerProfiles.find(event => event.pubkey === followerPubkey);
                 let profileData = {};
                 if (profile) {
@@ -112,7 +118,7 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
 
         fetchUserMetadata();
         fetchFollowers();
-    }, [pool, pubkey]);
+    }, []);
 
     if (loading) {
         return <div className="h-screen"><Loading vCentered={false} /></div>;
@@ -121,7 +127,7 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
     return (
         <div className="py-64">
             <Link
-                to={`/profile/${pubkey}`}
+                to={`/profile/${npub}`}
                 className="inline-flex items-center mb-4 p-2 text-blue-500 hover:text-blue-600 transition-colors"
             >
                 <ArrowLeftIcon className="w-64 h-64 mr-2" />

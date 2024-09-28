@@ -102,7 +102,7 @@ function App() {
             <Route path="messages" element={<Messages keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="generate-key" element={<GenerateKey setKeyValue={handleSetKey} keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="people-to-follow" element={<PeopleToFollow keyValue={key} pool={pool} nostrExists={nostrExists} />} />
-            <Route path="profile/:npub/follwers" element={<Followers keyValue={key} pool={pool} nostrExists={nostrExists} />} />
+            <Route path="profile/:npub/followers" element={<Followers keyValue={key} pool={pool} nostrExists={nostrExists} />} />
             <Route path="profile/:npub/following" element={<Following pool={pool} />} />
             <Route path="conversation/:id" element={<Conversation pool={pool} nostrExists={nostrExists} keyValue={key} />} />
             <Route path="note/:id" element={<Note pool={pool} nostrExists={nostrExists} keyValue={key} />} />

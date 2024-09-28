@@ -14,6 +14,31 @@ export async function getUserPublicKey(nostrExists: boolean, keyValue: string | 
   throw new Error("Unable to get user public key");
 }
 
+export async function getFollowers(pool: SimplePool, pubkey: string): Promise<string[]> {
+  return new Promise((resolve) => {
+    const followers: string[] = [];
+    pool.subscribeManyEose(
+      RELAYS,
+      [
+        {
+          kinds: [3],
+          '#p': [pubkey],
+        },
+      ],
+      {
+        onevent(event) {
+          if (!followers.includes(event.pubkey)) {
+            followers.push(event.pubkey);
+          }
+        },
+        onclose() {
+          resolve(followers);
+        },
+      }
+    );
+  });
+}
+
 export const getFollowing = async (pool: SimplePool, isLoggedIn: boolean, nostrExists: boolean | null, keyValue: string | null, 
   setUserPublicKey: (pk: string) => void, publicKeyOverride: string | null): Promise<string[]> => {
     if (!isLoggedIn) return [];

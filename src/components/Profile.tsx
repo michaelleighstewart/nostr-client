@@ -329,6 +329,10 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                             <UsersIcon className="h-6 w-6 mr-2" />
                             <span>Following</span>
                         </Link>
+                        <Link to={`/profile/${npubFromUrl || nip19.npubEncode(pubkey)}/followers`} className="flex items-center">
+                            <UsersIcon className="h-6 w-6 mr-2" />
+                            <span>Followers</span>
+                        </Link>
                     </div>
                 </div>
             ) : (
