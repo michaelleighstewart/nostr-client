@@ -99,6 +99,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     };
 
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
+      console.log("Got an event received", event)
       setStreamedEvents(prev => {
         if (prev.some(e => e.id === event.id)) {
           return prev;
@@ -278,8 +279,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         setLastFetchedTimestamp(newLastFetchedTimestamp);
         
         setStreamedEvents(prev => {
-          const newEvents = [...prev, ...fetchedEvents];
-          return newEvents.sort((a, b) => b.created_at - a.created_at);
+          const newEvents = fetchedEvents.filter(event => !prev.some(e => e.id === event.id));
+          return [...prev, ...newEvents].sort((a, b) => b.created_at - a.created_at);
         });
         await fetchMetadataReactionsAndReplies(props.pool, fetchedEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
       }
