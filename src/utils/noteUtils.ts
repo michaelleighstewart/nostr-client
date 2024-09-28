@@ -226,6 +226,9 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                     [chunkFilter],
                     {
                         onevent(event: Event) {
+                            if (fetchedEvents.some(e => e.id === event.id)) {
+                                return; // Skip this event if it's already in fetchedEvents
+                            }
                             let extendedEventToAdd: ExtendedEvent = {
                                 ...event,
                                 deleted: false,

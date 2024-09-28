@@ -42,7 +42,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [error, setError] = useState<string | null>(null);
     const [posting, setPosting] = useState(false);
     const [message, setMessage] = useState('');
-    const [lastFetchedTimestamp, setLastFetchedTimestamp] = useState<number>(Math.floor(Date.now() / 1000));
+    const [_lastFetchedTimestamp, setLastFetchedTimestamp] = useState<number>(Math.floor(Date.now() / 1000));
     const [initialLoadComplete, setInitialLoadComplete] = useState(false);
     const [showOstrich, setShowOstrich] = useState(false);
     const [deletedNoteIds, setDeletedNoteIds] = useState<Set<string>>(new Set());
@@ -99,7 +99,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     };
 
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
-      console.log("Got an event received", event)
       setStreamedEvents(prev => {
         if (prev.some(e => e.id === event.id)) {
           return prev;
@@ -108,9 +107,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       });
       
       setHasNotes(true);
-
+    
       const pubkeysToFetch = [event.pubkey];
-
+    
       if (props.pool) {
         fetchMetadataReactionsAndReplies(props.pool, [event], event.repostedEvent ? [event.repostedEvent] : [], 
           event.repliedEvent ? [event.repliedEvent] : [], setMetadata, setReactions, setReplies, setReposts);
@@ -146,7 +145,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           );
         }
       });
-    }, [props.pool, metadata, isLoggedIn]);
+    }, [props.pool, metadata, isLoggedIn, setMetadata, setReactions, setReplies, setReposts]);
 
     useEffect(() => {
       const timer = setInterval(() => {
@@ -229,18 +228,39 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             }
           } catch (error) {}
           setFollowers(newFollowing);
-          const oneWeekAgo = Math.floor(Date.now() / 1000) - 7 * 24 * 60 * 60;
-          let filterObj = isLoggedIn
-            ? await constructFilterFromBYOAlgo(selectedAlgorithm, newFollowing, oneWeekAgo, props.pool)
-            : { filter: {kinds: [1, 5, 6], limit: 10, since: oneWeekAgo}, followingStructure: [] };
-          setFollowingStructure(filterObj.followingStructure);
-          const fetchedEvents = await fetchData(props.pool, 0, false, 0, isLoggedIn, props.nostrExists ?? false, keyValueRef.current,
-            setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
-            setUserPublicKey, setInitialLoadComplete, filterObj.filter, handleEventReceived, selectedAlgorithm);
+    
+          const timeRanges = [
+            { name: '1 hour', seconds: 3600 },
+            { name: '6 hours', seconds: 21600 },
+            { name: '24 hours', seconds: 86400 },
+            { name: '1 week', seconds: 604800 }
+          ];
+    
+          let allFetchedEvents: ExtendedEvent[] = [];
+          const now = Math.floor(Date.now() / 1000);
+
           
-          if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
-            const newLastFetchedTimestamp = Math.min(...fetchedEvents.map(event => event.created_at));
+          for (const range of timeRanges) {
+            const since = now - range.seconds;
+            let filterObj = isLoggedIn
+              ? await constructFilterFromBYOAlgo(selectedAlgorithm, newFollowing, since, props.pool)
+              : { filter: {kinds: [1, 5, 6], limit: 10, since: since}, followingStructure: [] };
+            setFollowingStructure(filterObj.followingStructure);
+            
+            const newEvents: ExtendedEvent[] = [];
+    
+            await fetchData(props.pool, since, false, 0, isLoggedIn, props.nostrExists ?? false, keyValueRef.current,
+              setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
+              setUserPublicKey, setInitialLoadComplete, filterObj.filter, handleEventReceived, selectedAlgorithm);
+            
+            allFetchedEvents.push(...newEvents);
+            if (allFetchedEvents.length >= 10) break;
+          }
+    
+          if (allFetchedEvents.length > 0) {
+            const newLastFetchedTimestamp = Math.min(...allFetchedEvents.map(event => event.created_at));
             setLastFetchedTimestamp(newLastFetchedTimestamp);
+            setStreamedEvents(allFetchedEvents.sort((a, b) => b.created_at - a.created_at));
           }
           setInitialLoadComplete(true);
         } catch (error) {
@@ -265,24 +285,49 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const debouncedLoadMore = debounce(async () => {
       if (!props.pool) return;
       setLoadingMore(true);
-      const oneDayBeforeLastFetched = lastFetchedTimestamp - 24 * 60 * 60;
-      let filter = isLoggedIn
-        ? { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, authors: followers, limit: 10, until: lastFetchedTimestamp }
-        : { kinds: [1, 5, 6], since: oneDayBeforeLastFetched, limit: 10, until: lastFetchedTimestamp };
-
-      const fetchedEvents = await fetchData(props.pool, oneDayBeforeLastFetched, true, lastFetchedTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
-        setLoading, setLoadingMore, setError, setStreamedEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, 
-        setInitialLoadComplete, filter, handleEventReceived, selectedAlgorithm);
-      
-      if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
-        const newLastFetchedTimestamp = Math.min(...fetchedEvents.map(event => event.created_at));
+    
+      const timeRanges = [
+        { name: '1 hour', seconds: 3600 },
+        { name: '6 hours', seconds: 21600 },
+        { name: '24 hours', seconds: 86400 },
+        { name: '1 week', seconds: 604800 }
+      ];
+    
+      let allFetchedEvents: ExtendedEvent[] = [];
+      const oldestTimestamp = Math.min(...streamedEvents.map(e => e.created_at));
+      const seenEventIds = new Set(streamedEvents.map(e => e.id));
+    
+      for (const range of timeRanges) {
+        const since = oldestTimestamp - range.seconds;
+        let filter = isLoggedIn
+          ? { kinds: [1, 5, 6], since: since, authors: followers, limit: 50, until: oldestTimestamp }
+          : { kinds: [1, 5, 6], since: since, limit: 50, until: oldestTimestamp };
+    
+        const newEvents: ExtendedEvent[] = [];
+        const handleNewEvent = (event: ExtendedEvent) => {
+          if (!seenEventIds.has(event.id)) {
+            newEvents.push(event);
+            seenEventIds.add(event.id);
+          }
+        };
+    
+        await fetchData(props.pool, since, true, oldestTimestamp, isLoggedIn ?? false, props.nostrExists ?? false, props.keyValue ?? "",
+          setLoading, setLoadingMore, setError, setStreamedEvents, events, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, setUserPublicKey, 
+          setInitialLoadComplete, filter, handleNewEvent, selectedAlgorithm);
+        
+        allFetchedEvents.push(...newEvents);
+        if (allFetchedEvents.length >= 10) break;
+      }
+    
+      if (allFetchedEvents.length > 0) {
+        const newLastFetchedTimestamp = Math.min(...allFetchedEvents.map(event => event.created_at));
         setLastFetchedTimestamp(newLastFetchedTimestamp);
         
         setStreamedEvents(prev => {
-          const newEvents = fetchedEvents.filter(event => !prev.some(e => e.id === event.id));
-          return [...prev, ...newEvents].sort((a, b) => b.created_at - a.created_at);
+          const newEvents = [...prev, ...allFetchedEvents];
+          return newEvents.sort((a, b) => b.created_at - a.created_at);
         });
-        await fetchMetadataReactionsAndReplies(props.pool, fetchedEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
+        await fetchMetadataReactionsAndReplies(props.pool, allFetchedEvents, repostEvents, replyEvents, setMetadata, setReactions, setReplies, setReposts);
       }
       setLoadingMore(false);
     }, 300);
@@ -535,7 +580,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               <NotesList 
                 metadata={metadata} 
                 reactions={reactions} 
-                notes={streamedEvents.filter(e => !deletedNoteIds.has(e.id))}
+                notes={streamedEvents.filter(e => !deletedNoteIds.has(e.id)).filter((e, index, self) =>
+                  index === self.findIndex((t) => t.id === e.id)
+                )}
                 pool={props.pool} 
                 nostrExists={props.nostrExists} 
                 keyValue={props.keyValue}
