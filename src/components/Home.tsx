@@ -88,7 +88,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           }
           return {
             degree: 2,
-            connectedThrough: metadata[connectedThroughPubkey]?.name || nip19.npubEncode(connectedThroughPubkey)
+            connectedThrough: {
+              name: metadata[connectedThroughPubkey]?.name || nip19.npubEncode(connectedThroughPubkey),
+              picture: metadata[connectedThroughPubkey]?.picture || ''
+            }
           };
         }
       }

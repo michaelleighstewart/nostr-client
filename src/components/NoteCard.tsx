@@ -37,7 +37,10 @@ interface Props {
     setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>;
     connectionInfo: {
       degree: number;
-      connectedThrough?: string;
+      connectedThrough?: {
+        name: string;
+        picture: string;
+      };
     } | null;
   }
   

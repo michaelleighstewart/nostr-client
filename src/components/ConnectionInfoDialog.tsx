@@ -11,7 +11,10 @@ interface ConnectionInfoDialogProps {
   };
   connectionInfo: {
     degree: number;
-    connectedThrough?: string;
+    connectedThrough?: {
+      name: string;
+      picture: string;
+    };
   } | null;
 }
 
@@ -43,9 +46,28 @@ const ConnectionInfoDialog: React.FC<ConnectionInfoDialogProps> = ({ isOpen, onC
                 </p>
                 {connectionInfo.connectedThrough && (
                   <div className="flex items-center mt-2">
-                    <p className="text-sm text-gray-300 mr-2">Connected through:</p>
-                    <p className="text-sm font-medium text-white">{connectionInfo.connectedThrough}</p>
-                    <ArrowRightIcon className="w-4 h-4 text-gray-400 mx-2" />
+                    <p className="text-sm text-gray-300 mr-2 font-bold">Connected through:</p>
+                    <div className="flex items-center">
+                      {connectionInfo.connectedThrough.picture ? (
+                        <img 
+                          src={connectionInfo.connectedThrough.picture} 
+                          alt={connectionInfo.connectedThrough.name} 
+                          className="w-32 h-32 rounded-full mr-2"
+                        />
+                      ) : (
+                        <UserCircleIcon className="w-16 h-16 text-gray-400 mr-2" />
+                      )}
+                      <p className="text-sm font-medium text-white">{connectionInfo.connectedThrough.name}</p>
+                    </div>
+                    <ArrowRightIcon className="w-32 h-32 text-gray-400 mx-2 pl-16" />
+                    {user.picture && (
+                        <img 
+                        src={user.picture} 
+                        alt={user.name} 
+                        className="w-32 h-32 rounded-full mr-2"
+                      />
+                    )
+                    }
                     <p className="text-sm font-medium text-white">{user.name}</p>
                   </div>
                 )}

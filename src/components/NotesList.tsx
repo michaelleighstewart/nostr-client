@@ -17,7 +17,10 @@ interface Props {
     initialLoadComplete: boolean;
     calculateConnectionInfo: (notePubkey: string) => {
         degree: number;
-        connectedThrough?: string;
+        connectedThrough?: {
+          name: string;
+          picture: string;
+        };
       } | null;
 }
 

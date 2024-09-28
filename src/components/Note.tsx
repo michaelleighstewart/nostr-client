@@ -306,6 +306,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         reposts={allReposts[post.id]?.length || 0}
         allReposts={allReposts}
         setMetadata={setMetadata}
+        connectionInfo={null}
         />
       <div className="mt-8 p-16 rounded-lg">
         <textarea
@@ -351,6 +352,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
           reposts={allReposts[reply.id]?.length || 0}
           allReposts={allReposts}
           setMetadata={setMetadata}
+          connectionInfo={null}
           />
           </div>
       ))}
