@@ -252,7 +252,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         hashtags: [],
         reactions: [],
       };
-      setReplies(prevReplies => [newReply, ...prevReplies]);
+      setReplies(prevReplies => [...prevReplies, newReply]);
       
       setReplyContent('');
       showCustomToast('Reply posted successfully!');
@@ -324,7 +324,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
       </div>
       <h2 className="text-xl font-bold mt-6 mb-4">Replies</h2>
       {replies.length === 0 && <p>No replies yet</p>}
-      {replies.sort((a, b) => b.created_at - a.created_at).map(reply => (
+      {replies.sort((a, b) => a.created_at - b.created_at).map(reply => (
         <div onClick={() => handleReplyClick(reply.id)}>
         <NoteCard
           isPreview={false}
