@@ -155,7 +155,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
             const filter = { kinds: [1, 5, 6], authors: [fetchedPubkey], limit: 10 };
             await fetchData(pool, 0, false, 0, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
                 setLoading, setLoadingMore, setError, () => {}, [], repostEvents, replyEvents, setLastFetchedTimestamp, 
-                setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived, defaultAlgorithm);
+                setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived, defaultAlgorithm, true);
             setLoadingPosts(false);
         };
 

@@ -59,6 +59,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const isLoggedIn = useMemo(() => props.nostrExists || !!props.keyValue, [props.nostrExists, props.keyValue]);
     const keyValueRef = useRef<string | null>(null);
     const [followingStructure, setFollowingStructure] = useState<any>(null);
+    const initialLoadRef = useRef(false);
 
     const calculateConnectionInfo = (notePubkey: string) => {
       if (followers.includes(notePubkey)) {
@@ -147,16 +148,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       });
     }, [props.pool, metadata, isLoggedIn, setMetadata, setReactions, setReplies, setReposts]);
 
-    useEffect(() => {
-      const timer = setInterval(() => {
-        setStreamedEvents(prev => [...prev].sort((a, b) => b.created_at - a.created_at));
-      }, 1000);
-      return () => clearInterval(timer);
-    }, []);
 
     const fetchFollowingAndData = useCallback(async () => {
       if (!props.pool || !keyValueRef.current || initialLoadComplete) return;
-      let setAlgo = false;
+      //let setAlgo = false;
       // Fetch BYO algorithms
       if (keyValueRef.current) {
         const pk = await getUserPublicKey(props.nostrExists ?? false, keyValueRef.current);
@@ -176,14 +171,14 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             setByoAlgo(data.algos);
             if (selectedAlgorithm === null) {
               setSelectedAlgorithm(data.algos[0]);
-              setAlgo = true;
+              //setAlgo = true;
             }
           }
         } catch (error) {
           console.error("Error fetching BYO algorithms:", error);
         }
       }
-      if (!setAlgo) {
+      //if (!setAlgo) {
         setLoading(true);
         try {
           let newFollowing: string[] = [];
@@ -247,13 +242,59 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               : { filter: {kinds: [1, 5, 6], limit: 10, since: since, until: until}, followingStructure: [] };
             setFollowingStructure(filterObj.followingStructure);
             
-            const newEvents: ExtendedEvent[] = [];
-          
-            await fetchData(props.pool, since, false, until, isLoggedIn, props.nostrExists ?? false, keyValueRef.current,
+            const newEvents = await fetchData(props.pool, since, false, until, isLoggedIn, props.nostrExists ?? false, keyValueRef.current,
               setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
               setUserPublicKey, setInitialLoadComplete, filterObj.filter, handleEventReceived, selectedAlgorithm, range.name === '1 hour');
             
-            allFetchedEvents.push(...newEvents);
+            if (range.name !== "1 hour") {  
+              allFetchedEvents.push(...(newEvents ?? []));
+              const pubkeysToFetch = (newEvents ?? []).flatMap(event => {
+                const pubkeys = [event.pubkey];
+                if (event.repostedEvent) pubkeys.push(event.repostedEvent.pubkey);
+                if (event.repliedEvent) pubkeys.push(event.repliedEvent.pubkey);
+                return pubkeys;
+              });
+    
+              newEvents?.forEach(event => {
+                if (props.pool) {
+                  fetchMetadataReactionsAndReplies(props.pool, [event], event.repostedEvent ? [event.repostedEvent] : [], 
+                    event.repliedEvent ? [event.repliedEvent] : [], setMetadata, setReactions, setReplies, setReposts);
+                }
+                
+                if (event.repostedEvent) {
+                  pubkeysToFetch.push(event.repostedEvent.pubkey);
+                } else if (event.repliedEvent) {
+                  pubkeysToFetch.push(event.repliedEvent.pubkey);
+                }
+              });
+              
+              pubkeysToFetch.forEach(pubkey => {
+                const cachedMetadata = getMetadataFromCache(pubkey);
+                if (cachedMetadata) {
+                  setMetadata(prev => ({...prev, [pubkey]: cachedMetadata}));
+                } else if (props.pool && !metadata[pubkey]) {
+                  props.pool.subscribeManyEose(
+                    RELAYS,
+                    [{ kinds: [0], authors: [pubkey] }],
+                    {
+                      onevent(metadataEvent) {
+                        try {
+                          const metadata = JSON.parse(metadataEvent.content) as Metadata;
+                          setMetadata(prev => ({...prev, [pubkey]: metadata}));
+                          if (isLoggedIn) {
+                            setMetadataToCache(pubkey, metadata);
+                          }
+                        } catch (error) {
+                          console.error("Error parsing metadata:", error);
+                        }
+                      }
+                    }
+                  );
+                }
+              });
+            }
+            
+            
             if (allFetchedEvents.length >= 10) break;
           }
     
@@ -268,7 +309,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         } finally {
           setLoading(false);
         }
-      }
+      //}
     }, [props.pool, props.nostrExists, isLoggedIn, selectedAlgorithm, initialLoadComplete]);
 
     useEffect(() => {
@@ -276,8 +317,14 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     }, [userPublicKey]);
 
     useEffect(() => {
-      if (props.pool && (props.nostrExists || props.keyValue) && !initialLoadComplete) {
+      if (props.keyValue) {
         keyValueRef.current = props.keyValue;
+      }
+    }, [props.keyValue]);
+
+    useEffect(() => {
+      if (!initialLoadRef.current && props.pool && isLoggedIn !== null && !initialLoadComplete) {
+        initialLoadRef.current = true;
         fetchFollowingAndData();
       }
     }, [props.pool, props.nostrExists, props.keyValue, initialLoadComplete, fetchFollowingAndData]);

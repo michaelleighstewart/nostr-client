@@ -218,7 +218,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
             ? chunkArray(filter.authors, 50)
             : [filter.authors];
 
-            const handleKind1Event = (event: Event, extendedEventToAdd: ExtendedEvent) => {
+            const handleKind1Event = (event: Event, extendedEventToAdd: ExtendedEvent, callEventReceived: boolean) => {
                 if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
                     const extendedEvent: ExtendedEvent = {
                         ...event,
@@ -234,18 +234,19 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                     extendedEventToAdd = extendedEvent;
                     if (!isLoggedIn) {
                         fetchedEvents.push(extendedEventToAdd);
-                        onEventReceived(extendedEventToAdd);
+                        if (callEventReceived) onEventReceived(extendedEventToAdd);
                     }
                     else {
                         if (selectedAlgorithm) {
                             if (selectedAlgorithm.byoPosts) {
                                 fetchedEvents.push(extendedEventToAdd);
-                                onEventReceived(extendedEventToAdd);
+                                if (callEventReceived) onEventReceived(extendedEventToAdd);
                             }
                         }
                         else {
                             fetchedEvents.push(extendedEventToAdd);
-                            onEventReceived(extendedEventToAdd);
+                            if (callEventReceived) onEventReceived(extendedEventToAdd);
+
                         }
                     }
                 }
@@ -284,18 +285,18 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                 replyEvents.push(extendedEvent);
                                 if (!isLoggedIn) {
                                     fetchedEvents.push(extendedEventToAdd);
-                                    onEventReceived(extendedEvent)
+                                    if (callEventReceived) onEventReceived(extendedEvent)
                                 }
                                 else {
                                     if (selectedAlgorithm) {
                                         if (selectedAlgorithm.byoReplies) {
                                             fetchedEvents.push(extendedEventToAdd);
-                                            onEventReceived(extendedEvent);
+                                            if (callEventReceived) onEventReceived(extendedEvent);
                                         }
                                     }
                                     else {
                                         fetchedEvents.push(extendedEventToAdd);
-                                        onEventReceived(extendedEvent);
+                                        if (callEventReceived) onEventReceived(extendedEvent);
                                     }
                                 }
                             }
@@ -311,7 +312,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                 setDeletedNoteIds(prev => new Set([...prev, ...deletedIds]));
             };
             
-            const handleKind6Event = (event: Event, extendedEventToAdd: ExtendedEvent) => {
+            const handleKind6Event = (event: Event, extendedEventToAdd: ExtendedEvent, callEventReceived: boolean) => {
                 if (!events.some(e => e.id === event.id)) {
                     const repostedId = event.tags.find(tag => tag[0] === 'e')?.[1];
                     if (repostedId) {
@@ -343,7 +344,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                         if (!isLoggedIn) {
                             repostEvents.push(extendedEventToAdd);
                             fetchedEvents.push(extendedEventToAdd);
-                            onEventReceived(extendedEventToAdd);
+                            if (callEventReceived) onEventReceived(extendedEventToAdd);
 
                         }
                         else {
@@ -351,13 +352,13 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                 if (selectedAlgorithm.byoReposts) {
                                     repostEvents.push(extendedEventToAdd);
                                     fetchedEvents.push(extendedEventToAdd);
-                                    onEventReceived(extendedEvent);
+                                    if (callEventReceived) onEventReceived(extendedEvent);
                                 }
                             }
                             else {
                                 repostEvents.push(extendedEventToAdd);
                                 fetchedEvents.push(extendedEventToAdd);
-                                onEventReceived(extendedEvent);
+                                if (callEventReceived) onEventReceived(extendedEvent);
                             }
                         }
                         } catch (error) {
@@ -390,12 +391,12 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                             );
 
                             if (event.kind === 1) {
-                                handleKind1Event(event, extendedEventToAdd);
+                                handleKind1Event(event, extendedEventToAdd, true);
                             } else if (event.kind === 5) {
                                 handleKind5Event(event);
                             }
                             else if (event.kind === 6) {
-                                handleKind6Event(event, extendedEventToAdd);
+                                handleKind6Event(event, extendedEventToAdd, true);
                             }
 
                             if (!initialEventsReceived && fetchedEvents.length >= 10) {
@@ -432,21 +433,21 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                 );
     
                                 if (event.kind === 1) {
-                                    handleKind1Event(event, extendedEventToAdd);
+                                    handleKind1Event(event, extendedEventToAdd, false);
                                 } else if (event.kind === 5) {
                                     handleKind5Event(event);
                                 }
                                 else if (event.kind === 6) {
-                                    handleKind6Event(event, extendedEventToAdd);
+                                    handleKind6Event(event, extendedEventToAdd, false);
                                 }
                                 if (!initialEventsReceived && fetchedEvents.length >= 10) {
                                     initialEventsReceived = true;
-                                    const initialEvents = fetchedEvents.slice(0, 10);
-                                    initialEvents.forEach(e => onEventReceived(e));
+                                    //const initialEvents = fetchedEvents.slice(0, 10);
+                                    //initialEvents.forEach(e => onEventReceived(e));
                                     setLoading(false);
                                     setInitialLoadComplete(true);
                                 } else if (initialEventsReceived) {
-                                    onEventReceived(extendedEventToAdd);
+                                    //onEventReceived(extendedEventToAdd);
                                 }
                             },
                             onclose() {
@@ -469,9 +470,9 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
         setInitialLoadComplete(true);
 
         // Process any remaining events that weren't part of the initial 10
-        if (fetchedEvents.length > 10) {
-            fetchedEvents.slice(10).forEach(e => onEventReceived(e));
-        }
+        //if (fetchedEvents.length > 10) {
+        //    fetchedEvents.slice(10).forEach(e => onEventReceived(e));
+        //}
 
         return fetchedEvents;
     } catch (error) {
