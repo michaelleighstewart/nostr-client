@@ -38,6 +38,7 @@ export interface Reply {
   created_at: number;
   hashtags: string[];
   reactions: Reaction[];
+  replies: Reply[];
 }
 
 export interface ProfileData {

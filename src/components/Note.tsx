@@ -9,6 +9,7 @@ import Loading from './Loading';
 import { showCustomToast } from './CustomToast';
 import { Helmet } from 'react-helmet';
 import { fetchMetadataReactionsAndReplies } from '../utils/noteUtils';
+import ThreadedReply from "./ThreadedReply";
 
 interface PostProps {
   pool: SimplePool | null;
@@ -21,8 +22,10 @@ interface Reply {
   content: string;
   pubkey: string;
   created_at: number;
-  hashtags: string[];
+  tags: string[][];
+  hashtags: string[],
   reactions: Reaction[];
+  replies: Reply[];
 }
 
 const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
@@ -37,10 +40,15 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   const [allReactions, setAllReactions] = useState<Record<string, Reaction[]>>({});
   const [allReplies, setAllReplies] = useState<Record<string, ExtendedEvent[]>>({});
   const [allReposts, setAllReposts] = useState<Record<string, ExtendedEvent[]>>({});
+  const [allRepliesNew, setAllRepliesNew] = useState<Record<string, Reply>>({});
+  const [threadedReplies, setThreadedReplies] = useState<Record<string, Reply>>({});
 
   useEffect(() => {
     if (!pool || !id) return;
-    //get for the original post
+  
+    const allReplies: Record<string, Reply> = {};
+    const allRepliesToSend: Record<string, ExtendedEvent> = {};
+  
     const sub = pool.subscribeManyEose(
       RELAYS,
       [
@@ -57,107 +65,135 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
               content: event.content,
               pubkey: event.pubkey,
               created_at: event.created_at,
-              hashtags: event.tags.filter((tag: string[]) => tag[0] === 't').map((tag: string[]) => tag[1]),
-              reactions: [],
-            };
-            const newExtendedEvent: ExtendedEvent = {
-              id: event.id,
-              content: event.content,
-              pubkey: event.pubkey,
-              created_at: event.created_at,
-              deleted: false,
               tags: event.tags,
-              repostedEvent: null,
-              repliedEvent: null
+              reactions: [],
+              replies: [],
+              hashtags: []
             };
-
+            const newReplyExtendedEvent: ExtendedEvent = {
+              ...event,
+              deleted: false,
+              repostedEvent: null,
+              repliedEvent: null,
+            }
+    
             if (event.id === id) {
               setPost(newReply);
             } else {
-              setReplies((prevReplies) => {
-                // Check if the reply already exists
-                const replyExists = prevReplies.some(reply => reply.id === newReply.id);
-                if (!replyExists) {
-                  return [...prevReplies, newReply];
-                }
-                return prevReplies;
-              });
-              setAllReplies(prevReplies => {
-                if (!newReply.id) return prevReplies;
-                const existingReplies = prevReplies[id] || [];
-                const replyExists = existingReplies.some(
-                  (r: ExtendedEvent) => r.id === newExtendedEvent.id
-                );
-                if (!replyExists) {
-                  return {
-                    ...prevReplies,
-                    [id]: [...existingReplies, newExtendedEvent]
-                  };
-                }
-                return prevReplies;
-              });
+              allReplies[event.id] = newReply;
+              allRepliesToSend[event.id] = newReplyExtendedEvent;
             }
-          }
-          else if (event.kind === 7) {
-            const newReaction: Reaction = {
-              id: event.id,
-              liker_pubkey: event.pubkey,
-              type: event.content,
-              sig: event.sig
-            };
+          } else if (event.kind === 7) {
+            // Handle reactions
             const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
-            setAllReactions(prevReactions => {
-              if (!postId) return prevReactions;
-              const existingReactions = prevReactions[postId] || [];
-              const reactionExists = existingReactions.some(
-                (r: Reaction) => r.liker_pubkey === newReaction.liker_pubkey && r.type === newReaction.type
-              );
-              if (!reactionExists) {
-                return {
-                  ...prevReactions,
-                  [postId as string]: [...existingReactions, newReaction]
-                };
-              }
-              return prevReactions;
-            });
-          }
-          else if (event.kind === 6) {
-            const newExtendedEvent: ExtendedEvent = {
-              id: event.id,
-              content: event.content,
-              pubkey: event.pubkey,
-              created_at: event.created_at,
-              deleted: false,
-              tags: event.tags,
-              repostedEvent: null,
-              repliedEvent: null
-            };
-            setAllReposts((prevReposts: Record<string, ExtendedEvent[]>) => {
-              if (!newExtendedEvent.id) return prevReposts;
-              const existingReposts = prevReposts[id] || [];
-              const repostExists = existingReposts.some(
-                (r: ExtendedEvent) => r.id === newExtendedEvent.id
-              );
-              if (!repostExists) {
-                return {
-                  ...prevReposts,
-                  [id]: [...existingReposts, newExtendedEvent]
-                };
-              }
-              return prevReposts;
-            });
+            if (postId) {
+              const newReaction: Reaction = {
+                id: event.id,
+                liker_pubkey: event.pubkey,
+                type: event.content,
+                sig: event.sig
+              };
+              setAllReactions(prevReactions => ({
+                ...prevReactions,
+                [postId]: [...(prevReactions[postId] || []), newReaction]
+              }));
+            }
+          } else if (event.kind === 6) {
+            // Handle reposts
+            const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+            if (postId) {
+              setAllReposts(prevReposts => ({
+                ...prevReposts,
+                [postId]: [...(prevReposts[postId] || []), event as unknown as ExtendedEvent]
+              }));
+            }
           }
         },
         onclose: () => {
+          setAllRepliesNew(allReplies);
+          setAllReplies(prevReplies => {
+            const updatedReplies = { ...prevReplies };
+            Object.entries(allRepliesToSend).forEach(([eventId, reply]) => {
+              updatedReplies[eventId] = [...(updatedReplies[eventId] || []), reply];
+            });
+            return updatedReplies;
+          });
           setLoading(false);
+  
+          // Fetch metadata, reactions, and reposts for all replies
+          const allEvents = Object.values(allRepliesToSend);
+          if (pool && allEvents.length > 0) {
+            fetchMetadataReactionsAndReplies(
+              pool,
+              allEvents,
+              [], // repostEvents (we don't have this information here)
+              [], // replyEvents (we don't have this information here)
+              setMetadata,
+              setAllReactions,
+              setAllReplies,
+              setAllReposts
+            );
+          }
         },
       }
     );
-
+  
     return () => {
       sub.close();
     };
   }, [id, pool]);
+
+  useEffect(() => {
+    if (!allRepliesNew || Object.keys(allRepliesNew).length === 0) return;
+  
+    const threadedReplies: Record<string, Reply> = {};
+    const replyMap: Record<string, Reply> = {};
+  
+    // First pass: Create a map of all replies
+    Object.values(allRepliesNew).forEach(reply => {
+      replyMap[reply.id] = { ...reply, replies: [] };
+    });
+  
+    // Second pass: Construct the threaded structure
+    console.log("allRepliesNew is", allRepliesNew);
+    Object.values(allRepliesNew).forEach(reply => {
+      const rootTag = reply.tags.find(tag => tag[0] === 'e' && tag[3] === 'root');
+      const parentTag = reply.tags.find(tag => tag[0] === 'e' && tag[3] === 'reply');
+  
+      if (rootTag && rootTag[1] === id) {
+        if (parentTag) {
+          // This is a nested reply
+          const parentId = parentTag[1];
+          if (replyMap[parentId]) {
+            replyMap[parentId].replies.push(replyMap[reply.id]);
+          } else {
+            // If parent doesn't exist yet, add it to the top level
+            threadedReplies[reply.id] = replyMap[reply.id];
+          }
+        } else {
+          // This is a top-level reply
+          threadedReplies[reply.id] = replyMap[reply.id];
+        }
+      }
+    });
+  
+    console.log("Threaded replies:", threadedReplies);
+    setThreadedReplies(threadedReplies);
+  }, [allRepliesNew, id]);
+  
+  // Helper function to find a reply by its ID in the nested structure
+  const findReplyById = (replies: Reply[], id: string): Reply | null => {
+    for (const reply of replies) {
+      if (reply.id === id) {
+        return reply;
+      }
+      const nestedReply = findReplyById(reply.replies, id);
+      if (nestedReply) {
+        return nestedReply;
+      }
+    }
+    return null;
+  };
 
   useEffect(() => {
     //get for the replies
@@ -242,15 +278,16 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
       }
 
       await pool.publish(RELAYS, signedEvent);
-      
       // Add the new reply to the replies state
       const newReply: Reply = {
         id: signedEvent.id,
         content: replyContent,
         pubkey: signedEvent.pubkey,
         created_at: signedEvent.created_at,
-        hashtags: [],
+        replies: [],
+        tags: [],
         reactions: [],
+        hashtags: [],
       };
       setReplies(prevReplies => [...prevReplies, newReply]);
       
@@ -292,7 +329,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
           nip05: metadata[post.pubkey]?.nip05 || '',
         }}
         created_at={post.created_at}
-        hashtags={post.hashtags}
+        hashtags={[]}
         pool={pool}
         nostrExists={nostrExists}
         reactions={allReactions[post.id] || []}
@@ -323,39 +360,28 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         </button>
       </div>
       <h2 className="text-xl font-bold mt-6 mb-4">Replies</h2>
-      {replies.length === 0 && <p>No replies yet</p>}
-      {replies.sort((a, b) => a.created_at - b.created_at).map(reply => (
-        <div onClick={() => handleReplyClick(reply.id)}>
-        <NoteCard
-          isPreview={false}
-          key={reply.id}
-          id={reply.id}
-          content={reply.content}
-          user={{
-            pubkey: reply.pubkey,
-            name: metadata[reply.pubkey]?.name || '',
-            image: metadata[reply.pubkey]?.picture || '',
-            nip05: metadata[reply.pubkey]?.nip05 || '',
-          }}
-          created_at={reply.created_at}
-          hashtags={reply.hashtags}
-          pool={pool}
-          nostrExists={nostrExists}
-          reactions={allReactions[reply.id] || []}
-          keyValue={keyValue}
-          deleted={false}
-          replies={allReplies[reply.id]?.length || 0}
-          repostedEvent={null}
-          metadata={metadata}
-          allReactions={allReactions}
-          allReplies={allReplies} repliedEvent={null} 
-          reposts={allReposts[reply.id]?.length || 0}
-          allReposts={allReposts}
-          setMetadata={setMetadata}
-          connectionInfo={null}
-          />
-          </div>
-      ))}
+{Object.keys(threadedReplies).length === 0 ? (
+  <p>No replies yet</p>
+) : (
+  Object.values(threadedReplies)
+    .sort((a, b) => a.created_at - b.created_at)
+    .map(reply => (
+      <ThreadedReply
+        key={reply.id}
+        reply={reply}
+        depth={0}
+        handleReplyClick={handleReplyClick}
+        pool={pool}
+        nostrExists={nostrExists}
+        keyValue={keyValue}
+        metadata={metadata}
+        allReactions={allReactions}
+        allReplies={allReplies}
+        allReposts={allReposts}
+        setMetadata={setMetadata}
+      />
+    ))
+)}
     </div>
   );
 };

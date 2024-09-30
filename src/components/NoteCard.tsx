@@ -42,6 +42,7 @@ interface Props {
         picture: string;
       };
     } | null;
+    replyDepth?: number;
   }
   
   const NoteCard = React.memo(function NoteCard({
@@ -65,7 +66,8 @@ interface Props {
     allReposts,
     isPreview, 
     setMetadata,
-    connectionInfo
+    connectionInfo,
+    replyDepth
   }: Props) {
     const [alreadyLiked, setAlreadyLiked] = useState(false);
     const [alreadyDisliked, setAlreadyDisliked] = useState(false);
@@ -470,6 +472,14 @@ interface Props {
             />
           </div>
         )}
+
+        {replyDepth && replyDepth > 0 && (
+          <div 
+            className="absolute left-0 top-0 bottom-0 border-l-2 border-gray-400"
+            style={{ left: `${(replyDepth - 1) * 20}px` }}
+          ></div>
+        )}
+
         <div onClick={handleContentClick} className="cursor-pointer">
           <p>{processedContent}</p>
           {youtubeVideoId && (
