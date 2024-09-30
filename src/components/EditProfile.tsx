@@ -8,6 +8,7 @@ import Loading from "./Loading";
 import { showCustomToast } from "./CustomToast";
 import { API_URLS } from "../utils/apiConstants";
 import { getUserPublicKey } from "../utils/profileUtils";
+import { setMetadataToCache } from "../utils/cachingUtils";
 
 interface EditProfileProps {
     keyValue: string;
@@ -130,6 +131,26 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                 let eventFinal = finalizeEvent(event, skDecoded);
                 await props.pool.publish(RELAYS, eventFinal);
               }
+
+              const userPubkey = await getUserPublicKey(props.nostrExists ?? false, props.keyValue);
+              setMetadataToCache(userPubkey, profile);
+              const response = await fetch(`${API_URLS.API_URL}batch-processor`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  type: 'user_metadata_processor',
+                  params: {
+                    pubkeys: [userPubkey]
+                  }
+                }),
+              });
+          
+              if (!response.ok) {
+                console.log('Failed to request user metadata update');
+              }
+
             showCustomToast("Profile updated successfully!");
         } catch (error) {
             console.error("Error saving profile:", error);
