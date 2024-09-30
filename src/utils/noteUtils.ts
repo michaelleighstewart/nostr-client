@@ -410,7 +410,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                             }
                         },
                         oneose() {
-                            sub?.close();
                             resolve();
                         }
                     })
