@@ -20,6 +20,7 @@ import { API_URLS } from '../utils/apiConstants';
 import { constructFilterFromBYOAlgo } from '../utils/algoUtils';
 import { createAuthHeader } from '../utils/authUtils';
 import { bech32 } from 'bech32';
+import FaviconIcon from './FaviconIcon';
 
 interface HomeProps {
   keyValue: string;
@@ -60,6 +61,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const keyValueRef = useRef<string | null>(null);
     const [followingStructure, setFollowingStructure] = useState<any>(null);
     const initialLoadRef = useRef(false);
+    const [generatingPost, setGeneratingPost] = useState(false);
 
     const calculateConnectionInfo = (notePubkey: string) => {
       if (followers.includes(notePubkey)) {
@@ -100,6 +102,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     };
 
     const handleEventReceived = useCallback((event: ExtendedEvent) => {
+      console.log("got a new event....", event);
       setStreamedEvents(prev => {
         if (prev.some(e => e.id === event.id)) {
           return prev;
@@ -479,6 +482,33 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       }
     };
 
+    const generatePost = async () => {
+      setGeneratingPost(true);
+      try {
+        const response = await fetch(`${API_URLS.API_URL}llama`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            input: "Please write a sample social media post about the decentralized messaging protocol Nostr."
+          }),
+        });
+    
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    
+        const data = await response.json();
+        setMessage(data.result[0].generated_text);
+      } catch (error) {
+        console.error("Error generating post:", error);
+        showCustomToast("Failed to generate post. Please try again.");
+      } finally {
+        setGeneratingPost(false);
+      }
+    };
+
     const previewUser: User = {
       name: metadata[userPublicKey || '']?.name || '',
       image: metadata[userPublicKey || '']?.picture || '',
@@ -556,6 +586,13 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                     disabled={uploadingVideo}
                   >
                     {uploadingVideo ? <Loading vCentered={false} /> : <VideoCameraIcon className="h-5 w-5" />}
+                  </button>
+                  <button 
+                    className={`flex items-center justify-center font-bold p-16 rounded bg-transparent cursor-pointer ${generatingPost ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={generatePost}
+                    disabled={generatingPost}
+                  >
+                    {generatingPost ? <Loading vCentered={false} tiny={true} /> : <FaviconIcon className="h-5 w-5 cursor-pointer" onClick={generatePost} />}
                   </button>
                 </div>
                 <div>
