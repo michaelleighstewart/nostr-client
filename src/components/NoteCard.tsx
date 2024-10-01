@@ -43,6 +43,7 @@ interface Props {
       };
     } | null;
     replyDepth?: number;
+    rootEvent: ExtendedEvent | null;
   }
   
   const NoteCard = React.memo(function NoteCard({
@@ -67,7 +68,8 @@ interface Props {
     isPreview, 
     setMetadata,
     connectionInfo,
-    replyDepth
+    replyDepth,
+    rootEvent
   }: Props) {
     const [alreadyLiked, setAlreadyLiked] = useState(false);
     const [alreadyDisliked, setAlreadyDisliked] = useState(false);
@@ -471,6 +473,7 @@ interface Props {
               allReposts={allReposts}
               setMetadata={setMetadata}
               connectionInfo={null}
+              rootEvent={null}
             />
           </div>
         )}
@@ -655,39 +658,78 @@ interface Props {
             />
           </div>
         )}
-        {repliedEvent ? (
-                    <NoteCard
-                    isPreview={false}
-                    id={repliedEvent.id}
-                    content={repliedEvent.content}
-                    user={{
-                      name:
-                          metadata?.[repliedEvent.pubkey]?.name ??
-                          `${nip19.npubEncode(repliedEvent.pubkey).slice(0, 12)}...`,
-                      image:
-                          metadata?.[repliedEvent.pubkey]?.picture,
-                      pubkey: repliedEvent.pubkey,
-                      nip05: metadata?.[repliedEvent.pubkey]?.nip05
-                    }}
-                    created_at={repliedEvent.created_at}
-                    hashtags={[]}
-                    pool={pool}   
-                    nostrExists={nostrExists}
-                    reactions={allReactions?.[repliedEvent.id] ?? []}
-                    keyValue={keyValue}
-                    replies={allReplies?.[repliedEvent.id]?.length ?? 0}
-                    deleted={repliedEvent.deleted}
-                    repostedEvent={null}
-                    repliedEvent={null}
-                    metadata={metadata}
-                    allReactions={allReactions}
-                    allReplies={allReplies}
-                    reposts={allReposts?.[repliedEvent.id]?.length ?? 0}
-                    allReposts={allReposts}
-                    setMetadata={setMetadata}
-                    connectionInfo={null}
-                  />
-      ) : <></>}
+        {repliedEvent && (
+          <div className="mt-2 border-l-2 border-gray-500">
+            <p className="text-gray-400 text-sm mb-2 pl-4">Replied to</p>
+            <NoteCard
+              isPreview={false}
+              id={repliedEvent.id}
+              content={repliedEvent.content}
+              user={{
+                name:
+                  metadata?.[repliedEvent.pubkey]?.name ??
+                  `${nip19.npubEncode(repliedEvent.pubkey).slice(0, 12)}...`,
+                image: metadata?.[repliedEvent.pubkey]?.picture,
+                pubkey: repliedEvent.pubkey,
+                nip05: metadata?.[repliedEvent.pubkey]?.nip05
+              }}
+              created_at={repliedEvent.created_at}
+              hashtags={[]}
+              pool={pool}
+              nostrExists={nostrExists}
+              reactions={allReactions?.[repliedEvent.id] ?? []}
+              keyValue={keyValue}
+              replies={allReplies?.[repliedEvent.id]?.length ?? 0}
+              deleted={repliedEvent.deleted}
+              repostedEvent={null}
+              repliedEvent={null}
+              rootEvent={null}
+              metadata={metadata}
+              allReactions={allReactions}
+              allReplies={allReplies}
+              reposts={allReposts?.[repliedEvent.id]?.length ?? 0}
+              allReposts={allReposts}
+              setMetadata={setMetadata}
+              connectionInfo={null}
+            />
+          </div>
+        )}
+        {rootEvent && (
+          <div className="mt-2 border-l-2 border-gray-500">
+            <p className="text-gray-400 text-sm mb-2 pl-4">Original note</p>
+            <NoteCard
+              isPreview={false}
+              id={rootEvent.id}
+              content={rootEvent.content}
+              user={{
+                name:
+                  metadata?.[rootEvent.pubkey]?.name ??
+                  `${nip19.npubEncode(rootEvent.pubkey).slice(0, 12)}...`,
+                image: metadata?.[rootEvent.pubkey]?.picture,
+                pubkey: rootEvent.pubkey,
+                nip05: metadata?.[rootEvent.pubkey]?.nip05
+              }}
+              created_at={rootEvent.created_at}
+              hashtags={[]}
+              pool={pool}
+              nostrExists={nostrExists}
+              reactions={allReactions?.[rootEvent.id] ?? []}
+              keyValue={keyValue}
+              replies={allReplies?.[rootEvent.id]?.length ?? 0}
+              deleted={rootEvent.deleted}
+              repostedEvent={null}
+              repliedEvent={null}
+              rootEvent={null}
+              metadata={metadata}
+              allReactions={allReactions}
+              allReplies={allReplies}
+              reposts={allReposts?.[rootEvent.id]?.length ?? 0}
+              allReposts={allReposts}
+              setMetadata={setMetadata}
+              connectionInfo={null}
+            />
+          </div>
+        )}
       <ConnectionInfoDialog
         isOpen={isConnectionInfoOpen}
         onClose={() => setIsConnectionInfoOpen(false)}

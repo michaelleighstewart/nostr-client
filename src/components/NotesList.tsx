@@ -82,6 +82,7 @@ const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists,
                         allReposts={reposts}
                         setMetadata={setMetadata}
                         connectionInfo={calculateConnectionInfo(note.pubkey)}
+                        rootEvent={note.rootEvent}
                     />
                 </div>
             ))}

@@ -75,6 +75,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
               deleted: false,
               repostedEvent: null,
               repliedEvent: null,
+              rootEvent: null
             }
     
             if (event.id === id) {
@@ -344,6 +345,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         allReposts={allReposts}
         setMetadata={setMetadata}
         connectionInfo={null}
+        rootEvent={null}
         />
       <div className="mt-8 p-16 rounded-lg">
         <textarea

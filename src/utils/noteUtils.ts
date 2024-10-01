@@ -186,7 +186,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
     _setEvents: React.Dispatch<React.SetStateAction<ExtendedEvent[]>>,
     events: ExtendedEvent[],
     repostEvents: ExtendedEvent[],
-    replyEvents: ExtendedEvent[],
+    _replyEvents: ExtendedEvent[],
     setLastFetchedTimestamp: React.Dispatch<React.SetStateAction<number>>,
     setDeletedNoteIds: React.Dispatch<React.SetStateAction<Set<string>>>,
     _setUserPublicKey: React.Dispatch<React.SetStateAction<string | null>>,
@@ -218,92 +218,74 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
             ? chunkArray(filter.authors, 50)
             : [filter.authors];
 
-            const handleKind1Event = (event: Event, extendedEventToAdd: ExtendedEvent, callEventReceived: boolean) => {
-                if (!event.tags.some((tag: string[]) => tag[0] === 'e')) {
-                    const extendedEvent: ExtendedEvent = {
-                        ...event,
-                        id: event.id,
-                        pubkey: event.pubkey,
-                        created_at: event.created_at,
-                        content: event.content,
-                        tags: event.tags,
-                        deleted: false,
-                        repostedEvent: null,
-                        repliedEvent: null
-                    };
-                    extendedEventToAdd = extendedEvent;
-                    if (!isLoggedIn) {
+            const handleKind1Event = async (event: Event, extendedEventToAdd: ExtendedEvent, callEventReceived: boolean) => {
+                const rootTag = event.tags.find(tag => tag[0] === 'e' && tag[3] === 'root');
+                const replyTag = event.tags.find(tag => tag[0] === 'e' && tag[3] === 'reply');
+              
+                const fetchAndCreateExtendedEvent = async (id: string | null, _type: 'root' | 'reply') => {
+                  if (!id || !pool) return null;
+
+                  return new Promise<ExtendedEvent | null>((resolve) => {
+                    let eventToResolve: ExtendedEvent | null = null;
+                    const sub = pool.subscribeManyEose(
+                      RELAYS,
+                      [{ kinds: [1], ids: [id] }],
+                      {
+                        onevent(originalEvent) {
+                          const extendedOriginalEvent: ExtendedEvent = {
+                            ...originalEvent,
+                            id: originalEvent.id,
+                            pubkey: originalEvent.pubkey,
+                            created_at: originalEvent.created_at,
+                            content: originalEvent.content,
+                            tags: originalEvent.tags,
+                            deleted: false,
+                            repostedEvent: null,
+                            repliedEvent: null,
+                            rootEvent: null
+                          };
+                          eventToResolve = extendedOriginalEvent;
+                        },
+                        onclose() {
+                          resolve(eventToResolve);
+                          sub.close();
+                        }
+                      }
+                    );
+                  });
+                };
+              
+            //Promise.all([
+                const rootEvent = await fetchAndCreateExtendedEvent(rootTag ? rootTag[1] : null, 'root');
+                const replyEvent = await fetchAndCreateExtendedEvent(replyTag ? replyTag[1] : null, 'reply');
+                //]).then(([rootEvent, repliedEvent]) => {
+                  const extendedEvent: ExtendedEvent = {
+                    ...event,
+                    id: event.id,
+                    pubkey: event.pubkey,
+                    created_at: event.created_at,
+                    content: event.content,
+                    tags: event.tags,
+                    deleted: false,
+                    repostedEvent: null,
+                    repliedEvent: replyEvent,
+                    rootEvent: rootEvent
+                  };
+              
+                  extendedEventToAdd = extendedEvent;
+                  if (selectedAlgorithm) {
+                    if (selectedAlgorithm.byoReplies) {
                         fetchedEvents.push(extendedEventToAdd);
                         if (callEventReceived) onEventReceived(extendedEventToAdd);
-                    }
-                    else {
-                        if (selectedAlgorithm) {
-                            if (selectedAlgorithm.byoPosts) {
-                                fetchedEvents.push(extendedEventToAdd);
-                                if (callEventReceived) onEventReceived(extendedEventToAdd);
-                            }
-                        }
-                        else {
-                            fetchedEvents.push(extendedEventToAdd);
-                            if (callEventReceived) onEventReceived(extendedEventToAdd);
-
-                        }
-                    }
-                }
-                else {
-                    // Get the original note referenced in the first 'e' tag
-                    const replyToId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                    if (replyToId && selectedAlgorithm.byoReplies) {
-                        // Fetch the original note
-                        pool?.get(RELAYS, {
-                            ids: [replyToId]
-                        }).then(originalEvent => {
-                            if (originalEvent) {
-                                const repliedEvent: ExtendedEvent = {
-                                    ...originalEvent,
-                                    id: originalEvent.id,
-                                    pubkey: originalEvent.pubkey,
-                                    created_at: originalEvent.created_at,
-                                    content: originalEvent.content,
-                                    tags: originalEvent.tags,
-                                    deleted: false,
-                                    repostedEvent: null,
-                                    repliedEvent: null
-                                };
-                                const extendedEvent: ExtendedEvent = {
-                                    ...event,
-                                    id: event.id,
-                                    pubkey: event.pubkey,
-                                    created_at: event.created_at,
-                                    content: event.content,
-                                    tags: event.tags,
-                                    deleted: false,
-                                    repostedEvent: null,
-                                    repliedEvent: repliedEvent
-                                };
-                                extendedEventToAdd = extendedEvent;
-                                replyEvents.push(extendedEvent);
-                                if (!isLoggedIn) {
-                                    fetchedEvents.push(extendedEventToAdd);
-                                    if (callEventReceived) onEventReceived(extendedEvent)
-                                }
-                                else {
-                                    if (selectedAlgorithm) {
-                                        if (selectedAlgorithm.byoReplies) {
-                                            fetchedEvents.push(extendedEventToAdd);
-                                            if (callEventReceived) onEventReceived(extendedEvent);
-                                        }
-                                    }
-                                    else {
-                                        fetchedEvents.push(extendedEventToAdd);
-                                        if (callEventReceived) onEventReceived(extendedEvent);
-                                    }
-                                }
-                            }
-                        });
-                    }
-                }
-            };
+                      }
+                  }
+                  else {
+                    repostEvents.push(extendedEventToAdd);
+                    fetchedEvents.push(extendedEventToAdd);
+                    if (callEventReceived) onEventReceived(extendedEventToAdd);
+                  }
+              //  });
+              };
             
             const handleKind5Event = (event: Event) => {
                 const deletedIds = event.tags
@@ -327,7 +309,8 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                 tags: repostedContent.tags,
                                 deleted: false,
                                 repostedEvent: null,
-                                repliedEvent: null
+                                repliedEvent: null,
+                                rootEvent: null
                             };
                         const extendedEvent: ExtendedEvent = {
                             id: event.id,
@@ -337,7 +320,8 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                             tags: event.tags,
                             deleted: false,
                             repostedEvent: repostedEvent,
-                            repliedEvent: null
+                            repliedEvent: null,
+                            rootEvent: null
                         };
                         extendedEventToAdd = extendedEvent;
                         
@@ -384,7 +368,8 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                 ...event,
                                 deleted: false,
                                 repostedEvent: null,
-                                repliedEvent: null
+                                repliedEvent: null,
+                                rootEvent: null
                             };
                             setLastFetchedTimestamp(prevTimestamp => 
                                 Math.min(prevTimestamp, event.created_at)
@@ -418,6 +403,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                         [filter],
                         {
                             onevent(event: Event) {
+                                //console.log("got an event in other", event)
                                 if (fetchedEvents.some(e => e.id === event.id)) {
                                     return;
                                 }
@@ -425,7 +411,8 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                     ...event,
                                     deleted: false,
                                     repostedEvent: null,
-                                    repliedEvent: null
+                                    repliedEvent: null,
+                                    rootEvent: null
                                 };
                                 setLastFetchedTimestamp(prevTimestamp => 
                                     Math.min(prevTimestamp, event.created_at)

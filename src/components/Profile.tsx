@@ -75,7 +75,10 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
             return newEvents;
         });
         if (pool) {
-            fetchMetadataReactionsAndReplies(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], event.repliedEvent ? [event.repliedEvent] : [], setMetadata, setReactions, setReplies, setReposts);
+            const repliesToFetch = [];
+            if (event.repliedEvent) repliesToFetch.push(event.repliedEvent);
+            if (event.rootEvent) repliesToFetch.push(event.rootEvent);
+            fetchMetadataReactionsAndReplies(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch, setMetadata, setReactions, setReplies, setReposts);
         }
     }, []);
 
@@ -409,6 +412,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                                         <NoteCard
                                             isPreview={false}
                                             id={post.id}
+                                            rootEvent={post.rootEvent}
                                             content={post.content}
                                             user={{
                                                 name: profileData?.name || 'Unknown',

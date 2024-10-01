@@ -14,6 +14,7 @@ export type ExtendedEvent = {
   tags: string[][];
   repostedEvent: ExtendedEvent | null;
   repliedEvent: ExtendedEvent | null;
+  rootEvent: ExtendedEvent | null;
 }
 
 export interface Metadata {
