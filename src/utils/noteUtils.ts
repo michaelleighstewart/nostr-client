@@ -271,18 +271,21 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                     repliedEvent: replyEvent,
                     rootEvent: rootEvent
                   };
-              
                   extendedEventToAdd = extendedEvent;
                   if (selectedAlgorithm) {
                     if (selectedAlgorithm.byoReplies) {
+                      if (!fetchedEvents.some(event => event.id === extendedEventToAdd.id)) {
                         fetchedEvents.push(extendedEventToAdd);
                         if (callEventReceived) onEventReceived(extendedEventToAdd);
                       }
+                    }
                   }
                   else {
-                    repostEvents.push(extendedEventToAdd);
-                    fetchedEvents.push(extendedEventToAdd);
-                    if (callEventReceived) onEventReceived(extendedEventToAdd);
+                    if (!fetchedEvents.some(event => event.id === extendedEventToAdd.id)) {
+                        repostEvents.push(extendedEventToAdd);
+                        fetchedEvents.push(extendedEventToAdd);
+                        if (callEventReceived) onEventReceived(extendedEventToAdd);
+                    }
                   }
               //  });
               };
@@ -334,15 +337,19 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                         else {
                             if (selectedAlgorithm) {
                                 if (selectedAlgorithm.byoReposts) {
+                                    if (!fetchedEvents.some(event => event.id === extendedEventToAdd.id)) {
+                                        repostEvents.push(extendedEventToAdd);
+                                        fetchedEvents.push(extendedEventToAdd);
+                                        if (callEventReceived) onEventReceived(extendedEvent);
+                                    }
+                                }
+                            }
+                            else {
+                                if (!fetchedEvents.some(event => event.id === extendedEventToAdd.id)) {
                                     repostEvents.push(extendedEventToAdd);
                                     fetchedEvents.push(extendedEventToAdd);
                                     if (callEventReceived) onEventReceived(extendedEvent);
                                 }
-                            }
-                            else {
-                                repostEvents.push(extendedEventToAdd);
-                                fetchedEvents.push(extendedEventToAdd);
-                                if (callEventReceived) onEventReceived(extendedEvent);
                             }
                         }
                         } catch (error) {

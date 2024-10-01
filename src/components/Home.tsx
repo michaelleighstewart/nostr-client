@@ -247,7 +247,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             const until = now - range.start;
             let filterObj = isLoggedIn
               ? await constructFilterFromBYOAlgo(selectedAlgorithm, newFollowing, since, props.pool)
-              : { filter: {kinds: [1, 5, 6], limit: 10, since: since, until: until}, followingStructure: [] };
+              : { filter: {kinds: [1], limit: 10, since: since, until: until}, followingStructure: [] };
             setFollowingStructure(filterObj.followingStructure);
             
             const newEvents = await fetchData(props.pool, since, false, until, isLoggedIn, props.nostrExists ?? false, keyValueRef.current,
@@ -313,7 +313,14 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           if (allFetchedEvents.length > 0) {
             const newLastFetchedTimestamp = Math.min(...allFetchedEvents.map(event => event.created_at));
             setLastFetchedTimestamp(newLastFetchedTimestamp);
-            setStreamedEvents(allFetchedEvents.sort((a, b) => b.created_at - a.created_at));
+            setStreamedEvents(prevEvents => {
+              const newEvents = [...prevEvents, ...allFetchedEvents];
+              return newEvents
+                .filter((event, index, self) => 
+                  index === self.findIndex((e) => e.id === event.id)
+                )
+                .sort((a, b) => b.created_at - a.created_at);
+            });
           }
           setInitialLoadComplete(true);
         } catch (error) {
