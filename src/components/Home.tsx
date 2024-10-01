@@ -549,7 +549,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         </Helmet>
         {isLoggedIn && (
           <div className="flex flex-col space-y-4 border border-gray-300 rounded-lg p-24 mb-8">
-                        <div>
+            <div>
               <div className="pb-2">
                 <textarea
                   ref={textareaRef}

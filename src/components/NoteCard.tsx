@@ -362,7 +362,9 @@ interface Props {
     }
 
     const handleContentClick = () => {
-      navigate(`/note/${id}`);
+      if (!isPreview) {
+        navigate(`/note/${id}`);
+      }
     };
 
     const handleImageClick = (url: string) => {
@@ -480,7 +482,7 @@ interface Props {
           ></div>
         )}
 
-        <div onClick={handleContentClick} className="cursor-pointer">
+        <div className={isPreview ? "" : "cursor-pointer"} onClick={handleContentClick}>
           <p>{processedContent}</p>
           {youtubeVideoId && (
             <div className="mt-2">
