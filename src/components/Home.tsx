@@ -21,6 +21,7 @@ import { constructFilterFromBYOAlgo } from '../utils/algoUtils';
 import { createAuthHeader } from '../utils/authUtils';
 import { bech32 } from 'bech32';
 import FaviconIcon from './FaviconIcon';
+import TopicSelectionDialog from './TopicSelectionDialog';
 
 interface HomeProps {
   keyValue: string;
@@ -62,6 +63,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const [followingStructure, setFollowingStructure] = useState<any>(null);
     const initialLoadRef = useRef(false);
     const [generatingPost, setGeneratingPost] = useState(false);
+    const [isTopicDialogOpen, setIsTopicDialogOpen] = useState(false);
+    const [_selectedTopic, setSelectedTopic] = useState<string | null>(null);
 
     const calculateConnectionInfo = (notePubkey: string) => {
       if (followers.includes(notePubkey)) {
@@ -476,34 +479,40 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
 
     const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       setMessage(e.target.value);
+      adjustTextareaHeight();
+    };
+
+    const adjustTextareaHeight = () => {
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto';
         textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
       }
     };
 
-    const generatePost = async () => {
+    const handleTopicSelection = async (topic: string) => {
+      setSelectedTopic(topic);
       setGeneratingPost(true);
       try {
         const response = await fetch(`${API_URLS.API_URL}llama`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            input: "Please write a sample social media post about the decentralized messaging protocol Nostr."
+            input: `Please write a sample social media post about ${topic}`,
           }),
         });
     
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          throw new Error('Failed to generate post');
         }
     
         const data = await response.json();
         setMessage(data.result[0].generated_text);
+        setTimeout(adjustTextareaHeight, 0);
       } catch (error) {
-        console.error("Error generating post:", error);
-        showCustomToast("Failed to generate post. Please try again.");
+        console.error('Error generating post:', error);
+        showCustomToast('Failed to generate post. Please try again.', 'error');
       } finally {
         setGeneratingPost(false);
       }
@@ -589,10 +598,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                   </button>
                   <button 
                     className={`flex items-center justify-center font-bold p-16 rounded bg-transparent cursor-pointer ${generatingPost ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={generatePost}
+                    onClick={() => setIsTopicDialogOpen(true)}
                     disabled={generatingPost}
                   >
-                    {generatingPost ? <Loading vCentered={false} tiny={true} /> : <FaviconIcon className="h-5 w-5 cursor-pointer" onClick={generatePost} />}
+                    {generatingPost ? <Loading vCentered={false} tiny={true} /> : <FaviconIcon className="h-5 w-5 cursor-pointer" />}
                   </button>
                 </div>
                 <div>
@@ -696,6 +705,11 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         <Ostrich show={showOstrich} onClose={() => setShowOstrich(false)} 
             text="Hey! Please " linkText="set up your profile to let users know who you are" 
             linkUrl="/edit-profile" />
+        <TopicSelectionDialog
+          isOpen={isTopicDialogOpen}
+          onClose={() => setIsTopicDialogOpen(false)}
+          onSelectTopic={handleTopicSelection}
+        />
       </div>
     )
   }

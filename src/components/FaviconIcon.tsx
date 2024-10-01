@@ -12,7 +12,6 @@ const FaviconIcon: React.FC<FaviconIconProps> = ({ className, onClick }) => {
       alt="Favicon"
       className={`w-6 h-6 cursor-pointer ${className || ''}`}
       onClick={onClick}
-      style={{ cursor: onClick ? 'pointer' : 'default' }}
     />
   );
 };
