@@ -66,6 +66,7 @@ interface ThreadedReplyProps {
             allReposts={allReposts}
             setMetadata={setMetadata}
             connectionInfo={null}
+            rootEvent={null}
           />
         </div>
         {nestedReplies.map((nestedReply: Reply) => (
