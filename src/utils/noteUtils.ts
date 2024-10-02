@@ -245,7 +245,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                             rootEvent: null
                           };
                           eventToResolve = extendedOriginalEvent;
-                          //fetchedEvents.push(eventToResolve);
                         },
                         onclose() {
                           resolve(eventToResolve);
@@ -297,13 +296,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                     if (callEventReceived) onEventReceived(extendedEventToAdd);
                   }
                 }
-            };
-            
-            const handleKind5Event = (event: Event) => {
-                const deletedIds = event.tags
-                    .filter(tag => tag[0] === 'e')
-                    .map(tag => tag[1]);
-                setDeletedNoteIds(prev => new Set([...prev, ...deletedIds]));
             };
             
             const handleKind6Event = (event: Event, extendedEventToAdd: ExtendedEvent, callEventReceived: boolean) => {
@@ -367,100 +359,56 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                 }
             };
 
+            let newLastFetchedTimestamp = Infinity;
+            let newDeletedNoteIds = new Set<string>();
+
+            const handleEvent = (event: Event, callEventReceieved: boolean) => {
+                if (fetchedEvents.some(e => e.id === event.id)) {
+                    return;
+                }
+                if (fetchedEvents.length >= 10) {
+                    return;
+                }
+                let extendedEventToAdd: ExtendedEvent = {
+                    ...event,
+                    deleted: false,
+                    repostedEvent: null,
+                    repliedEvent: null,
+                    rootEvent: null
+                };
+    
+                newLastFetchedTimestamp = Math.min(newLastFetchedTimestamp, event.created_at);
+    
+                if (event.kind === 1) {
+                    handleKind1Event(event, extendedEventToAdd, callEventReceieved);
+                } else if (event.kind === 5) {
+                    const deletedIds = event.tags
+                        .filter(tag => tag[0] === 'e')
+                        .map(tag => tag[1]);
+                    deletedIds.forEach(id => newDeletedNoteIds.add(id));
+                } else if (event.kind === 6) {
+                    handleKind6Event(event, extendedEventToAdd, callEventReceieved);
+                }
+    
+                if (!initialEventsReceived && fetchedEvents.length >= 10) {
+                    initialEventsReceived = true;
+                    setInitialLoadComplete(true);
+                }
+            };
+
 
         const createSubscription = (authorChunk: string[]) => {
             return new Promise<void>((resolve) => {
                 const chunkFilter = { ...filter, authors: authorChunk };
-                const sub = isRecentSubscription ? pool?.subscribeMany(
-                    RELAYS,
-                    [chunkFilter],
-                    {
-                        onevent(event: Event) {
-                            if (fetchedEvents.some(e => e.id === event.id)) {
-                                return;
-                            }
-                            let extendedEventToAdd: ExtendedEvent = {
-                                ...event,
-                                deleted: false,
-                                repostedEvent: null,
-                                repliedEvent: null,
-                                rootEvent: null
-                            };
-                            setLastFetchedTimestamp(prevTimestamp => 
-                                Math.min(prevTimestamp, event.created_at)
-                            );
-
-                            if (event.kind === 1) {
-                                handleKind1Event(event, extendedEventToAdd, true);
-                            } else if (event.kind === 5) {
-                                handleKind5Event(event);
-                            }
-                            else if (event.kind === 6) {
-                                handleKind6Event(event, extendedEventToAdd, true);
-                            }
-
-                            if (!initialEventsReceived && fetchedEvents.length >= 10) {
-                                initialEventsReceived = true;
-                                const initialEvents = fetchedEvents.slice(0, 10);
-                                initialEvents.forEach(e => onEventReceived(e));
-                                setLoading(false);
-                                setInitialLoadComplete(true);
-                            } else if (initialEventsReceived) {
-                                onEventReceived(extendedEventToAdd);
-                            }
-
-                            //fetchedEvents.push(extendedEventToAdd);
-                        },
-                        oneose() {
-                            resolve();
-                        }
-                    })
-                    : pool?.subscribeManyEose(
-                        RELAYS,
-                        [chunkFilter],
-                        {
-                            onevent(event: Event) {
-                                //console.log("got an event in other", event)
-                                if (fetchedEvents.some(e => e.id === event.id)) {
-                                    return;
-                                }
-                                let extendedEventToAdd: ExtendedEvent = {
-                                    ...event,
-                                    deleted: false,
-                                    repostedEvent: null,
-                                    repliedEvent: null,
-                                    rootEvent: null
-                                };
-                                setLastFetchedTimestamp(prevTimestamp => 
-                                    Math.min(prevTimestamp, event.created_at)
-                                );
-    
-                                if (event.kind === 1) {
-                                    handleKind1Event(event, extendedEventToAdd, false);
-                                } else if (event.kind === 5) {
-                                    handleKind5Event(event);
-                                }
-                                else if (event.kind === 6) {
-                                    handleKind6Event(event, extendedEventToAdd, false);
-                                }
-                                if (!initialEventsReceived && fetchedEvents.length >= 10) {
-                                    initialEventsReceived = true;
-                                    //const initialEvents = fetchedEvents.slice(0, 10);
-                                    //initialEvents.forEach(e => onEventReceived(e));
-                                    setLoading(false);
-                                    setInitialLoadComplete(true);
-                                } else if (initialEventsReceived) {
-                                    //onEventReceived(extendedEventToAdd);
-                                }
-                                //fetchedEvents.push(extendedEventToAdd);
-                            },
-                            onclose() {
-                                sub?.close();
-                                resolve();
-                            }
-                        }
-                    );
-            
+                const sub = isRecentSubscription 
+                    ? pool?.subscribeMany(RELAYS, [chunkFilter], { onevent: (event) => {
+                        handleEvent(event, true)
+                    }, oneose: resolve })
+                    : pool?.subscribeManyEose(RELAYS, [chunkFilter], { onevent: (event) => { 
+                        handleEvent(event, false)
+                    }, onclose: () => {
+                        sub?.close();
+                        resolve()} });
             });
         };
 
@@ -469,14 +417,17 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
             await createSubscription(chunk);
         }
 
-        setLoading(false);
-        setLoadingMore(false);
-        setInitialLoadComplete(true);
-
         // Process any remaining events that weren't part of the initial 10
         //if (fetchedEvents.length > 10) {
         //    fetchedEvents.slice(10).forEach(e => onEventReceived(e));
         //}
+
+        // Batch update states
+        setLastFetchedTimestamp(newLastFetchedTimestamp);
+        setDeletedNoteIds(prev => new Set([...prev, ...newDeletedNoteIds]));
+        setLoading(false);
+        setLoadingMore(false);
+        setInitialLoadComplete(true);
 
         return fetchedEvents;
     } catch (error) {
