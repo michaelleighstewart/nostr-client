@@ -1,9 +1,9 @@
-import { Outlet, Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import * as React from 'react';
 import { HomeIcon, UserIcon, CogIcon, KeyIcon, UserGroupIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon, 
   WrenchIcon, BellIcon, EnvelopeIcon, ShareIcon } from '@heroicons/react/24/outline';
-import { bech32Decoder, validatePrivateKey } from '../utils/helperFunctions';
+import { validatePrivateKey } from '../utils/helperFunctions';
 import { getPublicKey, SimplePool } from 'nostr-tools';
 import Ostrich from "./Ostrich";
 import { RELAYS } from "../utils/constants";
@@ -13,67 +13,37 @@ interface NavBarProps {
   setKey: (val: string) => void;
   nostrExists: boolean | null;
   pool: SimplePool | null;
+  isLoggedIn: boolean;
 }
 
-const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(true);
+const NavBar: React.FC<NavBarProps> = ({ keyValue, setKey, nostrExists, pool, isLoggedIn }) => {
   const [isValidKey, setIsValidKey] = useState<boolean>(false);
-  const [_publicKey, setPublicKey] = useState<string>('');
+  const [publicKey, setPublicKey] = useState<string>('');
   const location = useLocation();
   const [newNotifications, setNewNotifications] = useState<boolean>(false);
   const [newMessages, setNewMessages] = useState<boolean>(false);
 
   useEffect(() => {
-    const storedPrivateKey = localStorage.getItem('privateKey');
-    if (storedPrivateKey) {
-      props.setKey(storedPrivateKey);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (props.nostrExists !== null) {
-      setIsLoggedIn(props.nostrExists || !!props.keyValue);
-    }
-    else {
-      if (props.nostrExists === false) {
-        setIsLoggedIn(props.keyValue !== "");
-      }
-    }
-
-    // Check if the key is valid
-    const isValid = validatePrivateKey(props.keyValue);
+    const isValid = validatePrivateKey(keyValue);
     setIsValidKey(isValid);
 
-    // If valid, save to local storage and generate public key
     if (isValid) {
-      localStorage.setItem('privateKey', props.keyValue);
       try {
-        const pubKey = getPublicKey(new TextEncoder().encode(props.keyValue));
+        const pubKey = getPublicKey(new TextEncoder().encode(keyValue));
         setPublicKey(pubKey);
       } catch (error) {
         console.error("Error generating public key:", error);
       }
     }
-  }, [props.nostrExists, props.keyValue]);
+  }, [keyValue]);
 
   useEffect(() => {
-    if (props.pool && props.keyValue) {
-      let pubKey;
-      if (props.keyValue) {
-        try {
-          const skDecoded = bech32Decoder('nsec', props.keyValue);
-          pubKey = getPublicKey(skDecoded);
-          setPublicKey(pubKey);
-        } catch (error) {
-          console.error("Error decoding key or getting public key:", error);
-        }
-      }
-
-      const notificationSub = props.pool.subscribeMany(RELAYS, [
+    if (pool && publicKey) {
+      const notificationSub = pool.subscribeMany(RELAYS, [
         {
-          kinds: [1, 7], // Text notes and reactions
-          '#p': [pubKey ?? ""],
-          since: Math.floor(Date.now() / 1000) - 24 * 60 * 60 // Last 24 hours
+          kinds: [1, 7],
+          '#p': [publicKey],
+          since: Math.floor(Date.now() / 1000) - 24 * 60 * 60
         }
       ],
       {
@@ -84,14 +54,16 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
           notificationSub.close();
         }
       });
-      const lastViewedMessageTimestamp = localStorage.getItem(`lastViewedMessage_${pubKey}`);
+
+      const lastViewedMessageTimestamp = localStorage.getItem(`lastViewedMessage_${publicKey}`);
       const since = lastViewedMessageTimestamp 
         ? parseInt(lastViewedMessageTimestamp)
-        : Math.floor(Date.now() / 1000) - 24 * 60 * 60; // Last 24 hours if no timestamp
-      const messageSub = props.pool.subscribeMany(RELAYS, [
+        : Math.floor(Date.now() / 1000) - 24 * 60 * 60;
+
+      const messageSub = pool.subscribeMany(RELAYS, [
         {
-          kinds: [4], // Direct messages
-          '#p': [pubKey ?? ""],
+          kinds: [4],
+          '#p': [publicKey],
           since
         }
       ],
@@ -111,55 +83,52 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
         messageSub.close();
       };
     }
-  }, [props.pool, props.keyValue]);
+  }, [pool, publicKey]);
 
   const isActive = (path: string) => {
     return location.pathname === path ? "text-white" : "";
   };
 
-  const isDisabled = !props.nostrExists && !props.keyValue;
+  const isDisabled = !nostrExists && !keyValue;
   const isHomePage = location.pathname === '/';
 
   const handleLogout = () => {
     localStorage.removeItem('privateKey');
-    localStorage.removeItem(`lastViewedMessage_${_publicKey}`);
-    props.setKey('');
+    localStorage.removeItem(`lastViewedMessage_${publicKey}`);
+    setKey('');
     setPublicKey('');
   };
 
   return (
-    <div className="w-full overflow-hidden">
-      <nav className="w-full max-w-4xl mx-auto">
-    <div className="inset-0 flex flex-col items-center">
-      <nav className="w-full max-w-4xl">
-        <ul className="flex flex-col items-center">
-          <li className="w-full px-4">
-            <div className="flex items-center">
-              <div className="flex-grow mr-2">
-                <label htmlFor="private_key" 
-                  className="block mb-2 text-sm font-medium text-white">Private Key: </label>
-                <input 
-                  value={props.keyValue}
-                  type="password" 
-                  id="private_key" 
-                  className="text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                  placeholder={props.nostrExists ? "Key detected" : "nsec..."}
-                  disabled={(props.nostrExists ?? false) || isValidKey}
-                  onChange={(e) => props.setKey(e.target.value)} 
-                />
-              </div>
-              <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center pt-[30px]">
-                {isValidKey && (
-                  <button
-                    onClick={handleLogout}
-                    className="text-[#535bf2] bg-transparent hover:text-white hover:bg-transparent"
-                  >
-                    <ArrowRightOnRectangleIcon className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
+    <nav className="w-full max-w-4xl mx-auto">
+      <ul className="flex flex-col items-center">
+        <li className="w-full px-4">
+          <div className="flex items-center">
+            <div className="flex-grow mr-2">
+              <label htmlFor="private_key" 
+                className="block mb-2 text-sm font-medium text-white">Private Key: </label>
+              <input 
+                value={keyValue}
+                type="password" 
+                id="private_key" 
+                className="text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                placeholder={nostrExists ? "Key detected" : "nsec..."}
+                disabled={nostrExists || isValidKey}
+                onChange={(e) => setKey(e.target.value)} 
+              />
             </div>
-          </li>
+            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center pt-[30px]">
+              {isValidKey && (
+                <button
+                  onClick={handleLogout}
+                  className="text-[#535bf2] bg-transparent hover:text-white hover:bg-transparent"
+                >
+                  <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                </button>
+              )}
+            </div>
+          </div>
+        </li>
           <div className="flex flex-wrap justify-center py-6">
             <li className="inline-block mx-2 text-center pr-2 mb-2">
               <Link to="/" className={`flex flex-col items-center ${isActive("/")}`}>
@@ -224,20 +193,15 @@ const NavBar: React.FC<NavBarProps> = (props: NavBarProps) => {
           </div>
         </ul>
         {!isLoggedIn && isHomePage && (
-          <Ostrich
-            show={!isLoggedIn && isHomePage}
-            onClose={() => {}}
-            text="Nostr is the future of communication on the internet!"
-            linkText="Sign up or sign in now"
-            linkUrl="/generate-key"
-          />
-        )}
-      </nav>
-
-          <Outlet />
-        </div>
-      </nav>
-    </div>
+        <Ostrich
+          show={!isLoggedIn && isHomePage}
+          onClose={() => {}}
+          text="Nostr is the future of communication on the internet!"
+          linkText="Sign up or sign in now"
+          linkUrl="/generate-key"
+        />
+      )}
+    </nav>
   );
 };
 

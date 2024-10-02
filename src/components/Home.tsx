@@ -30,6 +30,7 @@ interface HomeProps {
 }
 
 const Home : React.FC<HomeProps> = (props: HomeProps) => {
+    if (props.nostrExists === null) return;
     const [streamedEvents, setStreamedEvents] = useState<ExtendedEvent[]>([]);
     const [eventsImmediate, _setEvents] = useState<ExtendedEvent[]>([]);
     const [events] = useDebounce(eventsImmediate, 15);
@@ -158,7 +159,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
 
 
     const fetchFollowingAndData = useCallback(async () => {
-      if (!props.pool || !keyValueRef.current || initialLoadComplete) return;
+      if (!props.pool || initialLoadComplete) return;
       //let setAlgo = false;
       // Fetch BYO algorithms
       let algoSelected = null;
@@ -190,8 +191,11 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       }
       //if (!setAlgo) {
         setLoading(true);
+
+
         try {
           let newFollowing: string[] = [];
+          if (isLoggedIn) {
           const pk = await getUserPublicKey(props.nostrExists ?? false, keyValueRef.current);
           try {
             const npubWords = bech32.toWords(new Uint8Array(pk.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
@@ -242,6 +246,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             }
           } catch (error) {}
           setFollowers(newFollowing);
+        }
+          
     
           const timeRanges = [
             { name: '1 hour', start: 0, end: 3600 },
@@ -260,7 +266,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               ? await constructFilterFromBYOAlgo(selectedAlgorithm ?? algoSelected, newFollowing, since, props.pool)
               : { filter: {kinds: [1], limit: 10, since: since, until: until}, followingStructure: [] };
             setFollowingStructure(filterObj.followingStructure);
-            
             const newEvents = await fetchData(props.pool, since, false, until, isLoggedIn, props.nostrExists ?? false, keyValueRef.current,
               setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
               setUserPublicKey, setInitialLoadComplete, filterObj.filter, handleEventReceived, selectedAlgorithm ?? algoSelected, range.name === '1 hour');
@@ -340,7 +345,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           setLoading(false);
         }
       //}
-    }, [props.pool, props.nostrExists, isLoggedIn, selectedAlgorithm, initialLoadComplete]);
+    }, [props.pool, selectedAlgorithm]);
 
     useEffect(() => {
       fetchUserMetadata(props.pool, userPublicKey ?? "", setShowOstrich, setMetadata);
@@ -353,7 +358,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     }, [props.keyValue]);
 
     useEffect(() => {
-      if (!initialLoadRef.current && props.pool && isLoggedIn !== null && !initialLoadComplete) {
+      if (props.pool && isLoggedIn !== null && !initialLoadComplete) {
         initialLoadRef.current = true;
         fetchFollowingAndData();
       }

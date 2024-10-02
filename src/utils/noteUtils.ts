@@ -245,7 +245,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                             rootEvent: null
                           };
                           eventToResolve = extendedOriginalEvent;
-                          fetchedEvents.push(eventToResolve);
+                          //fetchedEvents.push(eventToResolve);
                         },
                         onclose() {
                           resolve(eventToResolve);
@@ -276,7 +276,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                   if (rootEvent || replyEvent) {
                     if (selectedAlgorithm.byoReplies) {
                         if (!fetchedEvents.some(event => event.id === extendedEventToAdd.id)) {
-                            console.log("adding to fetchedEvents");
                             fetchedEvents.push(extendedEventToAdd);
                             if (callEventReceived) onEventReceived(extendedEventToAdd);
                         }
@@ -285,7 +284,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                   else {
                     if (selectedAlgorithm.byoPosts) {
                         if (!fetchedEvents.some(event => event.id === extendedEventToAdd.id)) {
-                            console.log("adding to fetchedEvents");
                             fetchedEvents.push(extendedEventToAdd);
                             if (callEventReceived) onEventReceived(extendedEventToAdd);
                         }

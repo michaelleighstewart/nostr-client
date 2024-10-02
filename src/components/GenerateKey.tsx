@@ -14,12 +14,13 @@ interface GenerateKeyProps {
     keyValue: string;
     pool: SimplePool | null;
     nostrExists: boolean | null;
+    isLoggedIn: boolean;
 }
 
-const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }) => {
+const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, nostrExists, keyValue, isLoggedIn }) => {
     const [nsec, setNsec] = useState<string>('');
     const [npub, setNpub] = useState<string>('');
-    const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+    const [localIsLoggedIn, setLocalIsLoggedIn] = useState<boolean>(isLoggedIn);
     const [showOstrich, setShowOstrich] = useState<boolean>(false);
     const [profileName, setProfileName] = useState<string>("Gnostrich");
     const [profilePicture, setProfilePicture] = useState<string>("https://ghostcopywrite-uploads.s3.us-west-2.amazonaws.com/ostrich.png");
@@ -29,7 +30,23 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
     const [showNpubDialog, setShowNpubDialog] = useState<boolean>(false);
     const [showNsecDialog, setShowNsecDialog] = useState<boolean>(false);
 
-    const generateKeys = useCallback((pool: SimplePool | null) => {
+    const generateKeys = useCallback(async (pool: SimplePool | null) => {
+        if (localIsLoggedIn) {
+            let pk = '';
+            if (nostrExists) {
+                pk = await (window as any).nostr.getPublicKey();
+            } else if (keyValue) {
+                const skDecoded = bech32Decoder('nsec', keyValue);
+                pk = getPublicKey(skDecoded);
+            }
+            const npubWords = bech32.toWords(new Uint8Array(pk.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
+            const npubEncoded = bech32.encode('npub', npubWords);
+            setNpub(npubEncoded);
+            setNsec(keyValue);
+            setIsLoading(false);
+            return;
+        }
+
         const storedPrivateKey = localStorage.getItem('privateKey');
         let privateKey: Uint8Array;
         
@@ -53,7 +70,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
 
         if (storedPrivateKey) {
             setKeyValue(storedPrivateKey);
-            setIsLoggedIn(true);
+            setLocalIsLoggedIn(true);
         }
         pool?.subscribeMany(RELAYS, [
             {
@@ -64,21 +81,21 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
         {
             onevent(event) {
                 if (event.kind === 0) {
-                    setIsLoggedIn(true);
+                    setLocalIsLoggedIn(true);
                     setShowOstrich(true);
                 }
             }
         });
 
         setIsLoading(false);
-    }, [setKeyValue]);
+    }, [keyValue, setKeyValue, localIsLoggedIn, nostrExists]);
 
     useEffect(() => {
         generateKeys(pool);
     }, [generateKeys, pool]);
 
     useEffect(() => {
-        if (!isLoading && !isLoggedIn) {
+        if (!isLoading && !localIsLoggedIn) {
             setTimeout(() => {
                 setShowNpubDialog(true);
             }, 1000);
@@ -92,7 +109,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
                 setShowNsecDialog(false);
             }, 11000);
         }
-    }, [isLoading, isLoggedIn]);
+    }, [isLoading, localIsLoggedIn]);
 
     const handleSignUp = async () => {
 
@@ -142,8 +159,8 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
     };
 
     useEffect(() => {
-        setShowOstrich(isLoggedIn);
-    }, [isLoggedIn]);
+        setShowOstrich(localIsLoggedIn);
+    }, [localIsLoggedIn]);
 
     const copyToClipboard = (text: string, keyType: string) => {
         navigator.clipboard.writeText(text);
@@ -231,7 +248,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, keyValue }
                         />
                     )}
                 </div>
-                {!isLoggedIn && keyValue === "" && (
+                {!localIsLoggedIn && keyValue === "" && (
                     <>
                         <div className="pb-24 border border-gray-300 rounded-lg p-32">
                             <h3 className="text-lg font-medium text-white mb-32">Extra Information:</h3>

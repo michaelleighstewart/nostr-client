@@ -17,30 +17,35 @@ import NavBar from "./components/NavBar";
 import BYOAlgorithm from "./components/BYOAlgorithm";
 import SocialGraph from './components/SocialGraph';
 import { SimplePool } from "nostr-tools";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 
 import { RELAYS } from "./utils/constants";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import Loading from './components/Loading';
+import { validatePrivateKey } from './utils/helperFunctions';
 //import DefaultHelmet from "./components/DefaultHelmet";
 
 function App() {
-  const [pool, setPool] = useState<SimplePool | null>(null);
+  const pool = useMemo(() => new SimplePool(), []);
   const [key, setKey] = useState('');
   const [nostrExists, setNostrExists] = useState<boolean | null>(null);
 
-  async function getPublicKey() {
+  const getPublicKey = useCallback(async () => {
     try {
-      const pk = await (window as any).nostr.getPublicKey();
-      return pk;
+      return await (window as any).nostr.getPublicKey();
     } catch (error) {
       return "";
     }
-  }
+  }, []);
 
-  function handleSetKey(value: string) {
+  const handleSetKey = useCallback(async (value: string) => {
+    const isValid = validatePrivateKey(value);
+    if (isValid) {
+      localStorage.setItem('privateKey', value);
+    }
     setKey(value);
-  }
+  }, []);
 
   useEffect(() => {
     const checkNostrAvailability = () => {
@@ -58,61 +63,70 @@ function App() {
     return () => {
       clearInterval(nostrCheckInterval);
     };
-  }, [key]);
+  }, []);
 
   useEffect(() => {
     const initialize = async () => {
-      if (nostrExists) {
-        const pk = await getPublicKey();
-        setKey(pk);
+      const storedPrivateKey = localStorage.getItem('privateKey');
+      if (storedPrivateKey) {
+        setKey(storedPrivateKey);
+      }
+      else {
+        if (nostrExists) {
+          const pk = await getPublicKey();
+          setKey(pk);
+        }
       }
     };
 
-    const _pool = new SimplePool();
-    setPool(_pool);
+    //const _pool = new SimplePool();
+    //setPool(_pool);
     initialize();
     return () => {
-      if (_pool) {
-        _pool.close(RELAYS);
+      if (pool) {
+        pool.close(RELAYS);
       }
     };
   }, [nostrExists]);
 
-  const isLoggedIn = nostrExists || !!key;
+  const isLoggedIn = useMemo(() => nostrExists || !!key, [nostrExists, key]);
 
   function AppContent() {
     const location = useLocation();
     const isHomePage = location.pathname === '/';
 
-    return (
-      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 overflow-x-hidden overflow-y-hidden">
-        <div className={`relative ${!isLoggedIn && isHomePage ? 'z-50' : ''} overflow-y-hidden`}>
-          <NavBar keyValue={key} setKey={setKey} nostrExists={nostrExists} pool={pool} />
+    if (!pool) return (<Loading vCentered={false}></Loading>)
+    if (nostrExists === null) return (<Loading vCentered={false}></Loading>)
+
+      return (
+        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 overflow-x-hidden overflow-y-hidden">
+          <div className={`relative ${!isLoggedIn && isHomePage ? 'z-50' : ''}`}>
+            <NavBar keyValue={key} setKey={handleSetKey} nostrExists={nostrExists} pool={pool} isLoggedIn={isLoggedIn} />
+          </div>
+          <div className={`${!isLoggedIn ? 'pointer-events-none' : ''}`}>
+            <Routes>
+              <Route path="/" element={<Layout />}></Route>
+              <Route index element={<Home keyValue={key} pool={pool} nostrExists={nostrExists} />}></Route>
+              <Route path="edit-profile" element={<EditProfile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
+              <Route path="profile/:npub" element={<Profile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
+              <Route path="profile" element={<Profile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
+              <Route path="profile/:npub/following" element={<Following pool={pool} />} />
+              <Route path="notifications" element={<Notifications keyValue={key} pool={pool} nostrExists={nostrExists} />} />
+              <Route path="social-graph" element={<SocialGraph keyValue={key} pool={pool} nostrExists={nostrExists} />} />
+              <Route path="messages" element={<Messages keyValue={key} pool={pool} nostrExists={nostrExists} />} />
+              <Route path="generate-key" element={<GenerateKey isLoggedIn={isLoggedIn} setKeyValue={handleSetKey} keyValue={key} pool={pool} nostrExists={nostrExists} />} />
+              <Route path="people-to-follow" element={<PeopleToFollow keyValue={key} pool={pool} nostrExists={nostrExists} />} />
+              <Route path="profile/:npub/followers" element={<Followers keyValue={key} pool={pool} nostrExists={nostrExists} />} />
+              <Route path="profile/:npub/following" element={<Following pool={pool} />} />
+              <Route path="conversation/:id" element={<Conversation pool={pool} nostrExists={nostrExists} keyValue={key} />} />
+              <Route path="note/:id" element={<Note pool={pool} nostrExists={nostrExists} keyValue={key} />} />
+              <Route path="search" element={<Search pool={pool} nostrExists={nostrExists} keyValue={key} />} />
+              <Route path="byo-algorithm" element={<BYOAlgorithm keyValue={key} pool={pool} nostrExists={nostrExists} />} />
+            </Routes>
+          </div>
         </div>
-        <div className={`${!isLoggedIn ? 'pointer-events-none' : ''}`}>
-          <Routes>
-            <Route path="/" element={<Layout />}></Route>
-            <Route index element={<Home keyValue={key} pool={pool} nostrExists={nostrExists} />}></Route>
-            <Route path="edit-profile" element={<EditProfile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
-            <Route path="profile/:npub" element={<Profile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
-            <Route path="profile" element={<Profile keyValue={key} pool={pool} nostrExists={nostrExists} />} />
-            <Route path="profile/:npub/following" element={<Following pool={pool} />} />
-            <Route path="notifications" element={<Notifications keyValue={key} pool={pool} nostrExists={nostrExists} />} />
-            <Route path="social-graph" element={<SocialGraph keyValue={key} pool={pool} nostrExists={nostrExists} />} />
-            <Route path="messages" element={<Messages keyValue={key} pool={pool} nostrExists={nostrExists} />} />
-            <Route path="generate-key" element={<GenerateKey setKeyValue={handleSetKey} keyValue={key} pool={pool} nostrExists={nostrExists} />} />
-            <Route path="people-to-follow" element={<PeopleToFollow keyValue={key} pool={pool} nostrExists={nostrExists} />} />
-            <Route path="profile/:npub/followers" element={<Followers keyValue={key} pool={pool} nostrExists={nostrExists} />} />
-            <Route path="profile/:npub/following" element={<Following pool={pool} />} />
-            <Route path="conversation/:id" element={<Conversation pool={pool} nostrExists={nostrExists} keyValue={key} />} />
-            <Route path="note/:id" element={<Note pool={pool} nostrExists={nostrExists} keyValue={key} />} />
-            <Route path="search" element={<Search pool={pool} nostrExists={nostrExists} keyValue={key} />} />
-            <Route path="byo-algorithm" element={<BYOAlgorithm keyValue={key} pool={pool} nostrExists={nostrExists} />} />
-          </Routes>
-        </div>
-      </div>
-    );
-  }
+      );
+    }
 
   return (
     <div className="h-full overflow-y-hidden">
