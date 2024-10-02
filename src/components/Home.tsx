@@ -161,6 +161,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       if (!props.pool || !keyValueRef.current || initialLoadComplete) return;
       //let setAlgo = false;
       // Fetch BYO algorithms
+      let algoSelected = null;
       if (keyValueRef.current) {
         const pk = await getUserPublicKey(props.nostrExists ?? false, keyValueRef.current);
         setUserPublicKey(pk);
@@ -179,6 +180,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             setByoAlgo(data.algos);
             if (selectedAlgorithm === null) {
               setSelectedAlgorithm(data.algos[0]);
+              algoSelected = data.algos[0];
               //setAlgo = true;
             }
           }
@@ -194,7 +196,16 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           try {
             const npubWords = bech32.toWords(new Uint8Array(pk.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
             const npubEncoded = bech32.encode('npub', npubWords);
-            const followingAPI = await fetch(`${API_URLS.API_URL}social-graph?npub=${npubEncoded}&degrees=1`);
+            let degrees = 1;
+            if (selectedAlgorithm) {
+              degrees = selectedAlgorithm.byoDegrees;
+            }
+            else {
+              if (algoSelected) {
+                degrees = algoSelected.byoDegrees;
+              }
+            }
+            const followingAPI = await fetch(`${API_URLS.API_URL}social-graph?npub=${npubEncoded}&degrees=${degrees}`);
             if (followingAPI.ok) {
               const apiData = await followingAPI.json();
               if (apiData && apiData.follows && apiData.follows.length > 0) {
@@ -246,13 +257,13 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             const since = now - range.end;
             const until = now - range.start;
             let filterObj = isLoggedIn
-              ? await constructFilterFromBYOAlgo(selectedAlgorithm, newFollowing, since, props.pool)
+              ? await constructFilterFromBYOAlgo(selectedAlgorithm ?? algoSelected, newFollowing, since, props.pool)
               : { filter: {kinds: [1], limit: 10, since: since, until: until}, followingStructure: [] };
             setFollowingStructure(filterObj.followingStructure);
             
             const newEvents = await fetchData(props.pool, since, false, until, isLoggedIn, props.nostrExists ?? false, keyValueRef.current,
               setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
-              setUserPublicKey, setInitialLoadComplete, filterObj.filter, handleEventReceived, selectedAlgorithm, range.name === '1 hour');
+              setUserPublicKey, setInitialLoadComplete, filterObj.filter, handleEventReceived, selectedAlgorithm ?? algoSelected, range.name === '1 hour');
             
             if (range.name !== "1 hour") {
               allFetchedEvents.push(...(newEvents ?? []));

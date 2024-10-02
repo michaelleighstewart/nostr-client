@@ -224,7 +224,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
               
                 const fetchAndCreateExtendedEvent = async (id: string | null, _type: 'root' | 'reply') => {
                   if (!id || !pool) return null;
-
+            
                   return new Promise<ExtendedEvent | null>((resolve) => {
                     let eventToResolve: ExtendedEvent | null = null;
                     const sub = pool.subscribeManyEose(
@@ -245,6 +245,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                             rootEvent: null
                           };
                           eventToResolve = extendedOriginalEvent;
+                          fetchedEvents.push(eventToResolve);
                         },
                         onclose() {
                           resolve(eventToResolve);
@@ -254,41 +255,51 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                     );
                   });
                 };
-              
-            //Promise.all([
+            
                 const rootEvent = await fetchAndCreateExtendedEvent(rootTag ? rootTag[1] : null, 'root');
                 const replyEvent = await fetchAndCreateExtendedEvent(replyTag ? replyTag[1] : null, 'reply');
-                //]).then(([rootEvent, repliedEvent]) => {
-                  const extendedEvent: ExtendedEvent = {
-                    ...event,
-                    id: event.id,
-                    pubkey: event.pubkey,
-                    created_at: event.created_at,
-                    content: event.content,
-                    tags: event.tags,
-                    deleted: false,
-                    repostedEvent: null,
-                    repliedEvent: replyEvent,
-                    rootEvent: rootEvent
-                  };
-                  extendedEventToAdd = extendedEvent;
-                  if (selectedAlgorithm) {
+            
+                const extendedEvent: ExtendedEvent = {
+                  ...event,
+                  id: event.id,
+                  pubkey: event.pubkey,
+                  created_at: event.created_at,
+                  content: event.content,
+                  tags: event.tags,
+                  deleted: false,
+                  repostedEvent: null,
+                  repliedEvent: replyEvent,
+                  rootEvent: rootEvent
+                };
+                extendedEventToAdd = extendedEvent;
+                if (selectedAlgorithm) {
+                  if (rootEvent || replyEvent) {
                     if (selectedAlgorithm.byoReplies) {
-                      if (!fetchedEvents.some(event => event.id === extendedEventToAdd.id)) {
-                        fetchedEvents.push(extendedEventToAdd);
-                        if (callEventReceived) onEventReceived(extendedEventToAdd);
-                      }
+                        if (!fetchedEvents.some(event => event.id === extendedEventToAdd.id)) {
+                            console.log("adding to fetchedEvents");
+                            fetchedEvents.push(extendedEventToAdd);
+                            if (callEventReceived) onEventReceived(extendedEventToAdd);
+                        }
                     }
                   }
                   else {
-                    if (!fetchedEvents.some(event => event.id === extendedEventToAdd.id)) {
-                        repostEvents.push(extendedEventToAdd);
-                        fetchedEvents.push(extendedEventToAdd);
-                        if (callEventReceived) onEventReceived(extendedEventToAdd);
+                    if (selectedAlgorithm.byoPosts) {
+                        if (!fetchedEvents.some(event => event.id === extendedEventToAdd.id)) {
+                            console.log("adding to fetchedEvents");
+                            fetchedEvents.push(extendedEventToAdd);
+                            if (callEventReceived) onEventReceived(extendedEventToAdd);
+                        }
                     }
                   }
-              //  });
-              };
+                }
+                else {
+                  if (!fetchedEvents.some(event => event.id === extendedEventToAdd.id)) {
+                    repostEvents.push(extendedEventToAdd);
+                    fetchedEvents.push(extendedEventToAdd);
+                    if (callEventReceived) onEventReceived(extendedEventToAdd);
+                  }
+                }
+            };
             
             const handleKind5Event = (event: Event) => {
                 const deletedIds = event.tags
@@ -315,28 +326,35 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                 repliedEvent: null,
                                 rootEvent: null
                             };
-                        const extendedEvent: ExtendedEvent = {
-                            id: event.id,
-                            pubkey: event.pubkey,
-                            created_at: event.created_at,
-                            content: "",
-                            tags: event.tags,
-                            deleted: false,
-                            repostedEvent: repostedEvent,
-                            repliedEvent: null,
-                            rootEvent: null
-                        };
-                        extendedEventToAdd = extendedEvent;
-                        
-                        if (!isLoggedIn) {
-                            repostEvents.push(extendedEventToAdd);
-                            fetchedEvents.push(extendedEventToAdd);
-                            if (callEventReceived) onEventReceived(extendedEventToAdd);
-
-                        }
-                        else {
-                            if (selectedAlgorithm) {
-                                if (selectedAlgorithm.byoReposts) {
+                            const extendedEvent: ExtendedEvent = {
+                                id: event.id,
+                                pubkey: event.pubkey,
+                                created_at: event.created_at,
+                                content: "",
+                                tags: event.tags,
+                                deleted: false,
+                                repostedEvent: repostedEvent,
+                                repliedEvent: null,
+                                rootEvent: null
+                            };
+                            extendedEventToAdd = extendedEvent;
+                            
+                            if (!isLoggedIn) {
+                                repostEvents.push(extendedEventToAdd);
+                                fetchedEvents.push(extendedEventToAdd);
+                                if (callEventReceived) onEventReceived(extendedEventToAdd);
+                            }
+                            else {
+                                if (selectedAlgorithm) {
+                                    if (selectedAlgorithm.byoReposts) {
+                                        if (!fetchedEvents.some(event => event.id === extendedEventToAdd.id)) {
+                                            repostEvents.push(extendedEventToAdd);
+                                            fetchedEvents.push(extendedEventToAdd);
+                                            if (callEventReceived) onEventReceived(extendedEvent);
+                                        }
+                                    }
+                                }
+                                else {
                                     if (!fetchedEvents.some(event => event.id === extendedEventToAdd.id)) {
                                         repostEvents.push(extendedEventToAdd);
                                         fetchedEvents.push(extendedEventToAdd);
@@ -344,16 +362,8 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                     }
                                 }
                             }
-                            else {
-                                if (!fetchedEvents.some(event => event.id === extendedEventToAdd.id)) {
-                                    repostEvents.push(extendedEventToAdd);
-                                    fetchedEvents.push(extendedEventToAdd);
-                                    if (callEventReceived) onEventReceived(extendedEvent);
-                                }
-                            }
-                        }
                         } catch (error) {
-                        console.error("Error parsing reposted content:", error);
+                            console.error("Error parsing reposted content:", error);
                         }
                     }
                 }
@@ -400,6 +410,8 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                             } else if (initialEventsReceived) {
                                 onEventReceived(extendedEventToAdd);
                             }
+
+                            //fetchedEvents.push(extendedEventToAdd);
                         },
                         oneose() {
                             resolve();
@@ -407,7 +419,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                     })
                     : pool?.subscribeManyEose(
                         RELAYS,
-                        [filter],
+                        [chunkFilter],
                         {
                             onevent(event: Event) {
                                 //console.log("got an event in other", event)
@@ -442,6 +454,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                                 } else if (initialEventsReceived) {
                                     //onEventReceived(extendedEventToAdd);
                                 }
+                                //fetchedEvents.push(extendedEventToAdd);
                             },
                             onclose() {
                                 sub?.close();
