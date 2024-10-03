@@ -114,7 +114,7 @@ const ProfilesModal: React.FC<ProfilesModalProps> = ({ npubs, pool, isOpen, onCl
                     className="flex items-center p-2 hover:bg-gray-700 rounded text-white"
                     onClick={onClose}
                   >
-                    <div className="w-10 h-10 mr-3 overflow-hidden rounded-full">
+                    <div className="w-32 h-32 mr-3 overflow-hidden rounded-full">
                       {profile.picture ? (
                         <img
                           src={profile.picture}
