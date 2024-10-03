@@ -378,7 +378,9 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                 };
     
                 newLastFetchedTimestamp = Math.min(newLastFetchedTimestamp, event.created_at);
-    
+                if (callEventReceieved) {
+                    setInitialLoadComplete(true);
+                }
                 if (event.kind === 1) {
                     handleKind1Event(event, extendedEventToAdd, callEventReceieved);
                 } else if (event.kind === 5) {

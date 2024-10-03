@@ -110,6 +110,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         if (prev.some(e => e.id === event.id)) {
           return prev;
         }
+        setLoading(false);
         return [event, ...prev].sort((a, b) => b.created_at - a.created_at);
       });
       
@@ -190,7 +191,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         }
       }
       //if (!setAlgo) {
-        setLoading(true);
+        //setLoading(true);
 
 
         try {
@@ -344,7 +345,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         } finally {
           setLoading(false);
         }
-    }, [props.pool, selectedAlgorithm]);
+    }, [selectedAlgorithm]);
 
     useEffect(() => {
       fetchUserMetadata(props.pool, userPublicKey ?? "", setShowOstrich, setMetadata);
@@ -359,9 +360,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     useEffect(() => {
       if (props.pool && isLoggedIn !== null && !initialLoadComplete) {
         initialLoadRef.current = true;
+        setLoading(true);
         fetchFollowingAndData();
       }
-    }, [props.pool, props.nostrExists, props.keyValue, initialLoadComplete, fetchFollowingAndData]);
+    }, [initialLoadComplete]);
 
     const debouncedLoadMore = debounce(async () => {
       if (!props.pool) return;
@@ -681,7 +683,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             </div>
           </div>
         )}
-        {loading ? (
+        {loading && !initialLoadComplete ? (
           <Loading vCentered={false} />
         ) : error ? (
           <div className="text-red-500 text-center mt-4">{error}</div>
