@@ -533,7 +533,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            prompt: `Please write a sample social media post about ${topic}`
+            prompt: `Please write a sample social media post about ${topic}. 
+            Please make it concise and exactly how it would appear on the platform. 
+            Please also leave out any reference to it being a sample, I want the text only.`
           }),
         });
     
