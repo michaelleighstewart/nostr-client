@@ -253,7 +253,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             { name: '1 hour', start: 0, end: 3600 },
             { name: '6 hours', start: 3600, end: 21600 },
             { name: '24 hours', start: 21600, end: 86400 },
-            { name: '1 week', start: 86400, end: 604800 }
+            //{ name: '1 week', start: 86400, end: 604800 }
           ];
           
           let allFetchedEvents: ExtendedEvent[] = [];
@@ -371,7 +371,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         { name: '1 hour', start: 0, end: 3600 },
         { name: '6 hours', start: 3600, end: 21600 },
         { name: '24 hours', start: 21600, end: 86400 },
-        { name: '1 week', start: 86400, end: 604800 }
+        //{ name: '1 week', start: 86400, end: 604800 }
       ];
       
       let allFetchedEvents: ExtendedEvent[] = [];
