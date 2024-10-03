@@ -344,7 +344,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         } finally {
           setLoading(false);
         }
-      //}
     }, [props.pool, selectedAlgorithm]);
 
     useEffect(() => {
@@ -534,7 +533,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            input: `Please write a sample social media post about ${topic}`,
+            prompt: `Please write a sample social media post about ${topic}`
           }),
         });
     
@@ -543,7 +542,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         }
     
         const data = await response.json();
-        setMessage(data.result[0].generated_text);
+        setMessage(data.response);
         setTimeout(adjustTextareaHeight, 0);
       } catch (error) {
         console.error('Error generating post:', error);
