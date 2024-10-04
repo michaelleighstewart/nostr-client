@@ -1,7 +1,8 @@
 import { ExtendedEvent, Metadata, Reaction, Reply } from "../utils/interfaces";
-import { SimplePool } from "nostr-tools";
+import { nip19, SimplePool } from "nostr-tools";
 import NoteCard from "./NoteCard";
 import React, { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface ThreadedReplyProps {
     reply: Reply;
@@ -35,6 +36,13 @@ interface ThreadedReplyProps {
         .filter(Boolean)
         .flat();
     }, [reply.replies]);
+
+    const navigate = useNavigate();
+
+    const handleUserClick = (userPubkey: string) => {
+      const userNpub = nip19.npubEncode(userPubkey);
+      navigate(`/profile/${userNpub}`);
+    };
   
     return (
       <div style={{ marginLeft: `${depth * 20}px` }}>
@@ -67,6 +75,7 @@ interface ThreadedReplyProps {
             setMetadata={setMetadata}
             connectionInfo={null}
             rootEvent={null}
+            onUserClick={() => {handleUserClick(reply.pubkey)}}
           />
         </div>
         {nestedReplies.map((nestedReply: Reply) => (
