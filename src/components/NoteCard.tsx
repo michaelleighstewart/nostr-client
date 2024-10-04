@@ -414,7 +414,7 @@ interface Props {
               <img
                 src={user.image}
                 alt="note"
-                className="rounded-full w-40 aspect-square bg-gray-100 cursor-pointer"
+                className="rounded-full w-40 h-40 object-cover bg-gray-100 cursor-pointer"
               />
             </Link> : <></>}
             <div>
