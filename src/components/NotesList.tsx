@@ -3,6 +3,7 @@ import NoteCard from "./NoteCard";
 import { SimplePool } from "nostr-tools";
 import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface Props {
     notes: ExtendedEvent[];
@@ -28,6 +29,8 @@ const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists,
     const [visibleNotes, setVisibleNotes] = useState<ExtendedEvent[]>([]);
     const isLoggedIn = nostrExists || !!keyValue;
 
+    const navigate = useNavigate();
+
     useEffect(() => {
         const timer = setTimeout(() => {
             if (isLoggedIn) {
@@ -50,6 +53,11 @@ const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists,
             </div>
         )
     }
+
+    const handleUserClick = (userPubkey: string) => {
+        const userNpub = nip19.npubEncode(userPubkey);
+        navigate(`/profile/${userNpub}`);
+      };
 
     return (
         <div className="w-full">
@@ -83,6 +91,7 @@ const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists,
                         setMetadata={setMetadata}
                         connectionInfo={calculateConnectionInfo(note.pubkey)}
                         rootEvent={note.rootEvent}
+                        onUserClick={() => {handleUserClick(note.pubkey)}}
                     />
                 </div>
             ))}

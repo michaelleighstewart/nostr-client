@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { SimplePool, Event, finalizeEvent } from 'nostr-tools';
-import { useParams } from 'react-router-dom';
+import { SimplePool, Event, finalizeEvent, nip19 } from 'nostr-tools';
+import { useNavigate, useParams } from 'react-router-dom';
 import NoteCard from './NoteCard';
 import { RELAYS } from '../utils/constants';
 import { bech32Decoder } from '../utils/helperFunctions';
@@ -42,6 +42,8 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   const [allReposts, setAllReposts] = useState<Record<string, ExtendedEvent[]>>({});
   const [allRepliesNew, setAllRepliesNew] = useState<Record<string, Reply>>({});
   const [threadedReplies, setThreadedReplies] = useState<Record<string, Reply>>({});
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!pool || !id) return;
@@ -299,6 +301,11 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
     }
   };
 
+  const handleUserClick = (userPubkey: string) => {
+    const userNpub = nip19.npubEncode(userPubkey);
+    navigate(`/profile/${userNpub}`);
+  };
+
   if (loading || !post) {
     return <div className="h-screen"><Loading vCentered={false} /></div>;
   }
@@ -346,6 +353,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         setMetadata={setMetadata}
         connectionInfo={null}
         rootEvent={null}
+        onUserClick={() => handleUserClick(post.pubkey)}
         />
       <div className="mt-8 p-16 rounded-lg">
         <textarea
