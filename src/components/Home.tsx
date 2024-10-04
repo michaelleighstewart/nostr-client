@@ -524,7 +524,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
       }
     };
-
+    
     const handleTopicSelection = async (topic: string) => {
       setSelectedTopic(topic);
       setGeneratingPost(true);
@@ -678,7 +678,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 allReposts={null}
                 setMetadata={setMetadata}
                 connectionInfo={null}
-                rootEvent={null}         
+                rootEvent={null}
+                onUserClick={() => {}}         
               />
             </div>
           </div>

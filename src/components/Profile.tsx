@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { SimplePool } from "nostr-tools";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { bech32Decoder } from "../utils/helperFunctions";
 import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";
 import { getPublicKey, finalizeEvent, nip19 } from "nostr-tools";
@@ -58,6 +58,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const keyValueRef = useRef(keyValue);
 
     const { npub } = useParams<{ npub: string }>();
+    const navigate = useNavigate();
 
     const defaultAlgorithm = {
         byoDegrees: 1,
@@ -81,6 +82,11 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
             fetchMetadataReactionsAndReplies(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch, setMetadata, setReactions, setReplies, setReposts);
         }
     }, []);
+
+    useEffect(() => {
+        setStreamedEvents([]);
+        setLoadingPosts(true);
+      }, [npub]);
 
     useLayoutEffect(() => {
         window.scrollTo(0, 0);
@@ -156,14 +162,31 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 setLoadingProfile(false);
             }
             const filter = { kinds: [1, 5, 6], authors: [fetchedPubkey], limit: 10 };
-            await fetchData(pool, 0, false, 0, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
-                setLoading, setLoadingMore, setError, () => {}, [], repostEvents, replyEvents, setLastFetchedTimestamp, 
-                setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived, defaultAlgorithm, true);
+            const newEvents = await fetchData(pool, 0, false, 0, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
+                setLoading, setLoadingMore, setError, setStreamedEvents, [], repostEvents, replyEvents, setLastFetchedTimestamp, 
+                setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived, defaultAlgorithm, false);
             setLoadingPosts(false);
+            setStreamedEvents(prevEvents => {
+                const combinedEvents = prevEvents.concat(newEvents || []);
+                return combinedEvents
+                  .filter((event, index, self) => 
+                    index === self.findIndex((e) => e.id === event.id)
+                  )
+                  .sort((a, b) => b.created_at - a.created_at);
+              });
+              if (pool) {
+                newEvents?.forEach(event => {
+                    const repliesToFetch = [];
+                    if (event.repliedEvent) repliesToFetch.push(event.repliedEvent);
+                    if (event.rootEvent) repliesToFetch.push(event.rootEvent);
+                    fetchMetadataReactionsAndReplies(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch, setMetadata, setReactions, setReplies, setReposts);
+            
+                });
+            }
         };
 
         fetchProfileData();
-    }, [nostrExists]);
+    }, [nostrExists, npub, pool]);
 
     useEffect(() => {
         if (!pool || streamedEvents.length === 0) return;
@@ -327,6 +350,11 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
         url = "https://ghostcopywrite.com";
     }
 
+    const handleUserClick = (userPubkey: string) => {
+        const userNpub = nip19.npubEncode(userPubkey);
+        navigate(`/profile/${userNpub}`);
+    };
+
     return (
         <div className="py-16">
             <Helmet>
@@ -437,6 +465,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                                             allReposts={reposts}
                                             setMetadata={setMetadata}
                                             connectionInfo={null}
+                                            onUserClick={handleUserClick}
                                         />
                                     </div>
                                 ))}

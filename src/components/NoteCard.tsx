@@ -44,6 +44,7 @@ interface Props {
     } | null;
     replyDepth?: number;
     rootEvent: ExtendedEvent | null;
+    onUserClick: (pubkey: string) => void;
   }
   
   const NoteCard = React.memo(function NoteCard({
@@ -69,7 +70,8 @@ interface Props {
     setMetadata,
     connectionInfo,
     replyDepth,
-    rootEvent
+    rootEvent,
+    onUserClick
   }: Props) {
     const [alreadyLiked, setAlreadyLiked] = useState(false);
     const [alreadyDisliked, setAlreadyDisliked] = useState(false);
@@ -474,6 +476,7 @@ interface Props {
               setMetadata={setMetadata}
               connectionInfo={null}
               rootEvent={null}
+              onUserClick={onUserClick}
             />
           </div>
         )}
@@ -691,6 +694,7 @@ interface Props {
               allReposts={allReposts}
               setMetadata={setMetadata}
               connectionInfo={null}
+              onUserClick={onUserClick}
             />
           </div>
         )}
@@ -727,6 +731,7 @@ interface Props {
               allReposts={allReposts}
               setMetadata={setMetadata}
               connectionInfo={null}
+              onUserClick={onUserClick}
             />
           </div>
         )}
