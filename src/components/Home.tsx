@@ -112,7 +112,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         }
         setLoading(false);
         const newEvents = [event, ...prev].sort((a, b) => b.created_at - a.created_at);
-        cacheNotes(newEvents);
+        const algoId = selectedAlgorithm?.algoId || null;
+        cacheNotes(newEvents, algoId);
         return newEvents;
       });
       
@@ -363,8 +364,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       if (props.pool && isLoggedIn !== null && !initialLoadComplete) {
         initialLoadRef.current = true;
         setLoading(true);
-        clearCachedNotesOlderThanOneDay();
-        const cachedNotes = getCachedNotes();
+        const algoId = selectedAlgorithm?.algoId || null;
+        clearCachedNotesOlderThanOneDay(algoId);
+        const cachedNotes = getCachedNotes(algoId);
         if (cachedNotes.length > 0) {
             setStreamedEvents(cachedNotes);
             setHasNotes(true);

@@ -1,7 +1,7 @@
 import { Metadata } from './interfaces';
 import { ExtendedEvent } from './interfaces';
 
-const NOTES_CACHE_KEY = 'cachedNotes';
+const NOTES_CACHE_KEY_PREFIX = 'cachedNotes';
 const ONE_DAY = 24 * 60 * 60 * 1000;
 //const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
 
@@ -30,15 +30,18 @@ export function setMetadataToCache(pubkey: string, metadata: Metadata): void {
   localStorage.setItem(METADATA_CACHE_KEY, JSON.stringify(parsedCache));
 }
 
-
-export function cacheNotes(notes: ExtendedEvent[]): void {
-  const currentTime = Date.now();
-  const notesToCache = notes.filter(note => (currentTime - note.created_at * 1000) <= ONE_DAY);
-  localStorage.setItem(NOTES_CACHE_KEY, JSON.stringify(notesToCache));
+function getNotesCacheKey(algoId: string | null): string {
+  return `${NOTES_CACHE_KEY_PREFIX}_${algoId || 'none'}`;
 }
 
-export function getCachedNotes(): ExtendedEvent[] {
-  const cachedNotesString = localStorage.getItem(NOTES_CACHE_KEY);
+export function cacheNotes(notes: ExtendedEvent[], algoId: string | null): void {
+  const currentTime = Date.now();
+  const notesToCache = notes.filter(note => (currentTime - note.created_at * 1000) <= ONE_DAY);
+  localStorage.setItem(getNotesCacheKey(algoId), JSON.stringify(notesToCache));
+}
+
+export function getCachedNotes(algoId: string | null): ExtendedEvent[] {
+  const cachedNotesString = localStorage.getItem(getNotesCacheKey(algoId));
   if (!cachedNotesString) return [];
 
   const cachedNotes: ExtendedEvent[] = JSON.parse(cachedNotesString);
@@ -46,12 +49,12 @@ export function getCachedNotes(): ExtendedEvent[] {
   return cachedNotes.filter(note => (currentTime - note.created_at * 1000) <= ONE_DAY);
 }
 
-export function clearCachedNotes(): void {
-  localStorage.removeItem(NOTES_CACHE_KEY);
+export function clearCachedNotes(algoId: string | null): void {
+  localStorage.removeItem(getNotesCacheKey(algoId));
 }
 
-export function clearCachedNotesOlderThanOneDay(): void {
-  const cachedNotesString = localStorage.getItem(NOTES_CACHE_KEY);
+export function clearCachedNotesOlderThanOneDay(algoId: string | null): void {
+  const cachedNotesString = localStorage.getItem(getNotesCacheKey(algoId));
   if (!cachedNotesString) return;
 
   const cachedNotes: ExtendedEvent[] = JSON.parse(cachedNotesString);
@@ -59,6 +62,6 @@ export function clearCachedNotesOlderThanOneDay(): void {
   const updatedNotes = cachedNotes.filter(note => (currentTime - note.created_at * 1000) <= ONE_DAY);
 
   if (updatedNotes.length < cachedNotes.length) {
-    localStorage.setItem(NOTES_CACHE_KEY, JSON.stringify(updatedNotes));
+    localStorage.setItem(getNotesCacheKey(algoId), JSON.stringify(updatedNotes));
   }
 }
