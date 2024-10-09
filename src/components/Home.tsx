@@ -13,7 +13,7 @@ import { showCustomToast } from "./CustomToast";
 import { PhotoIcon, VideoCameraIcon } from '@heroicons/react/24/solid';
 import NoteCard from "./NoteCard";
 import { Helmet } from 'react-helmet';
-import { getMetadataFromCache, setMetadataToCache } from '../utils/cachingUtils';
+import { cacheNotes, clearCachedNotesOlderThanOneDay, getCachedNotes, getMetadataFromCache, setMetadataToCache } from '../utils/cachingUtils';
 import { RELAYS } from '../utils/constants';
 import { debounce } from 'lodash';
 import { API_URLS } from '../utils/apiConstants';
@@ -111,7 +111,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           return prev;
         }
         setLoading(false);
-        return [event, ...prev].sort((a, b) => b.created_at - a.created_at);
+        const newEvents = [event, ...prev].sort((a, b) => b.created_at - a.created_at);
+        cacheNotes(newEvents);
+        return newEvents;
       });
       
       setHasNotes(true);
@@ -361,9 +363,18 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       if (props.pool && isLoggedIn !== null && !initialLoadComplete) {
         initialLoadRef.current = true;
         setLoading(true);
+        clearCachedNotesOlderThanOneDay();
+        const cachedNotes = getCachedNotes();
+        if (cachedNotes.length > 0) {
+            setStreamedEvents(cachedNotes);
+            setHasNotes(true);
+            setLoading(false);
+            setInitialLoadComplete(true);
+        }
         fetchFollowingAndData();
       }
     }, [initialLoadComplete]);
+
 
     const debouncedLoadMore = debounce(async () => {
       if (!props.pool) return;
