@@ -329,6 +329,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             
             if (allFetchedEvents.length >= 10) break;
           }
+
+          allFetchedEvents = allFetchedEvents.slice(0, 10);
     
           if (allFetchedEvents.length > 0) {
             const newLastFetchedTimestamp = Math.min(...allFetchedEvents.map(event => event.created_at));

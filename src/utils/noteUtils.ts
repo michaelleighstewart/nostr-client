@@ -11,9 +11,11 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     setReactions: React.Dispatch<React.SetStateAction<Record<string, Reaction[]>>>, 
     setReplies: React.Dispatch<React.SetStateAction<Record<string, ExtendedEvent[]>>>,
     setReposts: React.Dispatch<React.SetStateAction<Record<string, ExtendedEvent[]>>>) => {
+
+    const eventsToProcess = events.slice(0, 10);
     
-    const pubkeysToFetch = new Set(events.map(event => event.pubkey));
-    const postsToFetch = events.map(event => event.id);
+    const pubkeysToFetch = new Set(eventsToProcess.map(event => event.pubkey));
+    const postsToFetch = eventsToProcess.map(event => event.id);
     const repostsToFetch: string[] = [];
     const repostPubkeysToFetch: string[] = [];
     for (const event of repostEvents) {
