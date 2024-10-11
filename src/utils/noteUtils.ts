@@ -12,7 +12,7 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     setReplies: React.Dispatch<React.SetStateAction<Record<string, ExtendedEvent[]>>>,
     setReposts: React.Dispatch<React.SetStateAction<Record<string, ExtendedEvent[]>>>) => {
 
-    const eventsToProcess = events.slice(0, 10);
+    const eventsToProcess = events.slice(0, 5);
     
     const pubkeysToFetch = new Set(eventsToProcess.map(event => event.pubkey));
     const postsToFetch = eventsToProcess.map(event => event.id);
@@ -368,7 +368,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                 if (fetchedEvents.some(e => e.id === event.id)) {
                     return;
                 }
-                if (fetchedEvents.length >= 10) {
+                if (fetchedEvents.length >= 5) {
                     return;
                 }
                 let extendedEventToAdd: ExtendedEvent = {
@@ -394,7 +394,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
                     handleKind6Event(event, extendedEventToAdd, callEventReceieved);
                 }
     
-                if (!initialEventsReceived && fetchedEvents.length >= 10) {
+                if (!initialEventsReceived && fetchedEvents.length >= 5) {
                     initialEventsReceived = true;
                     setInitialLoadComplete(true);
                 }

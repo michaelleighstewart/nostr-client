@@ -13,7 +13,7 @@ import { showCustomToast } from "./CustomToast";
 import { PhotoIcon, VideoCameraIcon } from '@heroicons/react/24/solid';
 import NoteCard from "./NoteCard";
 import { Helmet } from 'react-helmet';
-import { cacheNotes, clearCachedNotesOlderThanOneDay, getCachedNotes, getMetadataFromCache, setMetadataToCache } from '../utils/cachingUtils';
+import { cacheNotes, clearCachedNotesOlderThanOneDay, getMetadataFromCache, setMetadataToCache } from '../utils/cachingUtils';
 import { RELAYS } from '../utils/constants';
 import { debounce } from 'lodash';
 import { API_URLS } from '../utils/apiConstants';
@@ -264,12 +264,12 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           const now = Math.floor(Date.now() / 1000);
           
           for (const range of timeRanges) {
-            if (allFetchedEvents.length >= 10) break;
+            if (allFetchedEvents.length >= 5) break;
             const since = now - range.end;
             const until = now - range.start;
             let filterObj = isLoggedIn
               ? await constructFilterFromBYOAlgo(selectedAlgorithm ?? algoSelected, newFollowing, since, props.pool)
-              : { filter: {kinds: [1], limit: 10, since: since, until: until}, followingStructure: [] };
+              : { filter: {kinds: [1], limit: 5, since: since, until: until}, followingStructure: [] };
             setFollowingStructure(filterObj.followingStructure);
             const newEvents = await fetchData(props.pool, since, false, until, isLoggedIn, props.nostrExists ?? false, keyValueRef.current,
               setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
@@ -328,10 +328,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             }
             
             
-            if (allFetchedEvents.length >= 10) break;
+            if (allFetchedEvents.length >= 5) break;
           }
 
-          allFetchedEvents = allFetchedEvents.slice(0, 10);
+          allFetchedEvents = allFetchedEvents.slice(0, 5);
     
           if (allFetchedEvents.length > 0) {
             const newLastFetchedTimestamp = Math.min(...allFetchedEvents.map(event => event.created_at));
@@ -369,13 +369,13 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         setLoading(true);
         const algoId = selectedAlgorithm?.algoId || null;
         clearCachedNotesOlderThanOneDay(algoId);
-        const cachedNotes = getCachedNotes(algoId);
+        /*const cachedNotes = getCachedNotes(algoId);
         if (cachedNotes.length > 0) {
             setStreamedEvents(cachedNotes);
             setHasNotes(true);
             setLoading(false);
             setInitialLoadComplete(true);
-        }
+        }*/
         fetchFollowingAndData();
       }
     }, [initialLoadComplete]);
@@ -400,8 +400,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         const since = oldestTimestamp - range.end;
         const until = oldestTimestamp - range.start;
         let filter = isLoggedIn
-          ? { kinds: [1, 5, 6], since: since, until: until, authors: followers, limit: 50 }
-          : { kinds: [1, 5, 6], since: since, until: until, limit: 50 };
+          ? { kinds: [1, 5, 6], since: since, until: until, authors: followers, limit: 5 }
+          : { kinds: [1, 5, 6], since: since, until: until, limit: 5 };
       
         const newEvents: ExtendedEvent[] = [];
         const handleNewEvent = (event: ExtendedEvent) => {
@@ -415,7 +415,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           setInitialLoadComplete, filter, handleNewEvent, selectedAlgorithm, true);
         
         allFetchedEvents.push(...newEvents);
-        if (allFetchedEvents.length >= 10) break;
+        if (allFetchedEvents.length >= 5) break;
       }
     
       if (allFetchedEvents.length > 0) {
