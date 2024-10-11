@@ -13,6 +13,7 @@ import ProfilesModal from "./ProfilesModal";
 import Loading from "./Loading";
 import ConnectionInfoDialog from './ConnectionInfoDialog';
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/solid';
+import { getCachedCounts, setCachedCounts, updateCachedCounts } from "../utils/cachingUtils";
 
 interface Props {
     id: string;
@@ -90,6 +91,9 @@ interface Props {
     const [showRepostsModal, setShowRepostsModal] = useState(false);
     const [isConnectionInfoOpen, setIsConnectionInfoOpen] = useState(false);
     const navigate = useNavigate();
+    const [cachedReactions, setCachedReactions] = useState<number | null>(null);
+    const [cachedReposts, setCachedReposts] = useState<number | null>(null);
+    const [cachedReplies, setCachedReplies] = useState<number | null>(null);
 
     const openConnectionInfo = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -105,6 +109,35 @@ interface Props {
         setAlreadyDisliked(true);
       }
     }
+
+    useEffect(() => {
+      const cachedCounts = getCachedCounts(id);
+      if (cachedCounts) {
+        setCachedReactions(cachedCounts.reactions);
+        setCachedReposts(cachedCounts.reposts);
+        setCachedReplies(cachedCounts.replies);
+      }
+    
+      // Update cache if new counts are higher
+      const updateCache = () => {
+        const newReactions = reactions?.length || 0;
+        const newReposts = reposts || 0;
+        const newReplies = replies || 0;
+    
+        if (newReactions > (cachedReactions || 0) || newReposts > (cachedReposts || 0) || newReplies > (cachedReplies || 0)) {
+          updateCachedCounts(id, {
+            reactions: Math.max(newReactions, cachedReactions || 0),
+            reposts: Math.max(newReposts, cachedReposts || 0),
+            replies: Math.max(newReplies, cachedReplies || 0)
+          });
+          setCachedReactions(Math.max(newReactions, cachedReactions || 0));
+          setCachedReposts(Math.max(newReposts, cachedReposts || 0));
+          setCachedReplies(Math.max(newReplies, cachedReplies || 0));
+        }
+      };
+    
+      updateCache();
+    }, [id, reactions, reposts, replies]);
 
     useEffect(() => {
       // Check if content contains image URLs
@@ -575,14 +608,14 @@ interface Props {
             </div>
             {allReactions && id in allReactions ? (
             <>
-            <div className="p-4">
-              <span 
-                className="text-body5 text-gray-400 cursor-pointer hover:underline"
-                onClick={() => handleShowDislikes()}
-              >
-                {localReactions.filter((r) => r.type === "-").length}
-              </span>
-            </div>
+              <div className="p-4">
+                <span 
+                  className="text-body5 text-gray-400 cursor-pointer hover:underline"
+                  onClick={() => handleShowDislikes()}
+                >
+                  {cachedReactions !== null ? cachedReactions : (allReactions && id in allReactions ? localReactions.filter((r) => r.type === "-").length : <Loading vCentered={true} tiny={true} />)}
+                </span>
+              </div>
             </>
             ) : <div className="p-4"><Loading vCentered={true} tiny={true} /></div>}
             <ProfilesModal
@@ -601,14 +634,14 @@ interface Props {
             </div>
             {allReposts && id in allReposts ? (
             <>
-            <div className="p-4">
-              <span 
-                className="text-body5 text-gray-400 cursor-pointer hover:underline"
-                onClick={() => handleShowReposts()}
-              >
-                {reposts}
-              </span>
-            </div>
+              <div className="p-4">
+                <span 
+                  className="text-body5 text-gray-400 cursor-pointer hover:underline"
+                  onClick={() => handleShowReposts()}
+                >
+                  {cachedReposts !== null ? cachedReposts : (allReposts && id in allReposts ? reposts : <Loading vCentered={true} tiny={true} />)}
+                </span>
+              </div>
             </>
             ) : <div className="p-4"><Loading vCentered={true} tiny={true} /></div>}
             <ProfilesModal
@@ -630,7 +663,7 @@ interface Props {
                 <div className="p-4">
                   <Link to={`/note/${id}`}>
                     <span className="text-body5 text-gray-400 cursor-pointer hover:underline font-normal">
-                      {replies}
+                      {cachedReplies !== null ? cachedReplies : (allReplies && id in allReplies ? replies : <Loading vCentered={true} tiny={true} />)}
                     </span>
                   </Link>
                 </div>

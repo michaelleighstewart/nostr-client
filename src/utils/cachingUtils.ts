@@ -8,6 +8,16 @@ const ONE_DAY = 24 * 60 * 60 * 1000;
 const METADATA_CACHE_KEY = 'nostr_metadata_cache';
 const CACHE_EXPIRY_TIME = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
+const COUNTS_CACHE_KEY = 'nostr_counts_cache';
+const ONE_HOUR = 60 * 60 * 1000;
+
+interface CachedCounts {
+  reactions: number;
+  reposts: number;
+  replies: number;
+  timestamp: number;
+}
+
 export function getMetadataFromCache(pubkey: string): Metadata | null {
   const cachedData = localStorage.getItem(METADATA_CACHE_KEY);
   if (cachedData) {
@@ -64,4 +74,38 @@ export function clearCachedNotesOlderThanOneDay(algoId: string | null): void {
   if (updatedNotes.length < cachedNotes.length) {
     localStorage.setItem(getNotesCacheKey(algoId), JSON.stringify(updatedNotes));
   }
+}
+
+export function getCachedCounts(noteId: string): CachedCounts | null {
+  const cachedData = localStorage.getItem(COUNTS_CACHE_KEY);
+  if (cachedData) {
+    const parsedCache = JSON.parse(cachedData);
+    const cachedCounts = parsedCache[noteId];
+    if (cachedCounts && Date.now() - cachedCounts.timestamp < ONE_HOUR) {
+      return cachedCounts;
+    }
+  }
+  return null;
+}
+
+export function setCachedCounts(noteId: string, counts: CachedCounts): void {
+  const cachedData = localStorage.getItem(COUNTS_CACHE_KEY);
+  const parsedCache = cachedData ? JSON.parse(cachedData) : {};
+  parsedCache[noteId] = {
+    ...counts,
+    timestamp: Date.now()
+  };
+  localStorage.setItem(COUNTS_CACHE_KEY, JSON.stringify(parsedCache));
+}
+
+export function updateCachedCounts(noteId: string, newCounts: Partial<CachedCounts>): void {
+  const cachedData = localStorage.getItem(COUNTS_CACHE_KEY);
+  const parsedCache = cachedData ? JSON.parse(cachedData) : {};
+  const existingCounts = parsedCache[noteId] || { reactions: 0, reposts: 0, replies: 0, timestamp: Date.now() };
+  parsedCache[noteId] = {
+    ...existingCounts,
+    ...newCounts,
+    timestamp: Date.now()
+  };
+  localStorage.setItem(COUNTS_CACHE_KEY, JSON.stringify(parsedCache));
 }
