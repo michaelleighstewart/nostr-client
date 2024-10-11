@@ -13,7 +13,7 @@ import ProfilesModal from "./ProfilesModal";
 import Loading from "./Loading";
 import ConnectionInfoDialog from './ConnectionInfoDialog';
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/solid';
-import { getCachedCounts, setCachedCounts, updateCachedCounts } from "../utils/cachingUtils";
+import { getCachedCounts, updateCachedCounts } from "../utils/cachingUtils";
 
 interface Props {
     id: string;
@@ -46,6 +46,12 @@ interface Props {
     replyDepth?: number;
     rootEvent: ExtendedEvent | null;
     onUserClick: (pubkey: string) => void;
+  }
+
+  interface CachedCounts {
+    reactions: number;
+    reposts: number;
+    replies: number;
   }
   
   const NoteCard = React.memo(function NoteCard({
@@ -94,6 +100,33 @@ interface Props {
     const [cachedReactions, setCachedReactions] = useState<number | null>(null);
     const [cachedReposts, setCachedReposts] = useState<number | null>(null);
     const [cachedReplies, setCachedReplies] = useState<number | null>(null);
+    const [cachedCounts, setCachedCounts] = useState<CachedCounts | null>(null);
+
+    useEffect(() => {
+      const fetchedCachedCounts = getCachedCounts(id);
+      if (fetchedCachedCounts) {
+        setCachedCounts(fetchedCachedCounts);
+      }
+    }, [id]);
+
+    useEffect(() => {
+      if (!cachedCounts) return;
+  
+      const newReactions = reactions?.length || 0;
+      const newReposts = reposts || 0;
+      const newReplies = replies || 0;
+  
+      if (newReactions > cachedCounts.reactions || newReposts > cachedCounts.reposts || newReplies > cachedCounts.replies) {
+        const updatedCounts = {
+          reactions: Math.max(newReactions, cachedCounts.reactions),
+          reposts: Math.max(newReposts, cachedCounts.reposts),
+          replies: Math.max(newReplies, cachedCounts.replies),
+          timestamp: Date.now()
+        };
+        updateCachedCounts(id, updatedCounts);
+        setCachedCounts(updatedCounts);
+      }
+    }, [id, reactions, reposts, replies, cachedCounts]);
 
     const openConnectionInfo = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -613,7 +646,7 @@ interface Props {
                   className="text-body5 text-gray-400 cursor-pointer hover:underline"
                   onClick={() => handleShowDislikes()}
                 >
-                  {cachedReactions !== null ? cachedReactions : (allReactions && id in allReactions ? localReactions.filter((r) => r.type === "-").length : <Loading vCentered={true} tiny={true} />)}
+                  {cachedCounts ? cachedCounts.reactions : (allReactions && id in allReactions ? localReactions.filter((r) => r.type === "-").length : <Loading vCentered={true} tiny={true} />)}
                 </span>
               </div>
             </>
@@ -639,7 +672,7 @@ interface Props {
                   className="text-body5 text-gray-400 cursor-pointer hover:underline"
                   onClick={() => handleShowReposts()}
                 >
-                  {cachedReposts !== null ? cachedReposts : (allReposts && id in allReposts ? reposts : <Loading vCentered={true} tiny={true} />)}
+                  {cachedCounts ? cachedCounts.reposts : (allReposts && id in allReposts ? reposts : <Loading vCentered={true} tiny={true} />)}
                 </span>
               </div>
             </>
@@ -663,7 +696,7 @@ interface Props {
                 <div className="p-4">
                   <Link to={`/note/${id}`}>
                     <span className="text-body5 text-gray-400 cursor-pointer hover:underline font-normal">
-                      {cachedReplies !== null ? cachedReplies : (allReplies && id in allReplies ? replies : <Loading vCentered={true} tiny={true} />)}
+                      {cachedCounts ? cachedCounts.replies : (allReplies && id in allReplies ? replies : <Loading vCentered={true} tiny={true} />)}
                     </span>
                   </Link>
                 </div>

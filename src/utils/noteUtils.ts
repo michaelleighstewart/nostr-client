@@ -1,7 +1,7 @@
 import { SimplePool, Event } from "nostr-tools";
 import { RELAYS } from "./constants";
 import { ExtendedEvent, Metadata, Reaction } from "./interfaces";
-import { getMetadataFromCache, setMetadataToCache } from "./cachingUtils";
+import { getMetadataFromCache, setCachedCounts, setMetadataToCache } from "./cachingUtils";
 
 
 export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events: ExtendedEvent[], 
@@ -121,6 +121,22 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                                 if (!allNewReposts[postId].some(r => r.id === event.id)) {
                                     allNewReposts[postId].push(event as unknown as ExtendedEvent);
                                 }
+                            }
+                        }
+                        if (event.kind === 7 || event.kind === 6 || event.kind === 1) {
+                            const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                            if (postId) {
+                                // Update cached counts
+                                const currentReactions = allNewReactions[postId]?.length || 0;
+                                const currentReposts = allNewReposts[postId]?.length || 0;
+                                const currentReplies = allNewReplies[postId]?.length || 0;
+                                
+                                setCachedCounts(postId, {
+                                    reactions: currentReactions,
+                                    reposts: currentReposts,
+                                    replies: currentReplies,
+                                    timestamp: Date.now()
+                                });
                             }
                         }
                     },
