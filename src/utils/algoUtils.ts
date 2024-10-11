@@ -19,13 +19,14 @@ interface FilterAndFollowing {
 }
 
 export async function constructFilterFromBYOAlgo(byoAlgo: BYOAlgo | null, followers: string[], since: number,
-    pool: SimplePool
+    until: number, pool: SimplePool
 ): Promise<FilterAndFollowing> {
     const filter: any = {
         kinds: [],
         authors: followers,
         limit: 10,
         since,
+        until
     };
 
     if (!byoAlgo) {

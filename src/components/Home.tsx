@@ -264,17 +264,17 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           const now = Math.floor(Date.now() / 1000);
           
           for (const range of timeRanges) {
-            if (allFetchedEvents.length >= 5) break;
+            //if (allFetchedEvents.length >= 5) break;
             const since = now - range.end;
             const until = now - range.start;
             let filterObj = isLoggedIn
-              ? await constructFilterFromBYOAlgo(selectedAlgorithm ?? algoSelected, newFollowing, since, props.pool)
+              ? await constructFilterFromBYOAlgo(selectedAlgorithm ?? algoSelected, newFollowing, since, until, props.pool)
               : { filter: {kinds: [1], limit: 5, since: since, until: until}, followingStructure: [] };
             setFollowingStructure(filterObj.followingStructure);
             const newEvents = await fetchData(props.pool, since, false, until, isLoggedIn, props.nostrExists ?? false, keyValueRef.current,
               setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
               setUserPublicKey, setInitialLoadComplete, filterObj.filter, handleEventReceived, selectedAlgorithm ?? algoSelected, range.name === '1 hour');
-            
+
             if (range.name !== "1 hour") {
               allFetchedEvents.push(...(newEvents ?? []));
               const pubkeysToFetch = (newEvents ?? []).flatMap(event => {
@@ -328,10 +328,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             }
             
             
-            if (allFetchedEvents.length >= 5) break;
+            if (allFetchedEvents.length >= 10) break;
           }
 
-          allFetchedEvents = allFetchedEvents.slice(0, 5);
+          allFetchedEvents = allFetchedEvents.slice(0, 10);
     
           if (allFetchedEvents.length > 0) {
             const newLastFetchedTimestamp = Math.min(...allFetchedEvents.map(event => event.created_at));
@@ -400,8 +400,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         const since = oldestTimestamp - range.end;
         const until = oldestTimestamp - range.start;
         let filter = isLoggedIn
-          ? { kinds: [1, 5, 6], since: since, until: until, authors: followers, limit: 5 }
-          : { kinds: [1, 5, 6], since: since, until: until, limit: 5 };
+          ? { kinds: [1, 5, 6], since: since, until: until, authors: followers, limit: (range.name === '1 hour' ? 100 : 10) }
+          : { kinds: [1, 5, 6], since: since, until: until, limit: 10 };
       
         const newEvents: ExtendedEvent[] = [];
         const handleNewEvent = (event: ExtendedEvent) => {
@@ -415,7 +415,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           setInitialLoadComplete, filter, handleNewEvent, selectedAlgorithm, true);
         
         allFetchedEvents.push(...newEvents);
-        if (allFetchedEvents.length >= 5) break;
+        if (allFetchedEvents.length >= 10) break;
       }
     
       if (allFetchedEvents.length > 0) {
