@@ -264,6 +264,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           const now = Math.floor(Date.now() / 1000);
           
           for (const range of timeRanges) {
+            if (allFetchedEvents.length >= 10) break;
             const since = now - range.end;
             const until = now - range.start;
             let filterObj = isLoggedIn
