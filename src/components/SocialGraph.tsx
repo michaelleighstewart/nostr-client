@@ -27,6 +27,9 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const [progress, setProgress] = useState<number>(0);
   const [totalUsers, setTotalUsers] = useState<number>(0);
   const [needsSynchronization, setNeedsSynchronization] = useState(false);
+  const [visibleNodesLimit, setVisibleNodesLimit] = useState<number>(20);
+  const [hasMoreNodes, setHasMoreNodes] = useState<boolean>(false);
+  
   
 
   const isNetworkInitialized = useRef(false);
@@ -84,13 +87,13 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
 
   const updateGraphWithNewData = (apiGraphData: any, clickedNodeId: string) => {
     if (!graphData) return;
-
+  
     const updatedNodes = new DataSet(graphData.nodes.get());
     const updatedEdges = new DataSet(graphData.edges.get());
-
+  
     // Check if the clicked node is a second-degree follow
     const isSecondDegreeFollow = !updatedNodes.get(clickedNodeId);
-
+  
     // Update clicked node if it doesn't exist
     if (!isSecondDegreeFollow && !updatedNodes.get(clickedNodeId)) {
       updatedNodes.add({
@@ -105,7 +108,10 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   
     // Add or update first-order follows only if the clicked node is not a second-degree follow
     if (!isSecondDegreeFollow) {
-      for (const follow of apiGraphData.follows) {
+      const visibleFollows = apiGraphData.follows.slice(0, visibleNodesLimit);
+      setHasMoreNodes(apiGraphData.follows.length > visibleNodesLimit);
+  
+      for (const follow of visibleFollows) {
         if (!updatedNodes.get(follow.pubkey)) {
           updatedNodes.add({
             id: follow.pubkey,
@@ -146,11 +152,30 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       }));
       // Update the graph data
       setGraphData({ nodes: updatedNodes, edges: updatedEdges });
-
+  
       // Refresh the network to display new nodes and edges
       if (network) {
         network.setData({ nodes: updatedNodes, edges: updatedEdges });
         network.redraw();
+      }
+    }
+  };
+
+  const loadMoreNodes = async () => {
+    setVisibleNodesLimit(prev => prev + 20);
+    if (graphData) {
+      const rootNodeId = graphData.nodes.get()[0].id;
+      const rootNodeNpub = nip19.npubEncode(rootNodeId);
+      
+      try {
+        const apiGraphData = await fetchSocialGraphFromAPI(rootNodeNpub, 1);
+        if (apiGraphData) {
+          updateGraphWithNewData(apiGraphData, rootNodeId);
+        } else {
+          console.error('Failed to fetch additional graph data');
+        }
+      } catch (error) {
+        console.error('Error fetching additional graph data:', error);
       }
     }
   };
@@ -277,7 +302,10 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           };
 
           // Add first-order follows
-          for (const follow of apiGraphData.follows) {
+          // Add first-order follows (limited)
+          const visibleFollows = apiGraphData.follows.slice(0, visibleNodesLimit);
+          setHasMoreNodes(apiGraphData.follows.length > visibleNodesLimit);
+          for (const follow of visibleFollows) {
             nodes.add({
               id: follow.pubkey,
               label: follow.name || nip19.npubEncode(follow.pubkey).slice(0, 8),
@@ -546,7 +574,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
 
   return (
     <div className="py-16">
-        {needsSynchronization && (
+      {needsSynchronization && (
         <div className="absolute bottom-0 left-0 right-0 bg-gray-800 p-4 z-10">
           <p className="text-center mb-2">
             We have not yet synchronized an optimized social graph for your account. Once generated, we can further improve your Nostr experience on Ghostcopywrite.
@@ -563,6 +591,16 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         </div>
       )}
       <div ref={networkRef} style={{ height: '600px', width: '100%', border: 'solid', color: 'light-gray' }}></div>
+      {hasMoreNodes && (
+        <div className="flex justify-center mt-4">
+          <button
+            onClick={loadMoreNodes}
+            className="px-4 py-2 bg-[#535bf2] text-white rounded hover:bg-[#4349d6] transition duration-200"
+          >
+            Load More
+          </button>
+        </div>
+      )}
     </div>
   );
 };
