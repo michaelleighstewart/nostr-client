@@ -176,6 +176,20 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         }
       }
     }
+
+    // Check if any existing nodes follow the new node
+    graphData.nodes.forEach((existingNode: any) => {
+      if (existingNode.id !== clickedNodeId && followingFollowingData[existingNode.id]?.includes(clickedNodeId)) {
+        const edgeId = `${existingNode.id}-${clickedNodeId}`;
+        if (!updatedEdges.get(edgeId)) {
+          updatedEdges.add({
+            id: edgeId,
+            from: existingNode.id,
+            to: clickedNodeId
+          });
+        }
+      }
+    });
   
     // Update metadata
     if (!isSecondDegreeFollow) {
@@ -377,6 +391,11 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
               followingFollowingMap[follow.pubkey] = follow.follows.map((ff: { pubkey: any; }) => ff.pubkey);
             }
           }
+
+          setFollowingFollowingData(prevData => ({
+            ...prevData,
+            [apiGraphData.user.pubkey]: apiGraphData.follows.map((follow: any) => follow.pubkey)
+          }));
 
           // Add second-order follows to metadata but not to graph
           for (const follow of apiGraphData.follows) {
