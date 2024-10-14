@@ -6,8 +6,9 @@ import Loading from './Loading';
 import { getFollowing, getUserPublicKey } from '../utils/profileUtils';
 import { RELAYS } from '../utils/constants';
 import { API_URLS } from '../utils/apiConstants';
-import { ArrowPathIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, UserIcon } from '@heroicons/react/24/outline';
 import { showCustomToast } from "./CustomToast";
+import { Link } from 'react-router-dom';
 
 const NODES_PER_LOAD = 10;
 
@@ -33,12 +34,14 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const [_hasMoreNodes, setHasMoreNodes] = useState<boolean>(false);
   const [nodeWithMoreData, setNodeWithMoreData] = useState<string | null>(null);
   const [nodeVisibleLimits, setNodeVisibleLimits] = useState<{[key: string]: number}>({});
-  
+  const [selectedNode, setSelectedNode] = useState<any | null>(null);
+  const [nodeFollowCounts, setNodeFollowCounts] = useState<{[key: string]: number}>({});
+  const [modalImage, setModalImage] = useState<string | null>(null);
+  const [isSecondDegreeFollow, setIsSecondDegreeFollow] = useState<boolean>(false);
 
   const isNetworkInitialized = useRef(false);
   const poolRef = useRef(pool);
   const keyValueRef = useRef(keyValue);
-
 
   const removeSecondDegreeNodes = (nodeId: string) => {
     if (!graphData) return;
@@ -46,22 +49,34 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     const nodesToRemove: string[] = [];
     const edgesToRemove: string[] = [];
   
+    // Find all edges connected to the selected node
     graphData.edges.forEach((edge: any) => {
       if (edge.from === nodeId) {
-        nodesToRemove.push(edge.to);
-        edgesToRemove.push(edge.id);
+        // Check if the edge is not connected to the root node before removing
+        if (edge.to !== keyValueRef.current) {
+          nodesToRemove.push(edge.to);
+          edgesToRemove.push(edge.id);
+        }
       }
     });
   
+    // Remove the found nodes and edges
     graphData.nodes.remove(nodesToRemove);
     graphData.edges.remove(edgesToRemove);
   
+    // Update the graph data
     setGraphData({ ...graphData });
+  
+    // Refresh the network to display changes
+    if (network) {
+      network.setData(graphData);
+      network.redraw();
+    }
   };
 
   const handleNodeClick = async (nodeId: string) => {
     const pk = await getUserPublicKey(nostrExists ?? false, keyValue);
-    if (nodeId === (await pk).toString()) return; // Don't fetch for the user's own node
+    //if (nodeId === (await pk).toString()) return; // Don't fetch for the user's own node
   
     setExpandedNodes(prev => {
       const newSet = new Set(prev);
@@ -73,18 +88,33 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       return newSet;
     });
 
+    // Set the selected node
+    const nodeData = graphData?.nodes.get(nodeId);
+    setSelectedNode(nodeData);
+
+    // Check if the clicked node is a second-degree follow
+    const isSecondDegree = !graphData?.edges.get({
+      filter: (edge: any) => edge.from === (pk).toString() && edge.to === nodeId
+    }).length;
+    setIsSecondDegreeFollow(isSecondDegree);
+
     if (!expandedNodes.has(nodeId)) {
       const nodeNpub = nip19.npubEncode(nodeId);
       try {
         const apiGraphData = await fetchSocialGraphFromAPI(nodeNpub, 1);
         if (apiGraphData) {
           updateGraphWithNewData(apiGraphData, nodeId);
+          // Update the follow count for this node
+          setNodeFollowCounts(prev => ({
+            ...prev,
+            [nodeId]: apiGraphData.follows.length
+          }));
         }
       } catch (error) {
         console.error('Error fetching data for clicked node:', error);
       }
     } else {
-      removeSecondDegreeNodes(nodeId);
+      //removeSecondDegreeNodes(nodeId);
     }
   };
 
@@ -110,98 +140,14 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       updatedNodes.add({
         id: clickedNodeId,
         label: apiGraphData.user.name || nip19.npubEncode(clickedNodeId).slice(0, 8),
-        //shape: 'circularImage',
+        shape: 'circularImage',
         image: apiGraphData.user.picture || 'default-profile-picture.jpg',
         size: 20,
         font: { color: 'white' },
-        shape: 'custom',
-        ctxRenderer: ({ ctx, x, y, label }: any) => {
-          // Draw the circular image
-          const color = 'white';
-          const size = 20;
-          const image = apiGraphData.user?.picture || 'default-profile-picture.jpg';
-          ctx.beginPath();
-          ctx.arc(x, y, size, 0, 2 * Math.PI, false);
-          ctx.fillStyle = color;
-          ctx.fill();
-
-          // Draw the image
-          if (image) {
-            const img = new Image();
-            img.src = image;
-            ctx.save();
-            ctx.clip();
-            ctx.drawImage(img, x - size, y - size, size * 2, size * 2);
-            ctx.restore();
-          }
-
-          // Draw the label
-          ctx.font = '12px Arial';
-          ctx.fillStyle = 'white';
-          ctx.textAlign = 'center';
-          ctx.fillText(label, x, y + size + 15);
-
-          // Draw "Load More" button if this node has more data
-          if (isLoadMore) {
-            ctx.fillStyle = '#535bf2';
-            ctx.beginPath();
-            ctx.moveTo(x + size + 5, y);
-            ctx.lineTo(x + size + 15, y + 5);
-            ctx.lineTo(x + size + 5, y + 10);
-            ctx.closePath();
-            ctx.fill();
-          }
-
-          return { drawNode: () => {}, nodeDimensions: { width: size * 2, height: size * 2 } };
-        },
+        //shape: 'custom',
       });
     }
 
-    // Update the clicked node to show the load more button if not a second-degree follow
-    if (!isSecondDegreeFollow) {
-      updatedNodes.update({
-        id: clickedNodeId,
-        shape: 'custom',
-        ctxRenderer: ({ ctx, x, y, label }: any) => {
-          // Draw the circular image
-          const color = 'white';
-          const size = 20;
-          const image = apiGraphData.user?.picture || 'default-profile-picture.jpg';
-          ctx.beginPath();
-          ctx.arc(x, y, size, 0, 2 * Math.PI, false);
-          ctx.fillStyle = color;
-          ctx.fill();
-
-          // Draw the image
-          if (image) {
-            const img = new Image();
-            img.src = image;
-            ctx.save();
-            ctx.clip();
-            ctx.drawImage(img, x - size, y - size, size * 2, size * 2);
-            ctx.restore();
-          }
-
-          // Draw the label
-          ctx.font = '12px Arial';
-          ctx.fillStyle = 'white';
-          ctx.textAlign = 'center';
-          ctx.fillText(label, x, y + size + 15);
-
-          // Draw "Load More" button
-          ctx.fillStyle = '#535bf2';
-          ctx.beginPath();
-          ctx.moveTo(x + size + 5, y);
-          ctx.lineTo(x + size + 15, y + 5);
-          ctx.lineTo(x + size + 5, y + 10);
-          ctx.closePath();
-          ctx.fill();
-
-          return { drawNode: () => {}, nodeDimensions: { width: size * 2, height: size * 2 } };
-        },
-      });
-    }
-  
     // Add or update first-order follows only if the clicked node is not a second-degree follow
     if (!isSecondDegreeFollow) {
       //const visibleFollows = apiGraphData.follows.slice(0, visibleNodesLimit);
@@ -320,47 +266,10 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
             graphData.nodes.add({
               id: pubkey,
               label: metadata[pubkey]?.name || nip19.npubEncode(pubkey).slice(0, 8),
-              //shape: 'circularImage',
+              shape: 'circularImage',
               image: metadata[pubkey]?.picture || 'default-profile-picture.jpg',
               size: 15,
               font: { color: 'white' },
-              shape: 'custom',
-              ctxRenderer: ({ ctx, x, y, label }: any) => {
-                // Draw the circular image
-                const color = 'white';
-                const size = 20;
-                const image = metadata[pubkey]?.picture || 'default-profile-picture.jpg';
-                ctx.beginPath();
-                ctx.arc(x, y, size, 0, 2 * Math.PI, false);
-                ctx.fillStyle = color;
-                ctx.fill();
-                // Draw the image
-                if (image) {
-                  const img = new Image();
-                  img.src = image;
-                  ctx.save();
-                  ctx.clip();
-                  ctx.drawImage(img, x - size, y - size, size * 2, size * 2);
-                  ctx.restore();
-                }
-      
-                // Draw the label
-                ctx.font = '12px Arial';
-                ctx.fillStyle = 'white';
-                ctx.textAlign = 'center';
-                ctx.fillText(label, x, y + size + 15);
-      
-                // Draw "Load More" button if this node has more data
-                //if (apiGraphData.follows.length > 20) {
-                //  ctx.fillStyle = '#535bf2';
-                //  ctx.fillRect(x + size + 5, y - 10, 70, 20);
-                //  ctx.fillStyle = 'white';
-                //  ctx.font = '10px Arial';
-                //  ctx.fillText('Load More', x + size + 40, y + 2);
-                //}
-      
-                return { drawNode: () => {}, nodeDimensions: { width: size * 2, height: size * 2 } };
-              },
             });
             graphData.edges.add({
               from: nodeId,
@@ -429,50 +338,10 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
             nodes.add({
               id: apiGraphData.user.pubkey,
               label: (apiGraphData.user?.name || nip19.npubEncode(apiGraphData.user.pubkey).slice(0, 8)) + ' (You)',
-              //shape: 'circularImage',
+              shape: 'circularImage',
               image: apiGraphData.user?.picture || 'default-profile-picture.jpg',
               size: 20,
               font: { color: 'white' },
-              shape: 'custom',
-              ctxRenderer: ({ ctx, x, y, label }: any) => {
-                // Draw the circular image
-                const color = 'white';
-                const size = 20;
-                const image = apiGraphData.user?.picture || 'default-profile-picture.jpg';
-                ctx.beginPath();
-                ctx.arc(x, y, size, 0, 2 * Math.PI, false);
-                ctx.fillStyle = color;
-                ctx.fill();
-
-                // Draw the image
-                if (image) {
-                  const img = new Image();
-                  img.src = image;
-                  ctx.save();
-                  ctx.clip();
-                  ctx.drawImage(img, x - size, y - size, size * 2, size * 2);
-                  ctx.restore();
-                }
-      
-                // Draw the label
-                ctx.font = '12px Arial';
-                ctx.fillStyle = 'white';
-                ctx.textAlign = 'center';
-                ctx.fillText(label, x, y + size + 15);
-      
-                // Draw "Load More" button if this node has more data
-                if (apiGraphData.follows.length > 2) {
-                  ctx.fillStyle = '#535bf2';
-                  ctx.beginPath();
-                  ctx.moveTo(x + size + 5, y);
-                  ctx.lineTo(x + size + 15, y + 5);
-                  ctx.lineTo(x + size + 5, y + 10);
-                  ctx.closePath();
-                  ctx.fill();
-                }
-      
-                return { drawNode: () => {}, nodeDimensions: { width: size * 2, height: size * 2 } };
-              },
             } as any);
           }
           metadataMap[apiGraphData.user.pubkey] = {
@@ -662,45 +531,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     }
   }, [network, graphData]);
 
-  useEffect(() => {
-    if (network && graphData && isNetworkInitialized.current) {
-      network.on("click", function (params) {
-        const clickPosition = network.DOMtoCanvas({
-          x: params.pointer.DOM.x,
-          y: params.pointer.DOM.y
-        });
-  
-        // Check if the click is on any "Load More" button
-        const allNodes = graphData.nodes.get();
-        for (const node of allNodes) {
-          //if (node.id === nodeWithMoreData) {
-            const nodePosition = network.getPositions([node.id])[node.id];
-            const buttonX = nodePosition.x + node.size + 5;
-            const buttonY = nodePosition.y - 5;
-            const buttonWidth = 10;
-            const buttonHeight = 10;
-  
-            if (
-              clickPosition.x >= buttonX &&
-              clickPosition.x <= buttonX + buttonWidth &&
-              clickPosition.y >= buttonY &&
-              clickPosition.y <= buttonY + buttonHeight
-            ) {
-              // Click is on the "Load More" button
-              loadMoreNodes(node.id);
-              return; // Prevent further processing of the click
-            }
-          }
-        //}
-  
-        // If not on any button, handle regular node click if a node was clicked
-        if (params.nodes.length > 0) {
-          handleNodeClick(params.nodes[0]);
-        }
-      });
-    }
-  }, [network, graphData, nodeWithMoreData, nodeVisibleLimits]);
-
   const fetchMetadata = async (pubkeys: string[]) => {
     const metadata: { [key: string]: any } = {};
     const chunkSize = 100;
@@ -771,6 +601,10 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     }
   };
 
+  const handleImageClick = (imageSrc: string) => {
+    setModalImage(imageSrc);
+  };
+
   if (loading) {
     return (
       <div className="h-screen flex flex-col items-center justify-center">
@@ -807,6 +641,57 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         </div>
       )}
       <div ref={networkRef} style={{ height: '600px', width: '100%', border: 'solid', color: 'light-gray' }}></div>
+      {selectedNode && (
+        <div className="mt-4 p-16 px-32 bg-gray-800 rounded-lg shadow-lg justify-center">
+          <div className="pt-4 pb-16 flex flex-col items-center">
+            <h3 className="text-xl font-bold mb-2 text-center">{selectedNode.label}</h3>
+            <img 
+              src={selectedNode.image} 
+              alt={selectedNode.label} 
+              className="w-64 h-64 rounded-full object-cover mb-2 cursor-pointer" 
+              onClick={() => handleImageClick(selectedNode.image)}
+            />
+            <Link 
+              to={`/profile/${nip19.npubEncode(selectedNode.id)}`}
+              className="mt-4 flex items-center justify-center px-16 py-8 bg-[#535bf2] text-white rounded hover:bg-[#4349d6] transition duration-200"
+            >
+              <UserIcon className="h-5 w-5 mr-2" />
+              View Profile
+            </Link>
+          </div>
+          <div className="flex flex-col space-y-4 rounded-lg relative my-16">
+            <div className="border border-gray-600 p-4 rounded-lg py-16">
+                <p className="text-sm text-gray-400 whitespace-nowrap text-center">
+                  {isSecondDegreeFollow 
+                    ? "The social graph currently only supports two degrees of separation"
+                    : `Following: ${nodeFollowCounts[selectedNode.id] || 0} (${graphData?.edges.get({filter: edge => edge.from === selectedNode.id}).length || 0} displayed)`
+                  }
+                </p>
+              {!isSecondDegreeFollow && (
+                <div className="flex justify-center space-x-4 mt-4">
+                  <button
+                    onClick={() => loadMoreNodes(selectedNode.id)}
+                    className="px-6 py-2 bg-[#535bf2] text-white rounded hover:bg-[#4349d6] transition duration-200"
+                  >
+                    Show {NODES_PER_LOAD} More
+                  </button>
+                  <button
+                    onClick={() => removeSecondDegreeNodes(selectedNode.id)}
+                    className="px-6 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition duration-200"
+                  >
+                    Hide
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {modalImage && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onClick={() => setModalImage(null)}>
+          <img src={modalImage} alt="Enlarged profile" className="max-w-full max-h-full object-contain" />
+        </div>
+      )}
     </div>
   );
 };
