@@ -98,7 +98,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
 
     const visibleFollows = apiGraphData.follows.slice(0, currentLimit);
     const isLoadMore = apiGraphData.follows.length > currentLimit;
-    console.log('Visible follows:', visibleFollows.length);
   
     setHasMoreNodes(apiGraphData.follows.length > currentLimit);
     setNodeWithMoreData(apiGraphData.follows.length > currentLimit ? clickedNodeId : null);
@@ -116,9 +115,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         size: 20,
         font: { color: 'white' },
         shape: 'custom',
-        ctxRenderer: ({ ctx, id, x, y, label }: any) => {
-          console.log("here 2")
-          console.log("label", label)
+        ctxRenderer: ({ ctx, x, y, label }: any) => {
           // Draw the circular image
           const color = 'white';
           const size = 20;
@@ -165,7 +162,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       updatedNodes.update({
         id: clickedNodeId,
         shape: 'custom',
-        ctxRenderer: ({ ctx, id, x, y, label }: any) => {
+        ctxRenderer: ({ ctx, x, y, label }: any) => {
           // Draw the circular image
           const color = 'white';
           const size = 20;
@@ -263,7 +260,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   };
 
   const loadMoreNodes = async (nodeId: string) => {
-    console.log('loadMoreNodes called for node:', nodeId);
     const newLimit = (nodeVisibleLimits[nodeId] || NODES_PER_LOAD) + NODES_PER_LOAD;
     setNodeVisibleLimits(prev => ({
       ...prev,
@@ -274,7 +270,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     try {
       const apiGraphData = await fetchSocialGraphFromAPI(nodeNpub, 1);
       if (apiGraphData) {
-        console.log('Fetched additional data:', apiGraphData);
         updateGraphWithNewData(apiGraphData, nodeId, newLimit);
       } else {
         console.error('Failed to fetch additional graph data');
@@ -330,9 +325,8 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
               size: 15,
               font: { color: 'white' },
               shape: 'custom',
-              ctxRenderer: ({ ctx, _id, x, y, label }: any) => {
+              ctxRenderer: ({ ctx, x, y, label }: any) => {
                 // Draw the circular image
-                console.log("here 1")
                 const color = 'white';
                 const size = 20;
                 const image = metadata[pubkey]?.picture || 'default-profile-picture.jpg';
@@ -432,7 +426,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           const followingFollowingMap: {[key: string]: string[]} = {};
           const metadataMap: {[key: string]: any} = {};
           if (!nodes.get(apiGraphData.user.pubkey)) {
-            console.log("adding node with label", (apiGraphData.user?.name || nip19.npubEncode(apiGraphData.user.pubkey).slice(0, 8)) + ' (You)')
             nodes.add({
               id: apiGraphData.user.pubkey,
               label: (apiGraphData.user?.name || nip19.npubEncode(apiGraphData.user.pubkey).slice(0, 8)) + ' (You)',
@@ -441,9 +434,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
               size: 20,
               font: { color: 'white' },
               shape: 'custom',
-              ctxRenderer: ({ ctx, id, x, y, label }: any) => {
-                console.log("here 2")
-                console.log("label", label)
+              ctxRenderer: ({ ctx, x, y, label }: any) => {
                 // Draw the circular image
                 const color = 'white';
                 const size = 20;
@@ -541,14 +532,11 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           const following = await getFollowing(pool, true, nostrExists ?? false, keyValue ?? "", () => {}, null);
       
           const uniqueFollowing = Array.from(new Set(following));
-          console.log("got unique following", uniqueFollowing)
 
           await Promise.all(
             uniqueFollowing.map(async (pubkey) => {
               let followers = await getFollowing(pool, true, nostrExists ?? false, keyValue ?? "", () => {}, pubkey);
-              console.log("got following following", followers);
               followers = followers.filter(follower => follower !== pubkey);
-              console.log("filtered", followers)
               followingFollowingMap[pubkey] = followers;
             })
           );
