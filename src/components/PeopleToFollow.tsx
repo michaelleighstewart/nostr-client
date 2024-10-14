@@ -409,7 +409,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                                                     onError={(e) => {
                                                         const target = e.target as HTMLImageElement;
                                                         target.onerror = null;
-                                                        target.src = 'default-profile-picture.jpg'; // Replace with your default image path
+                                                        target.src = '/ostrich.png';
                                                     }}
                                                 />
                                             ) : (

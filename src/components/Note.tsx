@@ -202,7 +202,6 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
     });
   
     // Second pass: Construct the threaded structure
-    console.log("allRepliesNew is", allRepliesNew);
     Object.values(allRepliesNew).forEach(reply => {
       const rootTag = reply.tags.find(tag => tag[0] === 'e' && tag[3] === 'root');
       const parentTag = reply.tags.find(tag => tag[0] === 'e' && tag[3] === 'reply');
@@ -223,8 +222,6 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         }
       }
     });
-  
-    console.log("Threaded replies:", threadedReplies);
     setThreadedReplies(threadedReplies);
   }, [allRepliesNew, id]);
   

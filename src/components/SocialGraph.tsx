@@ -140,7 +140,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         id: clickedNodeId,
         label: apiGraphData.user.name || nip19.npubEncode(clickedNodeId).slice(0, 8),
         shape: 'circularImage',
-        image: apiGraphData.user.picture || 'default-profile-picture.jpg',
+        image: apiGraphData.user.picture || '/ostrich.png',
         size: 20,
         font: { color: 'white' },
         //shape: 'custom',
@@ -160,7 +160,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
             id: follow.pubkey,
             label: follow.name || nip19.npubEncode(follow.pubkey).slice(0, 8),
             //shape: 'circularImage',
-            image: follow.picture || 'default-profile-picture.jpg',
+            image: follow.picture || '/ostrich.png',
             size: 15,
             font: { color: 'white' }
           });
@@ -280,7 +280,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
               id: pubkey,
               label: metadata[pubkey]?.name || nip19.npubEncode(pubkey).slice(0, 8),
               shape: 'circularImage',
-              image: metadata[pubkey]?.picture || 'default-profile-picture.jpg',
+              image: metadata[pubkey]?.picture || '/ostrich.png',
               size: 15,
               font: { color: 'white' },
             });
@@ -352,7 +352,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
               id: apiGraphData.user.pubkey,
               label: (apiGraphData.user?.name || nip19.npubEncode(apiGraphData.user.pubkey).slice(0, 8)) + ' (You)',
               shape: 'circularImage',
-              image: apiGraphData.user?.picture || 'default-profile-picture.jpg',
+              image: apiGraphData.user?.picture || '/ostrich.png',
               size: 20,
               font: { color: 'white' },
             } as any);
@@ -371,7 +371,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
               id: follow.pubkey,
               label: follow.name || nip19.npubEncode(follow.pubkey).slice(0, 8),
               shape: 'circularImage',
-              image: follow.picture || 'default-profile-picture.jpg',
+              image: follow.picture || '/ostrich.png',
               size: 20,
               font: { color: 'white' }
             } as any);
@@ -446,7 +446,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
               id: userPubkey,
               label: `${metadataRetrieved[userPubkey]?.name || 'Unknown'} (You)`,
               shape: 'circularImage',
-              image: metadataRetrieved[userPubkey]?.picture || 'default-profile-picture.jpg',
+              image: metadataRetrieved[userPubkey]?.picture || '/ostrich.png',
               size: 30,
               font: { color: 'white' }
             } as any);
@@ -458,7 +458,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
                 id: pubkey,
                 label: metadataRetrieved[pubkey]?.name || nip19.npubEncode(pubkey).slice(0, 8),
                 shape: 'circularImage',
-                image: metadataRetrieved[pubkey]?.picture || 'default-profile-picture.jpg',
+                image: metadataRetrieved[pubkey]?.picture || '/ostrich.png',
                 size: 20,
                 font: { color: 'white' }
               } as any);

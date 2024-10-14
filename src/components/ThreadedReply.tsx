@@ -53,8 +53,8 @@ interface ThreadedReplyProps {
             content={reply.content}
             user={{
               pubkey: reply.pubkey,
-              name: metadata[reply.pubkey]?.name || '',
-              image: metadata[reply.pubkey]?.picture || '',
+              name: metadata[reply.pubkey]?.name || 'Unknown',
+              image: metadata[reply.pubkey]?.picture || '/ostrich.png',
               nip05: metadata[reply.pubkey]?.nip05 || '',
             }}
             created_at={reply.created_at}

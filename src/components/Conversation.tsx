@@ -340,7 +340,7 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
           >
             <Link to={`/profile/${message.pubkey}`}>
               <img
-                src={userMetadata[message.pubkey]?.picture || 'default-avatar.png'}
+                src={userMetadata[message.pubkey]?.picture || '/ostrich.png'}
                 alt={userMetadata[message.pubkey]?.name || 'User'}
                 className="w-32 h-32 rounded-full mr-16"
               />
