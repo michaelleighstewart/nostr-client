@@ -29,7 +29,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const [progress, setProgress] = useState<number>(0);
   const [totalUsers, setTotalUsers] = useState<number>(0);
   const [needsSynchronization, setNeedsSynchronization] = useState(false);
-  const [visibleNodesLimit, _setVisibleNodesLimit] = useState<number>(NODES_PER_LOAD);
+  const [visibleNodesLimit, _setVisibleNodesLimit] = useState<number>(10);
   const [_hasMoreNodes, setHasMoreNodes] = useState<boolean>(false);
   const [_nodeWithMoreData, setNodeWithMoreData] = useState<string | null>(null);
   const [nodeVisibleLimits, setNodeVisibleLimits] = useState<{[key: string]: number}>({});
@@ -92,7 +92,8 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       try {
         const apiGraphData = await fetchSocialGraphFromAPI(nodeNpub, 1);
         if (apiGraphData) {
-          updateGraphWithNewData(apiGraphData, nodeId);
+          //michael - removed updating graph until user initiates
+          //updateGraphWithNewData(apiGraphData, nodeId);
           setNodeFollowCounts(prev => ({
             ...prev,
             [nodeId]: apiGraphData.follows.length
@@ -112,7 +113,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     if (!graphData) return;
     const updatedNodes = new DataSet(graphData.nodes.get());
     const updatedEdges = new DataSet(graphData.edges.get());
-    const currentLimit = newLimit || nodeVisibleLimits[clickedNodeId] || NODES_PER_LOAD;
+    const currentLimit = newLimit || nodeVisibleLimits[clickedNodeId] || 0;
     const visibleFollows = apiGraphData.follows.slice(0, currentLimit);
     setHasMoreNodes(apiGraphData.follows.length > currentLimit);
     setNodeWithMoreData(apiGraphData.follows.length > currentLimit ? clickedNodeId : null);
@@ -213,7 +214,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   };
 
   const loadMoreNodes = async (nodeId: string) => {
-    const newLimit = (nodeVisibleLimits[nodeId] || NODES_PER_LOAD) + NODES_PER_LOAD;
+    const newLimit = (nodeVisibleLimits[nodeId] || 0) + NODES_PER_LOAD;
     setNodeVisibleLimits(prev => ({
       ...prev,
       [nodeId]: newLimit
@@ -333,7 +334,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           const nodes = new DataSet();
           const edges = new DataSet();
           setNodeVisibleLimits({
-            [apiGraphData.user.pubkey]: NODES_PER_LOAD
+            [apiGraphData.user.pubkey]: 0
           });
           setAllFollows(prevAllFollows => ({
             ...prevAllFollows,
@@ -404,6 +405,15 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           setMetadata(metadataMap);
           setGraphData({ nodes, edges });
           setLoading(false);
+
+          // Set the root node as the selected node on first load
+          const rootNode = nodes.get(apiGraphData.user.pubkey);
+          setSelectedNode(rootNode);
+          
+          // Set the initial following count for the root node
+          setNodeFollowCounts({
+            [apiGraphData.user.pubkey]: apiGraphData.follows.length
+          });
         } else {
           const following = await getFollowing(pool, true, nostrExists ?? false, keyValue ?? "", () => {}, null);
       
@@ -460,6 +470,15 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       
           setGraphData({ nodes, edges });
           setLoading(false);
+
+          // Set the root node as the selected node on first load
+          const rootNode = nodes.get(userPubkey);
+          setSelectedNode(rootNode);
+          
+          // Set the initial following count for the root node
+          setNodeFollowCounts({
+            [userPubkey]: uniqueFollowing.length
+          });
         }
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -670,16 +689,25 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
                 <p className="text-sm text-gray-400 whitespace-nowrap text-center">
                   {isSecondDegreeFollow 
                     ? "The social graph currently only supports two degrees of separation"
-                    : `Following: ${nodeFollowCounts[selectedNode.id] || 0} (${graphData?.edges.get({filter: edge => edge.from === selectedNode.id}).length || 0} displayed)`
+                    : `Following: ${nodeFollowCounts[selectedNode.id] || 0} (Showing ${graphData?.edges.get({filter: edge => edge.from === selectedNode.id}).length || 0})`
                   }
                 </p>
               {!isSecondDegreeFollow && (
                 <div className="flex justify-center space-x-4 mt-4">
                   <button
                     onClick={() => loadMoreNodes(selectedNode.id)}
-                    className="px-6 py-2 bg-[#535bf2] text-white rounded hover:bg-[#4349d6] transition duration-200"
+                    disabled={nodeFollowCounts[selectedNode.id] === graphData?.edges.get({filter: edge => edge.from === selectedNode.id}).length}
+                    className={`px-6 py-2 rounded transition duration-200 flex items-center justify-center ${
+                      nodeFollowCounts[selectedNode.id] === graphData?.edges.get({filter: edge => edge.from === selectedNode.id}).length
+                        ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
+                        : 'bg-[#535bf2] text-white hover:bg-[#4349d6]'
+                    }`}
                   >
-                    Show {NODES_PER_LOAD} More
+                    {nodeFollowCounts[selectedNode.id] === graphData?.edges.get({filter: edge => edge.from === selectedNode.id}).length
+                      ? 'No more to show'
+                      : graphData?.edges.get({filter: edge => edge.from === selectedNode.id}).length === 0
+                        ? 'Show 10'
+                        : `Show ${NODES_PER_LOAD} More`}
                   </button>
                   <button
                     onClick={() => removeSecondDegreeNodes(selectedNode.id)}
