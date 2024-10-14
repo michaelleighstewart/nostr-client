@@ -342,10 +342,10 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
               <img
                 src={userMetadata[message.pubkey]?.picture || '/ostrich.png'}
                 alt={userMetadata[message.pubkey]?.name || 'User'}
-                className="w-32 h-32 rounded-full mr-16"
+                className="w-32 h-32 rounded-full object-cover mr-32"
               />
             </Link>
-            <div>
+            <div className="pl-8">
               <p>{renderMessageContent(message.content)}</p>
               <span className="text-xs text-gray-500">
                 {new Date(message.created_at * 1000).toLocaleString()}
