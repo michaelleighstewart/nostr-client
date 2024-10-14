@@ -4,7 +4,6 @@ import { SimplePool, Event, getPublicKey, nip04, finalizeEvent } from 'nostr-too
 import { RELAYS } from '../utils/constants';
 import { bech32Decoder } from '../utils/helperFunctions';
 import Loading from './Loading';
-import VideoEmbed from './VideoEmbed';
 
 interface ConversationProps {
   keyValue: string;
@@ -36,6 +35,7 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
   const [userMetadata, setUserMetadata] = useState<Record<string, UserMetadata>>({});
   const [hasOlderMessages, setHasOlderMessages] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [modalImage, setModalImage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserPubkey = async () => {
@@ -284,17 +284,22 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
   const renderMessageContent = (content: string) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const imageRegex = /\.(jpeg|jpg|gif|png)$/i;
-    const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?(.+)/g;
+    const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?([^\s&]+)/;
     const videoRegex = /\.(mp4|webm|ogg)$/i;
-
+  
+    let youtubeVideoId = null;
     const parts = content.split(urlRegex);
-
-    return parts.map((part, index) => {
+  
+    const processedContent = parts.map((part, index) => {
       if (part.match(urlRegex)) {
         if (part.match(imageRegex)) {
-          return <img key={index} src={part} alt="Embedded content" className="max-w-full h-auto" />;
+          return <img key={index} src={part} alt="Embedded content" className="max-w-full h-auto cursor-pointer" onClick={() => setModalImage(part)} />;
         } else if (part.match(youtubeRegex)) {
-          return <VideoEmbed key={index} url={part} />;
+          const match = part.match(youtubeRegex);
+          if (match && match[1]) {
+            youtubeVideoId = match[1];
+          }
+          return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{part}</a>;
         } else if (part.match(videoRegex)) {
           return <video key={index} src={part} controls className="max-w-full h-auto" />;
         } else {
@@ -304,6 +309,24 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
         return part;
       }
     });
+  
+    return (
+      <>
+        <p>{processedContent}</p>
+        {youtubeVideoId && (
+          <div className="mt-2">
+            <iframe
+              width="100%"
+              height="315"
+              src={`https://www.youtube.com/embed/${youtubeVideoId}`}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            ></iframe>
+          </div>
+        )}
+      </>
+    );
   };
 
   if (loading) return <div className="h-screen"><Loading vCentered={false} /></div>;
@@ -361,6 +384,11 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
       >
         {loadingOlderMessages ? 'Loading...' : hasOlderMessages ? 'Load Older Messages' : 'No Older Messages'}
       </button>
+      {modalImage && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setModalImage(null)}>
+          <img src={modalImage} alt="Enlarged view" className="max-w-[90%] max-h-[90%] object-contain" />
+        </div>
+      )}
     </div>
   );
 };
