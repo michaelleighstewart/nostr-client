@@ -10,11 +10,9 @@ import { ArrowPathIcon, UserIcon } from '@heroicons/react/24/outline';
 import { showCustomToast } from "./CustomToast";
 import { Link } from 'react-router-dom';
 import { UserPlusIcon, UserMinusIcon } from '@heroicons/react/24/solid';
-import { finalizeEvent, getPublicKey } from 'nostr-tools';
-import { bech32Decoder } from '../utils/helperFunctions';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import NewMessageDialog from "./NewMessageDialog";
-import { handleFollow } from '../utils/followUtils';
+import { handleFollowUnfollow } from '../utils/followUtils';
 
 const NODES_PER_LOAD = 10;
 interface SocialGraphProps {
@@ -276,9 +274,9 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     fetchFollowingList();
   }, [pool, keyValue, nostrExists]);
 
-  const handleFollowClick = async () => {
+  const handleFollow = async () => {
     if (!pool || !selectedNode) return;
-    const success = await handleFollow(pool, nostrExists ?? false, keyValue, nip19.npubEncode(selectedNode.id), false, followingList);
+    const success = await handleFollowUnfollow(pool, nostrExists ?? false, keyValue, nip19.npubEncode(selectedNode.id), false, followingList);
     if (success) {
       setFollowingList(prevList => [...prevList, selectedNode.id]);
       setIsFollowing(true);
@@ -287,55 +285,12 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   
   const handleUnfollow = async () => {
     if (!pool || !selectedNode) return;
-  
-    const event = {
-      kind: 3,
-      created_at: Math.floor(Date.now() / 1000),
-      tags: followingList.filter(pk => pk !== selectedNode.id).map(pk => ['p', pk]),
-      content: '',
-    };
-  
-    try {
-      if (nostrExists) {
-        const signedEvent = await (window as any).nostr.signEvent(event);
-        await pool.publish(RELAYS, signedEvent);
-      } else {
-        const skDecoded = bech32Decoder("nsec", keyValue);
-        const signedEvent = finalizeEvent(event, skDecoded);
-        await pool.publish(RELAYS, signedEvent);
-      }
-  
+    const success = await handleFollowUnfollow(pool, nostrExists ?? false, keyValue, nip19.npubEncode(selectedNode.id),
+      true, followingList);
+  if (success) {
       setFollowingList(prevList => prevList.filter(pk => pk !== selectedNode.id));
       setIsFollowing(false);
-      showCustomToast("Successfully unfollowed user!");
-  
-      // Call the batch-processor API
-      const currentUserPubkey = nostrExists 
-        ? await (window as any).nostr.getPublicKey()
-        : getPublicKey(bech32Decoder("nsec", keyValue));
-  
-      const response = await fetch(`${API_URLS.API_URL}batch-processor`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: 'social_graph_processor',
-          params: {
-            npub: nip19.npubEncode(currentUserPubkey),
-            to_remove: nip19.npubEncode(selectedNode.id),
-            fill_missing: false
-          }
-        }),
-      });
-  
-      if (!response.ok) {
-        throw new Error('Failed to call batch-processor API');
-      }
-    } catch (error) {
-      console.error('Error unfollowing user:', error);
-      showCustomToast("Failed to unfollow user. Please try again.", "error");
-    }
+  }
   };
 
   const fetchSocialGraphFromAPI = async (npub: string, degrees: number = 2) => {
@@ -787,7 +742,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
             <div className="flex space-x-4">
               {!isFollowing ? (
                 <button
-                  onClick={handleFollowClick}
+                  onClick={handleFollow}
                   className="flex items-center justify-center px-16 py-8 bg-[#535bf2] text-white rounded hover:bg-[#4349d6] transition duration-200"
                 >
                   <UserPlusIcon className="h-5 w-5 mr-2" />

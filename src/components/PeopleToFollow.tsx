@@ -1,14 +1,12 @@
 import { useEffect, useState, useRef } from "react";
-import { SimplePool, finalizeEvent, getPublicKey, nip19 } from "nostr-tools";
+import { SimplePool, nip19 } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
-import { bech32Decoder } from "../utils/helperFunctions";
 import Loading from "./Loading";
 import { Link, useLocation } from "react-router-dom";
 import { UserCircleIcon, UserPlusIcon, UserMinusIcon } from '@heroicons/react/24/solid';
 import Ostrich from "./Ostrich";
-import { API_URLS } from "../utils/apiConstants";
 import { getUserPublicKey } from "../utils/profileUtils";
-import { handleFollow } from "../utils/followUtils";
+import { handleFollowUnfollow } from "../utils/followUtils";
 
 interface PeopleToFollowProps {
     keyValue: string;
@@ -197,65 +195,10 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
         }
     }, [currentIndex]);
 
-    const handleFollowClick = async (person: Person) => {
+    const handleFollow = async (person: Person) => {
         if (!props.pool || !props.keyValue) return;
         person.loadingFollowing = true;
-        /*const event: { kind: number; created_at: number; tags: string[][]; content: string; pubkey?: string; sig?: string } = {
-            kind: 3,
-            created_at: Math.floor(Date.now() / 1000),
-            tags: [...followingList.map(npub => ['p', npub]), ['p', nip19.decode(person.npub).data as string]],
-            content: '',
-        };
-    
-        try {
-            if (props.nostrExists) {
-                await (window as any).nostr.signEvent(event).then(async (eventToSend: any) => {
-                  await props.pool?.publish(RELAYS, eventToSend);
-                });
-            }
-            else {
-                let sk = props.keyValue;
-                let skDecoded = bech32Decoder('nsec', sk);
-                let eventFinal = finalizeEvent(event, skDecoded);
-                await props.pool?.publish(RELAYS, eventFinal);
-            }
-            setFollowingList(prev => {
-                const newFollowingList = [...prev, nip19.decode(person.npub).data as string];
-                if (prev.length === 0 && newFollowingList.length === 1) {
-                    setShowOstrich(true);
-                }
-                return newFollowingList;
-            });
-            setPeopleToFollow(prev => prev.map(p => p.npub === person.npub ? { ...p, loadingFollowing: false } : p));
-    
-            // Call the batch-processor API
-            const currentUserPubkey = props.nostrExists 
-            ? await (window as any).nostr.getPublicKey()
-            : getPublicKey(bech32Decoder("nsec", props.keyValue));
-        
-            const response = await fetch(API_URLS.API_URL + 'batch-processor', {
-               method: 'POST',
-               headers: {
-                   'Content-Type': 'application/json',
-               },
-               body: JSON.stringify({
-                   type: 'social_graph_processor',
-                   params: {
-                       npub: nip19.npubEncode(currentUserPubkey),
-                       to_create: person.npub,
-                       fill_missing: false
-                   }
-               }),
-           });
-    
-           if (!response.ok) {
-               throw new Error('Failed to call batch-processor API');
-           }
-    
-        } catch (error) {
-            console.error('Error following user or calling batch-processor API:', error);
-        }*/
-        const success = await handleFollow(props.pool, props.nostrExists ?? false, props.keyValue, person.npub, false, followingList);
+        const success = await handleFollowUnfollow(props.pool, props.nostrExists ?? false, props.keyValue, person.npub, false, followingList);
         if (success) {
             setFollowingList(prev => {
             const newFollowingList = [...prev, nip19.decode(person.npub).data as string];
@@ -271,55 +214,13 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     const handleUnfollow = async (person: Person) => {
         if (!props.pool || !props.keyValue) return;
         person.loadingFollowing = true;
-        const event: { kind: number; created_at: number; tags: string[][]; content: string; pubkey?: string; sig?: string } = {
-            kind: 3,
-            created_at: Math.floor(Date.now() / 1000),
-            tags: followingList.filter(npub => npub !== nip19.decode(person.npub).data as string).map(npub => ['p', npub]),
-            content: '',
-        };
-    
-        try {
-            if (props.nostrExists) {
-                await (window as any).nostr.signEvent(event).then(async (eventToSend: any) => {
-                  await props.pool?.publish(RELAYS, eventToSend);
-                });
-            }
-            else {
-                let sk = props.keyValue;
-                let skDecoded = bech32Decoder('nsec', sk);
-                let eventFinal = finalizeEvent(event, skDecoded);
-                await props.pool?.publish(RELAYS, eventFinal);
-            }
+        const success = await handleFollowUnfollow(props.pool, props.nostrExists ?? false,
+            props.keyValue, person.npub, true, followingList
+        );
+        if (success) {
             setFollowingList(prev => prev.filter(npub => npub !== nip19.decode(person.npub).data as string));
-            setPeopleToFollow(prev => prev.map(p => p.npub === person.npub ? { ...p, loadingFollowing: false } : p));
-    
-            // Call the batch-processor API
-            const currentUserPubkey = props.nostrExists 
-            ? await (window as any).nostr.getPublicKey()
-            : getPublicKey(bech32Decoder("nsec", props.keyValue));
-        
-            const response = await fetch(API_URLS.API_URL + 'batch-processor', {
-               method: 'POST',
-               headers: {
-                   'Content-Type': 'application/json',
-               },
-               body: JSON.stringify({
-                   type: 'social_graph_processor',
-                   params: {
-                       npub: nip19.npubEncode(currentUserPubkey),
-                       to_remove: person.npub,
-                       fill_missing: false
-                   }
-               }),
-           });
-    
-           if (!response.ok) {
-               throw new Error('Failed to call batch-processor API');
-           }
-    
-        } catch (error) {
-            console.error('Error unfollowing user or calling batch-processor API:', error);
         }
+        setPeopleToFollow(prev => prev.map(p => p.npub === person.npub ? { ...p, loadingFollowing: false } : p));
     }
 
     const handleCustomHashtagSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -431,7 +332,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                                         <div className="flex-grow flex items-center justify-between">
                                             <span className="font-semibold">{person.name}</span>
                                             <button 
-                                                onClick={() => followingList.includes(nip19.decode(person.npub).data as string) ? handleUnfollow(person) : handleFollowClick(person)}
+                                                onClick={() => followingList.includes(nip19.decode(person.npub).data as string) ? handleUnfollow(person) : handleFollow(person)}
                                                 className={`px-6 py-3 rounded ${
                                                     followingList.includes(nip19.decode(person.npub).data as string)
                                                         ? 'bg-red-500 hover:bg-red-600 text-white'
