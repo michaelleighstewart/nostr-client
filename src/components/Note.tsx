@@ -172,7 +172,6 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   
       const data = await response.json();
       setReplyContent(data.response.replace(/^["']|["']$/g, ''));
-      showCustomToast('Reply generated successfully!', 'success');
     } catch (error) {
       console.error('Error generating reply:', error);
       showCustomToast('Failed to generate reply. Please try again.', 'error');
