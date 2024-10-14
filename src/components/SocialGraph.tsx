@@ -38,6 +38,26 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const [nodeFollowCounts, setNodeFollowCounts] = useState<{[key: string]: number}>({});
   const [modalImage, setModalImage] = useState<string | null>(null);
   const [isSecondDegreeFollow, setIsSecondDegreeFollow] = useState<boolean>(false);
+  const [allFollows, setAllFollows] = useState<{[key: string]: string[]}>({});
+
+  /*const storeFollows = useCallback((pubkey: string, follows: string[]) => {
+    setAllFollows(prev => ({
+      ...prev,
+      [pubkey]: follows
+    }));
+  }, []);*/
+
+  //const getStoredFollows = useCallback((pubkey: string) => {
+  //  return allFollows[pubkey] || [];
+  //}, [allFollows]);
+
+  /*useEffect(() => {
+    if (followingFollowingData) {
+      Object.entries(followingFollowingData).forEach(([pubkey, follows]) => {
+        storeFollows(pubkey, follows);
+      });
+    }
+  }, [followingFollowingData, storeFollows]);*/
 
   const isNetworkInitialized = useRef(false);
   const poolRef = useRef(pool);
@@ -109,6 +129,10 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
             ...prev,
             [nodeId]: apiGraphData.follows.length
           }));
+          setAllFollows(prevAllFollows => ({
+            ...prevAllFollows,
+            [nodeId]: apiGraphData.follows.map((follow: any) => follow.pubkey)
+          }));
         }
       } catch (error) {
         console.error('Error fetching data for clicked node:', error);
@@ -177,19 +201,43 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       }
     }
 
-    // Check if any existing nodes follow the new node
-    graphData.nodes.forEach((existingNode: any) => {
-      if (existingNode.id !== clickedNodeId && followingFollowingData[existingNode.id]?.includes(clickedNodeId)) {
-        const edgeId = `${existingNode.id}-${clickedNodeId}`;
-        if (!updatedEdges.get(edgeId)) {
-          updatedEdges.add({
-            id: edgeId,
-            from: existingNode.id,
-            to: clickedNodeId
-          });
-        }
+    // Check if any existing nodes follow the new nodes
+    updatedNodes.forEach((existingNode: any) => {
+      if (existingNode.id !== clickedNodeId) {
+        visibleFollows.forEach((follow: any) => {
+          if (followingFollowingData[existingNode.id]?.includes(follow.pubkey)) {
+            const edgeId = `${existingNode.id}-${follow.pubkey}`;
+            if (!updatedEdges.get(edgeId)) {
+              updatedEdges.add({
+                id: edgeId,
+                from: existingNode.id,
+                to: follow.pubkey
+              });
+            }
+          }
+        });
       }
     });
+    visibleFollows.forEach((existingNode: any) => {
+      if (existingNode.pubkey !== clickedNodeId) {
+        for (var key in allFollows) {
+          if (allFollows.hasOwnProperty(key)) {
+            const follows = allFollows[key];
+            if (follows.includes(existingNode.pubkey)) {
+              const edgeId = `${key}-${existingNode.pubkey}`;
+              if (!updatedEdges.get(edgeId)) {
+                updatedEdges.add({
+                  id: edgeId,
+                  from: key,
+                  to: existingNode.pubkey
+                });
+              }
+            }
+          }
+        }
+
+      }
+    })
   
     // Update metadata
     if (!isSecondDegreeFollow) {
@@ -230,6 +278,10 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       const apiGraphData = await fetchSocialGraphFromAPI(nodeNpub, 1);
       if (apiGraphData) {
         updateGraphWithNewData(apiGraphData, nodeId, newLimit);
+        setAllFollows(prevAllFollows => ({
+          ...prevAllFollows,
+          [nodeId]: apiGraphData.follows.map((follow: any) => follow.pubkey)
+        }));
       } else {
         console.error('Failed to fetch additional graph data');
       }
@@ -345,6 +397,12 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           setNodeVisibleLimits({
             [apiGraphData.user.pubkey]: NODES_PER_LOAD
           });
+
+          // Set allFollows for the current user
+          setAllFollows(prevAllFollows => ({
+            ...prevAllFollows,
+            [userPubkey]: apiGraphData.follows.map((follow: any) => follow.pubkey)
+          }));
           const followingFollowingMap: {[key: string]: string[]} = {};
           const metadataMap: {[key: string]: any} = {};
           if (!nodes.get(apiGraphData.user.pubkey)) {
