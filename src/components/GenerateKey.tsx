@@ -227,17 +227,22 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, nostrExist
                 <div className="pb-24 relative">
                     <label htmlFor="nsec" className="block mb-2 text-sm font-medium text-white">Private Key (nsec): </label>
                     <div className="flex">
-                        <input type="text" id="nsec" 
+                        <input type={nostrExists && keyValue ? "password" : "text"} id="nsec" 
                             className="text-gray-900 text-sm rounded-l-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" 
                             value={nsec}
                             readOnly
                             disabled={!!nsec}
                         />
                         <button 
+                            disabled={!!(nostrExists && keyValue)}
                             onClick={() => copyToClipboard(nsec, 'Private')}
-                            className="text-white font-bold py-2.5 px-4 rounded-r-lg"
+                            className={`text-white font-bold py-2.5 px-4 rounded-r-lg ${
+                                !!(nostrExists && keyValue) ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
                         >
-                            <ClipboardDocumentIcon className="h-5 w-5" />
+                            <ClipboardDocumentIcon className={`h-5 w-5 ${
+                                !!(nostrExists && keyValue) ? 'text-gray-400' : ''
+                            }`} />
                         </button>
                     </div>
                     {showNsecDialog && (
