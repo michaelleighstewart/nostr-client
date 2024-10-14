@@ -7,6 +7,7 @@ import { UserPlusIcon, UserMinusIcon } from '@heroicons/react/24/outline';
 import Loading from './Loading';
 import { bech32Decoder } from '../utils/helperFunctions';
 import { API_URLS } from '../utils/apiConstants';
+import { handleFollow } from '../utils/followUtils';
 
 interface SearchProps {
   pool: SimplePool | null;
@@ -151,62 +152,17 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
     }
   };
 
-  const handleFollow = async (pubkey: string) => {
+  const handleFollowClick = async (pubkey: string) => {
     if (!pool) return;
-
-    // Convert pubkey from npub to hex format
-    const pkDecoded = nip19.decode(pubkey).data as string;
-
-    const event = {
-        kind: 3,
-        created_at: Math.floor(Date.now() / 1000),
-        tags: [...followingList.map(pk => ['p', pk]), ['p', pkDecoded.toString()]],
-        content: '',
-    };
-
-    try {
-        if (nostrExists) {
-            const signedEvent = await (window as any).nostr.signEvent(event);
-            await pool.publish(RELAYS, signedEvent);
-        } else {
-            const skDecoded = bech32Decoder("nsec", keyValue);
-            const signedEvent = finalizeEvent(event, skDecoded);
-            await pool.publish(RELAYS, signedEvent);
-        }
-
-        setFollowingList(prevList => [...prevList, pkDecoded.toString()]);
-        setSearchResults(prevResults =>
-          prevResults.map(result =>
-            result.npub === pubkey ? { ...result, isFollowing: true } : result
-          )
-        );
-
-        // Call the batch-processor API
-        const currentUserPubkey = nostrExists 
-        ? await (window as any).nostr.getPublicKey()
-        : getPublicKey(bech32Decoder("nsec", keyValue));
-    
-        const response = await fetch(API_URLS.API_URL + 'batch-processor', {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-              type: 'social_graph_processor',
-              params: {
-                  npub: nip19.npubEncode(currentUserPubkey),
-                  to_create: pubkey,
-                  fill_missing: false
-              }
-          }),
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to call batch-processor API');
-        }
-    } catch (error) {
-        console.error("Error following user or calling batch-processor API:", error);
-        // Show error message to user
+    const success = await handleFollow(pool, nostrExists ?? false, keyValue, pubkey, false, followingList);
+    if (success) {
+      const pkDecoded = nip19.decode(pubkey).data as string;
+      setFollowingList(prevList => [...prevList, pkDecoded.toString()]);
+      setSearchResults(prevResults =>
+        prevResults.map(result =>
+          result.npub === pubkey ? { ...result, isFollowing: true } : result
+        )
+      );
     }
 };
 
@@ -316,7 +272,7 @@ const handleUnfollow = async (pubkey: string) => {
               </Link>
               {showFollowFunctionality && (
                 <button
-                  onClick={() => result.isFollowing ? handleUnfollow(result.npub) : handleFollow(result.npub)}
+                  onClick={() => result.isFollowing ? handleUnfollow(result.npub) : handleFollowClick(result.npub)}
                   className={`mt-4 flex items-center justify-center px-8 py-2 text-white rounded ${
                     result.isFollowing ? 'bg-red-500 hover:bg-red-600' : 'bg-[#535bf2]-500 hover:bg-[#535bf2]-600'
                   }`}

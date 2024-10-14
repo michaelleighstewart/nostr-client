@@ -15,6 +15,7 @@ import { Helmet } from 'react-helmet';
 import { getMetadataFromCache, setMetadataToCache } from "../utils/cachingUtils";
 import { API_URLS } from "../utils/apiConstants";
 import { useLayoutEffect } from "react";
+import { handleFollow } from "../utils/followUtils";
 
 interface ProfileProps {
     keyValue: string;
@@ -249,58 +250,14 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     };
 
 
-    const handleFollow = async () => {
+    const handleFollowClick = async () => {
         if (!pool) return;
-    
-        const event = {
-            kind: 3,
-            created_at: Math.floor(Date.now() / 1000),
-            tags: [...followingList.map(pk => ['p', pk]), ['p', pubkey]],
-            content: '',
-        };
-    
-        try {
-            if (nostrExists) {
-                const signedEvent = await (window as any).nostr.signEvent(event);
-                await pool.publish(RELAYS, signedEvent);
-            } else {
-                const skDecoded = bech32Decoder("nsec", keyValue);
-                const signedEvent = finalizeEvent(event, skDecoded);
-                await pool.publish(RELAYS, signedEvent);
-            }
-    
+        const success = await handleFollow(pool, nostrExists ?? false, keyValue, nip19.npubEncode(pubkey), false, followingList);
+        if (success) {
             setFollowingList(prevList => [...prevList, pubkey]);
             setIsFollowing(true);
-            showCustomToast("Successfully followed user!");
-    
-            // Call the batch-processor API
-            const currentUserPubkey = nostrExists 
-            ? await (window as any).nostr.getPublicKey()
-            : getPublicKey(bech32Decoder("nsec", keyValue));
-        
-            const response = await fetch(API_URLS.API_URL + 'batch-processor', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    type: 'social_graph_processor',
-                    params: {
-                        npub: nip19.npubEncode(currentUserPubkey),
-                        to_create: nip19.npubEncode(pubkey),
-                        fill_missing: false
-                    }
-                }),
-            });
-    
-            if (!response.ok) {
-                throw new Error('Failed to call batch-processor API');
-            }
-        } catch (error) {
-            console.error("Error following user or calling batch-processor API:", error);
-            showCustomToast("Failed to follow user. Please try again.");
         }
-    };
+    }
 
     const handleLoadMore = async () => {
         if (!pool) return;
@@ -382,7 +339,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                             <div className="flex flex-col sm:flex-row items-center">
                             {!isFollowing ? (
                                     <button
-                                        onClick={handleFollow}
+                                        onClick={handleFollowClick}
                                         className="text-white font-bold py-2 px-6 rounded flex items-center mb-2 sm:mb-0 sm:mr-2"
                                     >
                                         <UserPlusIcon className="h-5 w-5 mr-2" />

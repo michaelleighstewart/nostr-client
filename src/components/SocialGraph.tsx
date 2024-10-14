@@ -14,6 +14,7 @@ import { finalizeEvent, getPublicKey } from 'nostr-tools';
 import { bech32Decoder } from '../utils/helperFunctions';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import NewMessageDialog from "./NewMessageDialog";
+import { handleFollow } from '../utils/followUtils';
 
 const NODES_PER_LOAD = 10;
 interface SocialGraphProps {
@@ -275,56 +276,12 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     fetchFollowingList();
   }, [pool, keyValue, nostrExists]);
 
-  const handleFollow = async () => {
+  const handleFollowClick = async () => {
     if (!pool || !selectedNode) return;
-  
-    const event = {
-      kind: 3,
-      created_at: Math.floor(Date.now() / 1000),
-      tags: [...followingList.map(pk => ['p', pk]), ['p', selectedNode.id]],
-      content: '',
-    };
-  
-    try {
-      if (nostrExists) {
-        const signedEvent = await (window as any).nostr.signEvent(event);
-        await pool.publish(RELAYS, signedEvent);
-      } else {
-        const skDecoded = bech32Decoder("nsec", keyValue);
-        const signedEvent = finalizeEvent(event, skDecoded);
-        await pool.publish(RELAYS, signedEvent);
-      }
-  
+    const success = await handleFollow(pool, nostrExists ?? false, keyValue, nip19.npubEncode(selectedNode.id), false, followingList);
+    if (success) {
       setFollowingList(prevList => [...prevList, selectedNode.id]);
       setIsFollowing(true);
-      showCustomToast("Successfully followed user!");
-  
-      // Call the batch-processor API
-      const currentUserPubkey = nostrExists 
-        ? await (window as any).nostr.getPublicKey()
-        : getPublicKey(bech32Decoder("nsec", keyValue));
-  
-      const response = await fetch(`${API_URLS.API_URL}batch-processor`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          type: 'social_graph_processor',
-          params: {
-            npub: nip19.npubEncode(currentUserPubkey),
-            to_create: nip19.npubEncode(selectedNode.id),
-            fill_missing: false
-          }
-        }),
-      });
-  
-      if (!response.ok) {
-        throw new Error('Failed to call batch-processor API');
-      }
-    } catch (error) {
-      console.error('Error following user:', error);
-      showCustomToast("Failed to follow user. Please try again.", "error");
     }
   };
   
@@ -830,7 +787,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
             <div className="flex space-x-4">
               {!isFollowing ? (
                 <button
-                  onClick={handleFollow}
+                  onClick={handleFollowClick}
                   className="flex items-center justify-center px-16 py-8 bg-[#535bf2] text-white rounded hover:bg-[#4349d6] transition duration-200"
                 >
                   <UserPlusIcon className="h-5 w-5 mr-2" />
