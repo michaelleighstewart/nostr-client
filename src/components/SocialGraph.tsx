@@ -32,7 +32,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const [needsSynchronization, setNeedsSynchronization] = useState(false);
   const [visibleNodesLimit, _setVisibleNodesLimit] = useState<number>(NODES_PER_LOAD);
   const [_hasMoreNodes, setHasMoreNodes] = useState<boolean>(false);
-  const [nodeWithMoreData, setNodeWithMoreData] = useState<string | null>(null);
+  const [_nodeWithMoreData, setNodeWithMoreData] = useState<string | null>(null);
   const [nodeVisibleLimits, setNodeVisibleLimits] = useState<{[key: string]: number}>({});
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
   const [nodeFollowCounts, setNodeFollowCounts] = useState<{[key: string]: number}>({});
@@ -127,7 +127,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     const currentLimit = newLimit || nodeVisibleLimits[clickedNodeId] || NODES_PER_LOAD;
 
     const visibleFollows = apiGraphData.follows.slice(0, currentLimit);
-    const isLoadMore = apiGraphData.follows.length > currentLimit;
   
     setHasMoreNodes(apiGraphData.follows.length > currentLimit);
     setNodeWithMoreData(apiGraphData.follows.length > currentLimit ? clickedNodeId : null);
