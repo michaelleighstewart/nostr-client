@@ -810,7 +810,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         </div>
       )}
       <div ref={networkRef} style={{ height: '600px', width: '100%', border: 'solid', color: 'light-gray' }}></div>
-      {selectedNode && (
+      {!needsSynchronization && selectedNode && (
         <div className="mt-4 p-16 px-32 bg-gray-800 rounded-lg shadow-lg justify-center">
           <div className="pt-4 pb-16 flex flex-col items-center">
             <h3 className="text-xl font-bold mb-2 text-center">{selectedNode.label}</h3>
