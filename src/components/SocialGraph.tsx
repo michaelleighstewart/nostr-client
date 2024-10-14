@@ -9,6 +9,8 @@ import { API_URLS } from '../utils/apiConstants';
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
 import { showCustomToast } from "./CustomToast";
 
+const NODES_PER_LOAD = 10;
+
 interface SocialGraphProps {
   keyValue: string;
   pool: SimplePool | null;
@@ -27,9 +29,10 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const [progress, setProgress] = useState<number>(0);
   const [totalUsers, setTotalUsers] = useState<number>(0);
   const [needsSynchronization, setNeedsSynchronization] = useState(false);
-  const [visibleNodesLimit, setVisibleNodesLimit] = useState<number>(20);
-  const [hasMoreNodes, setHasMoreNodes] = useState<boolean>(false);
-  
+  const [visibleNodesLimit, _setVisibleNodesLimit] = useState<number>(NODES_PER_LOAD);
+  const [_hasMoreNodes, setHasMoreNodes] = useState<boolean>(false);
+  const [nodeWithMoreData, setNodeWithMoreData] = useState<string | null>(null);
+  const [nodeVisibleLimits, setNodeVisibleLimits] = useState<{[key: string]: number}>({});
   
 
   const isNetworkInitialized = useRef(false);
@@ -85,11 +88,20 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     }
   };
 
-  const updateGraphWithNewData = (apiGraphData: any, clickedNodeId: string) => {
+  const updateGraphWithNewData = (apiGraphData: any, clickedNodeId: string, newLimit?: number) => {
     if (!graphData) return;
   
     const updatedNodes = new DataSet(graphData.nodes.get());
     const updatedEdges = new DataSet(graphData.edges.get());
+
+    const currentLimit = newLimit || nodeVisibleLimits[clickedNodeId] || NODES_PER_LOAD;
+
+    const visibleFollows = apiGraphData.follows.slice(0, currentLimit);
+    const isLoadMore = apiGraphData.follows.length > currentLimit;
+    console.log('Visible follows:', visibleFollows.length);
+  
+    setHasMoreNodes(apiGraphData.follows.length > currentLimit);
+    setNodeWithMoreData(apiGraphData.follows.length > currentLimit ? clickedNodeId : null);
   
     // Check if the clicked node is a second-degree follow
     const isSecondDegreeFollow = !updatedNodes.get(clickedNodeId);
@@ -99,24 +111,113 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       updatedNodes.add({
         id: clickedNodeId,
         label: apiGraphData.user.name || nip19.npubEncode(clickedNodeId).slice(0, 8),
-        shape: 'circularImage',
+        //shape: 'circularImage',
         image: apiGraphData.user.picture || 'default-profile-picture.jpg',
         size: 20,
-        font: { color: 'white' }
+        font: { color: 'white' },
+        shape: 'custom',
+        ctxRenderer: ({ ctx, id, x, y, label }: any) => {
+          console.log("here 2")
+          console.log("label", label)
+          // Draw the circular image
+          const color = 'white';
+          const size = 20;
+          const image = apiGraphData.user?.picture || 'default-profile-picture.jpg';
+          ctx.beginPath();
+          ctx.arc(x, y, size, 0, 2 * Math.PI, false);
+          ctx.fillStyle = color;
+          ctx.fill();
+
+          // Draw the image
+          if (image) {
+            const img = new Image();
+            img.src = image;
+            ctx.save();
+            ctx.clip();
+            ctx.drawImage(img, x - size, y - size, size * 2, size * 2);
+            ctx.restore();
+          }
+
+          // Draw the label
+          ctx.font = '12px Arial';
+          ctx.fillStyle = 'white';
+          ctx.textAlign = 'center';
+          ctx.fillText(label, x, y + size + 15);
+
+          // Draw "Load More" button if this node has more data
+          if (isLoadMore) {
+            ctx.fillStyle = '#535bf2';
+            ctx.beginPath();
+            ctx.moveTo(x + size + 5, y);
+            ctx.lineTo(x + size + 15, y + 5);
+            ctx.lineTo(x + size + 5, y + 10);
+            ctx.closePath();
+            ctx.fill();
+          }
+
+          return { drawNode: () => {}, nodeDimensions: { width: size * 2, height: size * 2 } };
+        },
+      });
+    }
+
+    // Update the clicked node to show the load more button if not a second-degree follow
+    if (!isSecondDegreeFollow) {
+      updatedNodes.update({
+        id: clickedNodeId,
+        shape: 'custom',
+        ctxRenderer: ({ ctx, id, x, y, label }: any) => {
+          // Draw the circular image
+          const color = 'white';
+          const size = 20;
+          const image = apiGraphData.user?.picture || 'default-profile-picture.jpg';
+          ctx.beginPath();
+          ctx.arc(x, y, size, 0, 2 * Math.PI, false);
+          ctx.fillStyle = color;
+          ctx.fill();
+
+          // Draw the image
+          if (image) {
+            const img = new Image();
+            img.src = image;
+            ctx.save();
+            ctx.clip();
+            ctx.drawImage(img, x - size, y - size, size * 2, size * 2);
+            ctx.restore();
+          }
+
+          // Draw the label
+          ctx.font = '12px Arial';
+          ctx.fillStyle = 'white';
+          ctx.textAlign = 'center';
+          ctx.fillText(label, x, y + size + 15);
+
+          // Draw "Load More" button
+          ctx.fillStyle = '#535bf2';
+          ctx.beginPath();
+          ctx.moveTo(x + size + 5, y);
+          ctx.lineTo(x + size + 15, y + 5);
+          ctx.lineTo(x + size + 5, y + 10);
+          ctx.closePath();
+          ctx.fill();
+
+          return { drawNode: () => {}, nodeDimensions: { width: size * 2, height: size * 2 } };
+        },
       });
     }
   
     // Add or update first-order follows only if the clicked node is not a second-degree follow
     if (!isSecondDegreeFollow) {
-      const visibleFollows = apiGraphData.follows.slice(0, visibleNodesLimit);
-      setHasMoreNodes(apiGraphData.follows.length > visibleNodesLimit);
+      //const visibleFollows = apiGraphData.follows.slice(0, visibleNodesLimit);
+      //setHasMoreNodes(apiGraphData.follows.length > visibleNodesLimit);
+      //setNodeWithMoreData(apiGraphData.follows.length > visibleNodesLimit ? clickedNodeId : null);
+      
   
       for (const follow of visibleFollows) {
         if (!updatedNodes.get(follow.pubkey)) {
           updatedNodes.add({
             id: follow.pubkey,
             label: follow.name || nip19.npubEncode(follow.pubkey).slice(0, 8),
-            shape: 'circularImage',
+            //shape: 'circularImage',
             image: follow.picture || 'default-profile-picture.jpg',
             size: 15,
             font: { color: 'white' }
@@ -161,22 +262,25 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     }
   };
 
-  const loadMoreNodes = async () => {
-    setVisibleNodesLimit(prev => prev + 20);
-    if (graphData) {
-      const rootNodeId = graphData.nodes.get()[0].id;
-      const rootNodeNpub = nip19.npubEncode(rootNodeId);
-      
-      try {
-        const apiGraphData = await fetchSocialGraphFromAPI(rootNodeNpub, 1);
-        if (apiGraphData) {
-          updateGraphWithNewData(apiGraphData, rootNodeId);
-        } else {
-          console.error('Failed to fetch additional graph data');
-        }
-      } catch (error) {
-        console.error('Error fetching additional graph data:', error);
+  const loadMoreNodes = async (nodeId: string) => {
+    console.log('loadMoreNodes called for node:', nodeId);
+    const newLimit = (nodeVisibleLimits[nodeId] || NODES_PER_LOAD) + NODES_PER_LOAD;
+    setNodeVisibleLimits(prev => ({
+      ...prev,
+      [nodeId]: newLimit
+    }));
+    const nodeNpub = nip19.npubEncode(nodeId);
+    
+    try {
+      const apiGraphData = await fetchSocialGraphFromAPI(nodeNpub, 1);
+      if (apiGraphData) {
+        console.log('Fetched additional data:', apiGraphData);
+        updateGraphWithNewData(apiGraphData, nodeId, newLimit);
+      } else {
+        console.error('Failed to fetch additional graph data');
       }
+    } catch (error) {
+      console.error('Error fetching additional graph data:', error);
     }
   };
 
@@ -221,10 +325,48 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
             graphData.nodes.add({
               id: pubkey,
               label: metadata[pubkey]?.name || nip19.npubEncode(pubkey).slice(0, 8),
-              shape: 'circularImage',
+              //shape: 'circularImage',
               image: metadata[pubkey]?.picture || 'default-profile-picture.jpg',
               size: 15,
-              font: { color: 'white' }
+              font: { color: 'white' },
+              shape: 'custom',
+              ctxRenderer: ({ ctx, _id, x, y, label }: any) => {
+                // Draw the circular image
+                console.log("here 1")
+                const color = 'white';
+                const size = 20;
+                const image = metadata[pubkey]?.picture || 'default-profile-picture.jpg';
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, 2 * Math.PI, false);
+                ctx.fillStyle = color;
+                ctx.fill();
+                // Draw the image
+                if (image) {
+                  const img = new Image();
+                  img.src = image;
+                  ctx.save();
+                  ctx.clip();
+                  ctx.drawImage(img, x - size, y - size, size * 2, size * 2);
+                  ctx.restore();
+                }
+      
+                // Draw the label
+                ctx.font = '12px Arial';
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.fillText(label, x, y + size + 15);
+      
+                // Draw "Load More" button if this node has more data
+                //if (apiGraphData.follows.length > 20) {
+                //  ctx.fillStyle = '#535bf2';
+                //  ctx.fillRect(x + size + 5, y - 10, 70, 20);
+                //  ctx.fillStyle = 'white';
+                //  ctx.font = '10px Arial';
+                //  ctx.fillText('Load More', x + size + 40, y + 2);
+                //}
+      
+                return { drawNode: () => {}, nodeDimensions: { width: size * 2, height: size * 2 } };
+              },
             });
             graphData.edges.add({
               from: nodeId,
@@ -284,16 +426,62 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         if (apiGraphData) {
           const nodes = new DataSet();
           const edges = new DataSet();
+          setNodeVisibleLimits({
+            [apiGraphData.user.pubkey]: NODES_PER_LOAD
+          });
           const followingFollowingMap: {[key: string]: string[]} = {};
           const metadataMap: {[key: string]: any} = {};
           if (!nodes.get(apiGraphData.user.pubkey)) {
+            console.log("adding node with label", (apiGraphData.user?.name || nip19.npubEncode(apiGraphData.user.pubkey).slice(0, 8)) + ' (You)')
             nodes.add({
               id: apiGraphData.user.pubkey,
               label: (apiGraphData.user?.name || nip19.npubEncode(apiGraphData.user.pubkey).slice(0, 8)) + ' (You)',
-              shape: 'circularImage',
+              //shape: 'circularImage',
               image: apiGraphData.user?.picture || 'default-profile-picture.jpg',
               size: 20,
-              font: { color: 'white' }
+              font: { color: 'white' },
+              shape: 'custom',
+              ctxRenderer: ({ ctx, id, x, y, label }: any) => {
+                console.log("here 2")
+                console.log("label", label)
+                // Draw the circular image
+                const color = 'white';
+                const size = 20;
+                const image = apiGraphData.user?.picture || 'default-profile-picture.jpg';
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, 2 * Math.PI, false);
+                ctx.fillStyle = color;
+                ctx.fill();
+
+                // Draw the image
+                if (image) {
+                  const img = new Image();
+                  img.src = image;
+                  ctx.save();
+                  ctx.clip();
+                  ctx.drawImage(img, x - size, y - size, size * 2, size * 2);
+                  ctx.restore();
+                }
+      
+                // Draw the label
+                ctx.font = '12px Arial';
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.fillText(label, x, y + size + 15);
+      
+                // Draw "Load More" button if this node has more data
+                if (apiGraphData.follows.length > 2) {
+                  ctx.fillStyle = '#535bf2';
+                  ctx.beginPath();
+                  ctx.moveTo(x + size + 5, y);
+                  ctx.lineTo(x + size + 15, y + 5);
+                  ctx.lineTo(x + size + 5, y + 10);
+                  ctx.closePath();
+                  ctx.fill();
+                }
+      
+                return { drawNode: () => {}, nodeDimensions: { width: size * 2, height: size * 2 } };
+              },
             } as any);
           }
           metadataMap[apiGraphData.user.pubkey] = {
@@ -427,7 +615,8 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           borderWidth: 2,
           borderWidthSelected: 4,
           size: 30,
-          font: { color: 'white' }
+          font: { color: 'white' },
+          //shape: 'custom'
         },
         edges: {
           width: 1,
@@ -484,6 +673,45 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       network.setData(graphData);
     }
   }, [network, graphData]);
+
+  useEffect(() => {
+    if (network && graphData && isNetworkInitialized.current) {
+      network.on("click", function (params) {
+        const clickPosition = network.DOMtoCanvas({
+          x: params.pointer.DOM.x,
+          y: params.pointer.DOM.y
+        });
+  
+        // Check if the click is on any "Load More" button
+        const allNodes = graphData.nodes.get();
+        for (const node of allNodes) {
+          //if (node.id === nodeWithMoreData) {
+            const nodePosition = network.getPositions([node.id])[node.id];
+            const buttonX = nodePosition.x + node.size + 5;
+            const buttonY = nodePosition.y - 5;
+            const buttonWidth = 10;
+            const buttonHeight = 10;
+  
+            if (
+              clickPosition.x >= buttonX &&
+              clickPosition.x <= buttonX + buttonWidth &&
+              clickPosition.y >= buttonY &&
+              clickPosition.y <= buttonY + buttonHeight
+            ) {
+              // Click is on the "Load More" button
+              loadMoreNodes(node.id);
+              return; // Prevent further processing of the click
+            }
+          }
+        //}
+  
+        // If not on any button, handle regular node click if a node was clicked
+        if (params.nodes.length > 0) {
+          handleNodeClick(params.nodes[0]);
+        }
+      });
+    }
+  }, [network, graphData, nodeWithMoreData, nodeVisibleLimits]);
 
   const fetchMetadata = async (pubkeys: string[]) => {
     const metadata: { [key: string]: any } = {};
@@ -591,16 +819,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         </div>
       )}
       <div ref={networkRef} style={{ height: '600px', width: '100%', border: 'solid', color: 'light-gray' }}></div>
-      {hasMoreNodes && (
-        <div className="flex justify-center mt-4">
-          <button
-            onClick={loadMoreNodes}
-            className="px-4 py-2 bg-[#535bf2] text-white rounded hover:bg-[#4349d6] transition duration-200"
-          >
-            Load More
-          </button>
-        </div>
-      )}
     </div>
   );
 };
