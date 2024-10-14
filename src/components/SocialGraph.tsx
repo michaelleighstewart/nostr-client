@@ -11,7 +11,6 @@ import { showCustomToast } from "./CustomToast";
 import { Link } from 'react-router-dom';
 
 const NODES_PER_LOAD = 10;
-
 interface SocialGraphProps {
   keyValue: string;
   pool: SimplePool | null;
@@ -40,25 +39,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const [isSecondDegreeFollow, setIsSecondDegreeFollow] = useState<boolean>(false);
   const [allFollows, setAllFollows] = useState<{[key: string]: string[]}>({});
 
-  /*const storeFollows = useCallback((pubkey: string, follows: string[]) => {
-    setAllFollows(prev => ({
-      ...prev,
-      [pubkey]: follows
-    }));
-  }, []);*/
-
-  //const getStoredFollows = useCallback((pubkey: string) => {
-  //  return allFollows[pubkey] || [];
-  //}, [allFollows]);
-
-  /*useEffect(() => {
-    if (followingFollowingData) {
-      Object.entries(followingFollowingData).forEach(([pubkey, follows]) => {
-        storeFollows(pubkey, follows);
-      });
-    }
-  }, [followingFollowingData, storeFollows]);*/
-
   const isNetworkInitialized = useRef(false);
   const poolRef = useRef(pool);
   const keyValueRef = useRef(keyValue);
@@ -68,26 +48,19 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   
     const nodesToRemove: string[] = [];
     const edgesToRemove: string[] = [];
-  
-    // Find all edges connected to the selected node
+
     graphData.edges.forEach((edge: any) => {
       if (edge.from === nodeId) {
-        // Check if the edge is not connected to the root node before removing
         if (edge.to !== keyValueRef.current) {
           nodesToRemove.push(edge.to);
           edgesToRemove.push(edge.id);
         }
       }
     });
-  
-    // Remove the found nodes and edges
     graphData.nodes.remove(nodesToRemove);
     graphData.edges.remove(edgesToRemove);
-  
-    // Update the graph data
+
     setGraphData({ ...graphData });
-  
-    // Refresh the network to display changes
     if (network) {
       network.setData(graphData);
       network.redraw();
@@ -96,8 +69,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
 
   const handleNodeClick = async (nodeId: string) => {
     const pk = await getUserPublicKey(nostrExists ?? false, keyValue);
-    //if (nodeId === (await pk).toString()) return; // Don't fetch for the user's own node
-  
+ 
     setExpandedNodes(prev => {
       const newSet = new Set(prev);
       if (newSet.has(nodeId)) {
@@ -108,11 +80,8 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       return newSet;
     });
 
-    // Set the selected node
     const nodeData = graphData?.nodes.get(nodeId);
     setSelectedNode(nodeData);
-
-    // Check if the clicked node is a second-degree follow
     const isSecondDegree = nodeId !== pk && !graphData?.edges.get({
       filter: (edge: any) => edge.from === pk && edge.to === nodeId
     }).length;
@@ -124,7 +93,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         const apiGraphData = await fetchSocialGraphFromAPI(nodeNpub, 1);
         if (apiGraphData) {
           updateGraphWithNewData(apiGraphData, nodeId);
-          // Update the follow count for this node
           setNodeFollowCounts(prev => ({
             ...prev,
             [nodeId]: apiGraphData.follows.length
@@ -137,28 +105,19 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       } catch (error) {
         console.error('Error fetching data for clicked node:', error);
       }
-    } else {
-      //removeSecondDegreeNodes(nodeId);
     }
   };
 
   const updateGraphWithNewData = (apiGraphData: any, clickedNodeId: string, newLimit?: number) => {
     if (!graphData) return;
-  
     const updatedNodes = new DataSet(graphData.nodes.get());
     const updatedEdges = new DataSet(graphData.edges.get());
-
     const currentLimit = newLimit || nodeVisibleLimits[clickedNodeId] || NODES_PER_LOAD;
-
     const visibleFollows = apiGraphData.follows.slice(0, currentLimit);
-  
     setHasMoreNodes(apiGraphData.follows.length > currentLimit);
     setNodeWithMoreData(apiGraphData.follows.length > currentLimit ? clickedNodeId : null);
-  
-    // Check if the clicked node is a second-degree follow
     const isSecondDegreeFollow = !updatedNodes.get(clickedNodeId);
   
-    // Update clicked node if it doesn't exist
     if (!isSecondDegreeFollow && !updatedNodes.get(clickedNodeId)) {
       updatedNodes.add({
         id: clickedNodeId,
@@ -167,23 +126,15 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         image: apiGraphData.user.picture || '/ostrich.png',
         size: 20,
         font: { color: 'white' },
-        //shape: 'custom',
       });
     }
 
-    // Add or update first-order follows only if the clicked node is not a second-degree follow
-    if (!isSecondDegreeFollow) {
-      //const visibleFollows = apiGraphData.follows.slice(0, visibleNodesLimit);
-      //setHasMoreNodes(apiGraphData.follows.length > visibleNodesLimit);
-      //setNodeWithMoreData(apiGraphData.follows.length > visibleNodesLimit ? clickedNodeId : null);
-      
-  
+    if (!isSecondDegreeFollow) {    
       for (const follow of visibleFollows) {
         if (!updatedNodes.get(follow.pubkey)) {
           updatedNodes.add({
             id: follow.pubkey,
             label: follow.name || nip19.npubEncode(follow.pubkey).slice(0, 8),
-            //shape: 'circularImage',
             image: follow.picture || '/ostrich.png',
             size: 15,
             font: { color: 'white' }
@@ -201,7 +152,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       }
     }
 
-    // Check if any existing nodes follow the new nodes
     updatedNodes.forEach((existingNode: any) => {
       if (existingNode.id !== clickedNodeId) {
         visibleFollows.forEach((follow: any) => {
@@ -238,8 +188,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
 
       }
     })
-  
-    // Update metadata
+
     if (!isSecondDegreeFollow) {
       setMetadata(prevMetadata => ({
         ...prevMetadata,
@@ -255,10 +204,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           return acc;
         }, {})
       }));
-      // Update the graph data
       setGraphData({ nodes: updatedNodes, edges: updatedEdges });
-  
-      // Refresh the network to display new nodes and edges
       if (network) {
         network.setData({ nodes: updatedNodes, edges: updatedEdges });
         network.redraw();
@@ -304,21 +250,17 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
 
   const updateGraph = useCallback(() => {
     if (!graphData) return;
-  
-    // Remove all followingFollowing nodes and edges
+
     const nodesToRemove = graphData.nodes.get().filter((node: { id: string | string[]; }) => node.id.includes("-")).map((node: { id: any; }) => node.id);
     const edgesToRemove = graphData.edges.get().filter((edge: { id: string | string[]; }) => edge.id.includes("_")).map((edge: { id: any; }) => edge.id);
     graphData.nodes.remove(nodesToRemove);
     graphData.edges.remove(edgesToRemove);
 
-  
-    // Add nodes and edges for expanded nodes
     expandedNodes.forEach(nodeId => {
       if (followingFollowingData[nodeId]) {
         followingFollowingData[nodeId].forEach(pubkey => {
           const existingNode = graphData.nodes.get(pubkey);
           if (existingNode) {
-            // If the node already exists, just add an edge
             if (!graphData.edges.get(nodeId + "-" + pubkey)) {
               graphData.edges.add({
                 from: nodeId,
@@ -327,7 +269,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
               });
             }
           } else {
-            // If the node doesn't exist, create a new node and edge
             graphData.nodes.add({
               id: pubkey,
               label: metadata[pubkey]?.name || nip19.npubEncode(pubkey).slice(0, 8),
@@ -345,8 +286,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         });
       }
     });
-
-    // Refresh the network to display changes
     if (network) {
       network.setData(graphData);
       network.redraw();
@@ -385,7 +324,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       const followingFollowingMap: {[key: string]: string[]} = {};
     
       try {
-        //const userPubkey = await getCurrentUserPubkey();
         const userPubkey = await getUserPublicKey(nostrExists ?? false, keyValue)
         const userNpub = nip19.npubEncode(userPubkey);
 
@@ -397,8 +335,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           setNodeVisibleLimits({
             [apiGraphData.user.pubkey]: NODES_PER_LOAD
           });
-
-          // Set allFollows for the current user
           setAllFollows(prevAllFollows => ({
             ...prevAllFollows,
             [userPubkey]: apiGraphData.follows.map((follow: any) => follow.pubkey)
@@ -419,9 +355,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
             name: apiGraphData.user?.name,
             picture: apiGraphData.user?.picture
           };
-
-          // Add first-order follows
-          // Add first-order follows (limited)
           const visibleFollows = apiGraphData.follows.slice(0, visibleNodesLimit);
           setHasMoreNodes(apiGraphData.follows.length > visibleNodesLimit);
           for (const follow of visibleFollows) {
@@ -454,8 +387,6 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
             ...prevData,
             [apiGraphData.user.pubkey]: apiGraphData.follows.map((follow: any) => follow.pubkey)
           }));
-
-          // Add second-order follows to metadata but not to graph
           for (const follow of apiGraphData.follows) {
             if (follow.follows) {
               for (const followFollow of follow.follows) {
@@ -548,8 +479,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           borderWidth: 2,
           borderWidthSelected: 4,
           size: 30,
-          font: { color: 'white' },
-          //shape: 'custom'
+          font: { color: 'white' }
         },
         edges: {
           width: 1,
@@ -771,5 +701,4 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     </div>
   );
 };
-
 export default SocialGraph;
