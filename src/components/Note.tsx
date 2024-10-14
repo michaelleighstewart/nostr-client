@@ -10,6 +10,8 @@ import { showCustomToast } from './CustomToast';
 import { Helmet } from 'react-helmet';
 import { fetchMetadataReactionsAndReplies } from '../utils/noteUtils';
 import ThreadedReply from "./ThreadedReply";
+import FaviconIcon from './FaviconIcon';
+import { API_URLS } from '../utils/apiConstants';
 
 interface PostProps {
   pool: SimplePool | null;
@@ -42,6 +44,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   const [allReposts, setAllReposts] = useState<Record<string, ExtendedEvent[]>>({});
   const [allRepliesNew, setAllRepliesNew] = useState<Record<string, Reply>>({});
   const [threadedReplies, setThreadedReplies] = useState<Record<string, Reply>>({});
+  const [isGeneratingReply, setIsGeneratingReply] = useState(false);
 
   const navigate = useNavigate();
 
@@ -145,6 +148,38 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
       sub.close();
     };
   }, [id, pool]);
+
+
+  const handleGenerateReply = async () => {
+    if (isGeneratingReply || !post) return;
+    setIsGeneratingReply(true);
+    try {
+      const response = await fetch(`${API_URLS.API_URL}llama`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: `Please write a reply to the following social media post: "${post.content}". 
+          Make it concise and exactly how it would appear on the platform. 
+          Please also leave out any reference to it being a sample, I want the text only.`
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to generate reply');
+      }
+  
+      const data = await response.json();
+      setReplyContent(data.response.replace(/^["']|["']$/g, ''));
+      showCustomToast('Reply generated successfully!', 'success');
+    } catch (error) {
+      console.error('Error generating reply:', error);
+      showCustomToast('Failed to generate reply. Please try again.', 'error');
+    } finally {
+      setIsGeneratingReply(false);
+    }
+  };
 
   useEffect(() => {
     if (!allRepliesNew || Object.keys(allRepliesNew).length === 0) return;
@@ -362,12 +397,22 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
           placeholder="Write your reply..."
           className="w-full p-2 border rounded text-black"
         />
-        <button
-          onClick={handleReply}
-          className="mt-2 p-12 text-white rounded"
-        >
-          Reply
-        </button>
+        <div className="flex items-center space-x-2 mt-2">
+          <button 
+            className={`text-white font-bold p-16 rounded mr-16 ${(!replyContent.trim() || isGeneratingReply) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#535bf2]-700 transition-colors duration-200'}`}
+            onClick={handleReply}
+            disabled={!replyContent.trim() || isGeneratingReply}
+          >
+            {'Reply'}
+          </button>
+          <button 
+            className={`flex items-center justify-center font-bold p-16 rounded bg-transparent ${isGeneratingReply ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#535bf2]-700 transition-colors duration-200'}`}
+            onClick={handleGenerateReply}
+            disabled={isGeneratingReply}
+          >
+            {isGeneratingReply ? <Loading vCentered={false} tiny={true} /> : <FaviconIcon className="h-5 w-5 cursor-pointer" />}
+          </button>
+        </div>
       </div>
       <h2 className="text-xl font-bold mt-6 mb-4">Replies</h2>
 {Object.keys(threadedReplies).length === 0 ? (
