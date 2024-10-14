@@ -37,7 +37,10 @@ const NewMessageDialog: React.FC<NewMessageDialogProps> = ({ isOpen, onClose, po
     if (!pool) return;
 
     try {
-      const pubkey = nip19.decode(npub).data as string;
+      let pubkey = npub;
+      if (pubkey.startsWith("npub")) {
+        pubkey = nip19.decode(npub).data as string;
+      }
 
       // Check cache first
       const cachedMetadata = getMetadataFromCache(pubkey);
@@ -143,7 +146,7 @@ const NewMessageDialog: React.FC<NewMessageDialogProps> = ({ isOpen, onClose, po
                     <img
                       src={recipientInfo.picture}
                       alt={recipientInfo.name || "Recipient"}
-                      className="w-64 h-64 rounded-full mr-2"
+                      className="w-64 h-64 rounded-full object-cover mr-2"
                     />
                   )}
                   <span className="text-white">{recipientInfo.name || "Unknown"}</span>
@@ -164,7 +167,7 @@ const NewMessageDialog: React.FC<NewMessageDialogProps> = ({ isOpen, onClose, po
                       <img
                         src={recipientInfo.picture}
                         alt={recipientInfo.name || "Recipient"}
-                        className="w-8 h-8 rounded-full mr-2"
+                        className="w-8 h-8 rounded-full object-cover mr-2"
                       />
                     )}
                     <span className="text-white">{recipientInfo.name || "Unknown"}</span>

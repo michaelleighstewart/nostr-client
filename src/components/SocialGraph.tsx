@@ -9,6 +9,11 @@ import { API_URLS } from '../utils/apiConstants';
 import { ArrowPathIcon, UserIcon } from '@heroicons/react/24/outline';
 import { showCustomToast } from "./CustomToast";
 import { Link } from 'react-router-dom';
+import { UserPlusIcon, UserMinusIcon } from '@heroicons/react/24/solid';
+import { finalizeEvent, getPublicKey } from 'nostr-tools';
+import { bech32Decoder } from '../utils/helperFunctions';
+import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
+import NewMessageDialog from "./NewMessageDialog";
 
 const NODES_PER_LOAD = 10;
 interface SocialGraphProps {
@@ -38,6 +43,9 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const [modalImage, setModalImage] = useState<string | null>(null);
   const [isSecondDegreeFollow, setIsSecondDegreeFollow] = useState<boolean>(false);
   const [allFollows, setAllFollows] = useState<{[key: string]: string[]}>({});
+  const [followingList, setFollowingList] = useState<string[]>([]);
+  const [isFollowing, setIsFollowing] = useState<boolean>(false);
+  const [isMessageDialogOpen, setIsMessageDialogOpen] = useState<boolean>(false);
 
   const isNetworkInitialized = useRef(false);
   const poolRef = useRef(pool);
@@ -107,6 +115,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         console.error('Error fetching data for clicked node:', error);
       }
     }
+    setIsFollowing(followingList.includes(nodeId));
   };
 
   const updateGraphWithNewData = (apiGraphData: any, clickedNodeId: string, newLimit?: number) => {
@@ -234,6 +243,141 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       }
     } catch (error) {
       console.error('Error fetching additional graph data:', error);
+    }
+  };
+
+  useEffect(() => {
+    const fetchFollowingList = async () => {
+      if (!pool) return;
+      const pubkey = await getUserPublicKey(nostrExists ?? false, keyValue);
+      
+      const followingListSubscription = pool.subscribeManyEose(
+        RELAYS,
+        [{ kinds: [3], authors: [pubkey] }],
+        {
+          onevent(event) {
+            const following = event.tags
+              .filter(tag => tag[0] === 'p')
+              .map(tag => tag[1]);
+            setFollowingList(following);
+          },
+          onclose() {
+            // Handle subscription close if needed
+          }
+        }
+      );
+  
+      return () => {
+        followingListSubscription?.close();
+      };
+    };
+  
+    fetchFollowingList();
+  }, [pool, keyValue, nostrExists]);
+
+  const handleFollow = async () => {
+    if (!pool || !selectedNode) return;
+  
+    const event = {
+      kind: 3,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [...followingList.map(pk => ['p', pk]), ['p', selectedNode.id]],
+      content: '',
+    };
+  
+    try {
+      if (nostrExists) {
+        const signedEvent = await (window as any).nostr.signEvent(event);
+        await pool.publish(RELAYS, signedEvent);
+      } else {
+        const skDecoded = bech32Decoder("nsec", keyValue);
+        const signedEvent = finalizeEvent(event, skDecoded);
+        await pool.publish(RELAYS, signedEvent);
+      }
+  
+      setFollowingList(prevList => [...prevList, selectedNode.id]);
+      setIsFollowing(true);
+      showCustomToast("Successfully followed user!");
+  
+      // Call the batch-processor API
+      const currentUserPubkey = nostrExists 
+        ? await (window as any).nostr.getPublicKey()
+        : getPublicKey(bech32Decoder("nsec", keyValue));
+  
+      const response = await fetch(`${API_URLS.API_URL}batch-processor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'social_graph_processor',
+          params: {
+            npub: nip19.npubEncode(currentUserPubkey),
+            to_create: nip19.npubEncode(selectedNode.id),
+            fill_missing: false
+          }
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to call batch-processor API');
+      }
+    } catch (error) {
+      console.error('Error following user:', error);
+      showCustomToast("Failed to follow user. Please try again.", "error");
+    }
+  };
+  
+  const handleUnfollow = async () => {
+    if (!pool || !selectedNode) return;
+  
+    const event = {
+      kind: 3,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: followingList.filter(pk => pk !== selectedNode.id).map(pk => ['p', pk]),
+      content: '',
+    };
+  
+    try {
+      if (nostrExists) {
+        const signedEvent = await (window as any).nostr.signEvent(event);
+        await pool.publish(RELAYS, signedEvent);
+      } else {
+        const skDecoded = bech32Decoder("nsec", keyValue);
+        const signedEvent = finalizeEvent(event, skDecoded);
+        await pool.publish(RELAYS, signedEvent);
+      }
+  
+      setFollowingList(prevList => prevList.filter(pk => pk !== selectedNode.id));
+      setIsFollowing(false);
+      showCustomToast("Successfully unfollowed user!");
+  
+      // Call the batch-processor API
+      const currentUserPubkey = nostrExists 
+        ? await (window as any).nostr.getPublicKey()
+        : getPublicKey(bech32Decoder("nsec", keyValue));
+  
+      const response = await fetch(`${API_URLS.API_URL}batch-processor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'social_graph_processor',
+          params: {
+            npub: nip19.npubEncode(currentUserPubkey),
+            to_remove: nip19.npubEncode(selectedNode.id),
+            fill_missing: false
+          }
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error('Failed to call batch-processor API');
+      }
+    } catch (error) {
+      console.error('Error unfollowing user:', error);
+      showCustomToast("Failed to unfollow user. Please try again.", "error");
     }
   };
 
@@ -678,11 +822,37 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
             />
             <Link 
               to={`/profile/${nip19.npubEncode(selectedNode.id)}`}
-              className="mt-4 flex items-center justify-center px-16 py-8 bg-[#535bf2] text-white rounded hover:bg-[#4349d6] transition duration-200"
+              className="mt-4 mb-16 flex items-center justify-center px-16 py-8 bg-[#535bf2] text-white rounded hover:bg-[#4349d6] transition duration-200"
             >
               <UserIcon className="h-5 w-5 mr-2" />
               View Profile
             </Link>
+            <div className="flex space-x-4">
+              {!isFollowing ? (
+                <button
+                  onClick={handleFollow}
+                  className="flex items-center justify-center px-16 py-8 bg-[#535bf2] text-white rounded hover:bg-[#4349d6] transition duration-200"
+                >
+                  <UserPlusIcon className="h-5 w-5 mr-2" />
+                  Follow
+                </button>
+              ) : (
+                <button
+                  onClick={handleUnfollow}
+                  className="flex items-center justify-center px-16 py-8 bg-red-500 text-white rounded hover:bg-red-600 transition duration-200"
+                >
+                  <UserMinusIcon className="h-5 w-5 mr-2" />
+                  Unfollow
+                </button>
+              )}
+              <button
+                onClick={() => setIsMessageDialogOpen(true)}
+                className="flex items-center justify-center px-16 py-8 bg-[#535bf2] text-white rounded hover:bg-[#4349d6] transition duration-200"
+              >
+                <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
+                Message
+              </button>
+            </div>
           </div>
           <div className="flex flex-col space-y-4 rounded-lg relative my-16">
             <div className="border border-gray-600 p-4 rounded-lg py-16">
@@ -726,6 +896,16 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           <img src={modalImage} alt="Enlarged profile" className="max-w-full max-h-full object-contain" />
         </div>
       )}
+      {selectedNode && (
+      <NewMessageDialog
+        isOpen={isMessageDialogOpen}
+        onClose={() => setIsMessageDialogOpen(false)}
+        initialRecipientNpub={selectedNode.id}
+        pool={pool}
+        keyValue={keyValue}
+        nostrExists={nostrExists}
+      />
+    )}
     </div>
   );
 };
