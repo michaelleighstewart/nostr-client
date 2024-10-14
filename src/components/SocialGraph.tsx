@@ -93,8 +93,8 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     setSelectedNode(nodeData);
 
     // Check if the clicked node is a second-degree follow
-    const isSecondDegree = !graphData?.edges.get({
-      filter: (edge: any) => edge.from === (pk).toString() && edge.to === nodeId
+    const isSecondDegree = nodeId !== pk && !graphData?.edges.get({
+      filter: (edge: any) => edge.from === pk && edge.to === nodeId
     }).length;
     setIsSecondDegreeFollow(isSecondDegree);
 
