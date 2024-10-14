@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SimplePool, Event, finalizeEvent, nip19 } from 'nostr-tools';
 import { useNavigate, useParams } from 'react-router-dom';
 import NoteCard from './NoteCard';
@@ -45,6 +45,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   const [allRepliesNew, setAllRepliesNew] = useState<Record<string, Reply>>({});
   const [threadedReplies, setThreadedReplies] = useState<Record<string, Reply>>({});
   const [isGeneratingReply, setIsGeneratingReply] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const navigate = useNavigate();
 
@@ -171,7 +172,16 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
       }
   
       const data = await response.json();
-      setReplyContent(data.response.replace(/^["']|["']$/g, ''));
+      const generatedReply = data.response.replace(/^["']|["']$/g, '');
+      setReplyContent(generatedReply);
+      
+      // Resize the textarea after setting the content
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+          textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        }
+      }, 0);
     } catch (error) {
       console.error('Error generating reply:', error);
       showCustomToast('Failed to generate reply. Please try again.', 'error');
@@ -340,6 +350,14 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
     navigate(`/profile/${userNpub}`);
   };
 
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setReplyContent(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  };
+
   if (loading || !post) {
     return <div className="h-screen"><Loading vCentered={false} /></div>;
   }
@@ -391,10 +409,12 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         />
       <div className="mt-8 p-16 rounded-lg">
         <textarea
+          ref={textareaRef}
           value={replyContent}
-          onChange={(e) => setReplyContent(e.target.value)}
+          onChange={handleTextareaChange}
           placeholder="Write your reply..."
-          className="w-full p-2 border rounded text-black"
+          className="w-full p-2 border rounded text-black resize-none overflow-hidden"
+          style={{ minHeight: '100px' }}
         />
         <div className="flex items-center space-x-2 mt-2">
           <button 
