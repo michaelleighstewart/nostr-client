@@ -30,7 +30,7 @@ const ConnectionInfoDialog: React.FC<ConnectionInfoDialogProps> = ({ isOpen, onC
           <div className="mt-2 px-7 py-3">
             <div className="flex items-center justify-center mb-4">
               {user.picture ? (
-                <img src={user.picture} alt={user.name} className="w-64 h-64 rounded-full mr-4" />
+                <img src={user.picture} alt={user.name} className="w-64 h-64 rounded-full object-cover mr-4" />
               ) : (
                 <UserCircleIcon className="w-16 h-16 text-gray-400 mr-4" />
               )}
@@ -54,7 +54,7 @@ const ConnectionInfoDialog: React.FC<ConnectionInfoDialogProps> = ({ isOpen, onC
                         <img 
                           src={connectionInfo.connectedThrough.picture} 
                           alt={connectionInfo.connectedThrough.name} 
-                          className="w-32 h-32 rounded-full mr-2"
+                          className="w-32 h-32 rounded-full object-cover mr-2"
                         />
                       ) : (
                         <UserCircleIcon className="w-16 h-16 text-gray-400 mr-2" />
@@ -66,7 +66,7 @@ const ConnectionInfoDialog: React.FC<ConnectionInfoDialogProps> = ({ isOpen, onC
                         <img 
                         src={user.picture} 
                         alt={user.name} 
-                        className="w-32 h-32 rounded-full mr-2"
+                        className="w-32 h-32 rounded-full object-cover mr-2"
                       />
                     )
                     }

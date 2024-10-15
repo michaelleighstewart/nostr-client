@@ -326,7 +326,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                                                 <img 
                                                     src={person.picture} 
                                                     alt={`${person.name}'s profile`} 
-                                                    className="w-64 h-64 rounded-full mr-4"
+                                                    className="w-64 h-64 rounded-full object-cover mr-4"
                                                     onError={(e) => {
                                                         const target = e.target as HTMLImageElement;
                                                         target.onerror = null;

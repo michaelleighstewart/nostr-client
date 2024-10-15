@@ -188,7 +188,7 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
                 <img
                   src={group.userInfo.picture}
                   alt={group.userInfo.name || "User"}
-                  className="w-64 h-64 rounded-full mr-4"
+                  className="w-64 h-64 rounded-full object-cover mr-4"
                 />
               )}
               <div className="flex-grow">
