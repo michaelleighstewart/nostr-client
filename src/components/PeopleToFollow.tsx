@@ -43,6 +43,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const poolRef = useRef(props.pool);
     const keyValueRef = useRef(props.keyValue);
+    const [modalImage, setModalImage] = useState<string | null>(null);
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -241,7 +242,14 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
 
         const imgMatch = content.match(imgRegex);
         if (imgMatch) {
-            return <img src={imgMatch[0]} alt="Content" className="max-w-full h-auto" />;
+            return (
+                <img 
+                    src={imgMatch[0]} 
+                    alt="Content" 
+                    className="max-w-full h-auto cursor-pointer" 
+                    onClick={() => setModalImage(imgMatch[0])}
+                />
+            );
         }
 
         return content.split(linkRegex).map((part, i) => {
@@ -368,6 +376,13 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
             <Ostrich show={showOstrich} onClose={() => setShowOstrich(false)} 
                 text="Congratulations on following your first user! Now, go " linkText="publish your first note!" 
                 linkUrl="/" />
+            {modalImage && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setModalImage(null)}>
+                    <div className="max-w-3xl max-h-3xl">
+                        <img src={modalImage} alt="Enlarged content" className="max-w-full max-h-full" />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
