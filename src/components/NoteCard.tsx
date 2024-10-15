@@ -46,6 +46,7 @@ interface Props {
     replyDepth?: number;
     rootEvent: ExtendedEvent | null;
     onUserClick: (pubkey: string) => void;
+    referencedNoteInput: ExtendedEvent | null;
   }
 
   interface CachedCounts {
@@ -78,7 +79,8 @@ interface Props {
     connectionInfo,
     replyDepth,
     rootEvent,
-    onUserClick
+    onUserClick,
+    referencedNoteInput
   }: Props) {
     const [alreadyLiked, setAlreadyLiked] = useState(false);
     const [alreadyDisliked, setAlreadyDisliked] = useState(false);
@@ -101,6 +103,7 @@ interface Props {
     const [cachedReposts, setCachedReposts] = useState<number | null>(null);
     const [cachedReplies, setCachedReplies] = useState<number | null>(null);
     const [cachedCounts, setCachedCounts] = useState<CachedCounts | null>(null);
+    const [referencedNote, setReferencedNote] = useState<ExtendedEvent | null>(referencedNoteInput);
 
     useEffect(() => {
       const fetchedCachedCounts = getCachedCounts(id);
@@ -280,16 +283,44 @@ interface Props {
                 </Link>
               );
             } else if (decoded.type === 'note') {
-              result.push(
-                <Link 
-                  key={`note-${index}-${match.index}`}
-                  to={`/note/${decoded.data}`}
-                  className="text-blue-500 hover:underline"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {nostrEntity}
-                </Link>
-              );
+              pool?.subscribeManyEose(RELAYS, [{
+                ids: [decoded.data]
+              }], 
+              {
+                onevent(event) {
+                  setReferencedNote({
+                    id: event.id,
+                    content: event.content,
+                    created_at: event.created_at,
+                    pubkey: event.pubkey,
+                    tags: event.tags,
+                    deleted: false,
+                    repostedEvent: null,
+                    repliedEvent: null,
+                    rootEvent: null
+                  });
+                  
+                  // Fetch metadata for the referenced note's author if not in cache
+                  if (!metadata?.[event.pubkey]) {
+                    pool?.subscribeManyEose(RELAYS, [{
+                      kinds: [0],
+                      authors: [event.pubkey]
+                    }], 
+                    {
+                      onevent(metadataEvent) {
+                        const eventMetadata = JSON.parse(metadataEvent.content);
+                        setMetadata((prev: any) => ({
+                          ...prev,
+                          [event.pubkey]: {
+                            name: eventMetadata.name || 'Unknown',
+                            picture: eventMetadata.picture
+                          }
+                        }));
+                      }
+                    });
+                  }
+                }
+              });
             } else {
               result.push(
                 <Link 
@@ -503,6 +534,47 @@ interface Props {
             </div>
           )}
         </div>
+        {referencedNote && (
+          <div className="mt-4 border-l-2 border-gray-500 pl-4">
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-gray-400 text-sm">Referenced Note:</p>
+              <Link to={`/note/${referencedNote.id}`} className="text-blue-500 hover:underline text-sm">
+                View
+              </Link>
+            </div>
+            <NoteCard
+              id={referencedNote.id}
+              content={referencedNote.content}
+              user={{
+                name: metadata?.[referencedNote.pubkey]?.name ?? `${nip19.npubEncode(referencedNote.pubkey).slice(0, 12)}...`,
+                image: metadata?.[referencedNote.pubkey]?.picture,
+                pubkey: referencedNote.pubkey,
+                nip05: metadata?.[referencedNote.pubkey]?.nip05
+              }}
+              created_at={referencedNote.created_at}
+              hashtags={[]}
+              isPreview={true}
+              pool={pool}
+              nostrExists={nostrExists}
+              keyValue={keyValue}
+              metadata={metadata}
+              setMetadata={setMetadata}
+              connectionInfo={null}
+              onUserClick={onUserClick}
+              reactions={[]}
+              replies={0}
+              deleted={false}
+              repostedEvent={null}
+              repliedEvent={null}
+              allReactions={allReactions}
+              allReplies={allReplies}
+              reposts={0}
+              allReposts={allReposts}
+              rootEvent={null}
+              referencedNoteInput={null}
+            />
+          </div>
+        )}
         {repliedEvent && (
           <div className="mt-2 border-l-2 border-gray-500">
             <p className="text-gray-400 text-sm mb-2 pl-4">Replied</p>
@@ -512,6 +584,7 @@ interface Props {
           <div className="mt-2 border-l-2 border-gray-500">
             <p className="text-gray-400 text-sm mb-2 pl-4">Reposted</p>
             <NoteCard
+              referencedNoteInput={referencedNote}
               isPreview={false}
               id={repostedEvent.id}
               content={repostedEvent.content}
@@ -731,6 +804,7 @@ interface Props {
           <div className="mt-2 border-l-2 border-gray-500">
             <p className="text-gray-400 text-sm mb-2 pl-4">Replied to</p>
             <NoteCard
+              referencedNoteInput={null}
               isPreview={false}
               id={repliedEvent.id}
               content={repliedEvent.content}
@@ -768,6 +842,7 @@ interface Props {
           <div className="mt-2 border-l-2 border-gray-500">
             <p className="text-gray-400 text-sm mb-2 pl-4">Original note</p>
             <NoteCard
+              referencedNoteInput={null}
               isPreview={false}
               id={rootEvent.id}
               content={rootEvent.content}
