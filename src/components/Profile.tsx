@@ -349,6 +349,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                                 .map((post, _index) => (
                                     <div key={post.id} className="mb-8 pb-32">
                                         <NoteCard
+                                            referencedNoteInput={null}
                                             isPreview={false}
                                             id={post.id}
                                             rootEvent={post.rootEvent}

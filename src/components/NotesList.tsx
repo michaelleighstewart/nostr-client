@@ -64,6 +64,7 @@ const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists,
             {visibleNotes.map((note, _index) => (
                 <div key={note.id} className="mb-4 py-16">
                     <NoteCard
+                        referencedNoteInput={null}
                         isPreview={false}
                         id={note.id}
                         created_at={note.created_at}

@@ -376,6 +376,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
           <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
       <NoteCard
+        referencedNoteInput={null}
         isPreview={false}
         id={post.id}
         content={post.content}

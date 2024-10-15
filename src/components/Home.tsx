@@ -673,6 +673,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             <div className="border-t border-gray-300 pt-4">
               <h3 className="text-lg font-semibold mb-2">Preview</h3>
               <NoteCard 
+                referencedNoteInput={null}
                 isPreview={true}
                 id={previewNote.id}
                 content={previewNote.content}
