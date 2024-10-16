@@ -105,19 +105,21 @@ const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onC
             )}
           </div>
           <form onSubmit={handleCustomTopicSubmit} className="mt-4">
-            <input
-              type="text"
-              value={customTopic}
-              onChange={(e) => setCustomTopic(e.target.value)}
-              placeholder="Enter custom topic"
-              className="w-full p-2 border rounded text-black"
-            />
-            <button
-              type="submit"
-              className="w-full mt-2 p-2 bg-[#535bf2] text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
-            >
-              Generate Note On Topic
-            </button>
+            <div className="flex">
+              <input
+                type="text"
+                value={customTopic}
+                onChange={(e) => setCustomTopic(e.target.value)}
+                placeholder="Enter custom topic"
+                className="flex-grow p-2 border border-r-0 rounded-l text-black"
+              />
+              <button
+                type="submit"
+                className="p-2 bg-[#535bf2] text-white rounded-r hover:bg-[#535bf2]-700 transition duration-200"
+              >
+                Generate
+              </button>
+            </div>
           </form>
         </div>
         <button
