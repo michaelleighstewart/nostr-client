@@ -1,14 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { API_URLS } from '../utils/apiConstants';
 
 interface TopicSelectionDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectTopic: (topic: string) => void;
+  userNpub: string;
 }
 
-const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onClose, onSelectTopic }) => {
+//for later
+//interface TrendingTopic {
+//  name: string;
+//  value: string;
+//}
+
+const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onClose, onSelectTopic, userNpub }) => {
   const [customTopic, setCustomTopic] = useState('');
+  const [trendingTopics, setTrendingTopics] = useState<string[]>([]);
+  const [isTrendingAccordionOpen, setIsTrendingAccordionOpen] = useState(false);
+  const [isRecommendedAccordionOpen, setIsRecommendedAccordionOpen] = useState(false);
   const predefinedTopics = [{'name': 'nostr', 'value': 'nostr, a decentralized, censorship-resistant messaging protocol'}, {'name': 'bitcoin', 'value': 'bitcoin'}];
+
+  useEffect(() => {
+    const fetchTrendingTopics = async () => {
+      try {
+        const response = await fetch(`${API_URLS.API_URL}trending-topics?npub=${userNpub}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch trending topics');
+        }
+        const data = await response.json();
+        setTrendingTopics(data.trendingTopics);
+      } catch (error) {
+        console.error('Error fetching trending topics:', error);
+      }
+    };
+
+    if (isOpen) {
+      fetchTrendingTopics();
+    }
+  }, [isOpen, userNpub]);
 
   const handleSelectTopic = (topic: string) => {
     onSelectTopic(topic);
@@ -30,15 +60,50 @@ const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onC
       <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-gray-800">
         <h3 className="text-lg font-medium leading-6 text-white mb-4">Select a Topic</h3>
         <div className="mt-2 space-y-4">
-          {predefinedTopics.map((topic) => (
+          <div className="border-t border-gray-600 pt-4">
             <button
-              key={topic.name}
-              onClick={() => handleSelectTopic(topic.value)}
-              className="w-full p-2 bg-[#535bf2] text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
+              onClick={() => setIsRecommendedAccordionOpen(!isRecommendedAccordionOpen)}
+              className="w-full p-2 bg-gray-700 text-white rounded flex justify-between items-center"
             >
-              {topic.name}
+              <span>Recommended Topics</span>
+              <span>{isRecommendedAccordionOpen ? '▲' : '▼'}</span>
             </button>
-          ))}
+            {isRecommendedAccordionOpen && (
+              <div className="mt-2 space-y-2">
+                {predefinedTopics.map((topic) => (
+                  <button
+                    key={topic.name}
+                    onClick={() => handleSelectTopic(topic.value)}
+                    className="w-full p-2 bg-[#535bf2] text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
+                  >
+                    {topic.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="border-t border-gray-600 pt-4">
+            <button
+              onClick={() => setIsTrendingAccordionOpen(!isTrendingAccordionOpen)}
+              className="w-full p-2 bg-gray-700 text-white rounded flex justify-between items-center"
+            >
+              <span>Trending Topics In Your Network</span>
+              <span>{isTrendingAccordionOpen ? '▲' : '▼'}</span>
+            </button>
+            {isTrendingAccordionOpen && (
+              <div className="mt-2 space-y-2">
+                {trendingTopics.map((topic, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSelectTopic(topic)}
+                    className="w-full p-2 bg-[#535bf2] text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
+                  >
+                    {topic}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <form onSubmit={handleCustomTopicSubmit} className="mt-4">
             <input
               type="text"
@@ -51,7 +116,7 @@ const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onC
               type="submit"
               className="w-full mt-2 p-2 bg-[#535bf2] text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
             >
-              Use Custom Topic
+              Generate Note On Topic
             </button>
           </form>
         </div>

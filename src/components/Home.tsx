@@ -767,6 +767,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           isOpen={isTopicDialogOpen}
           onClose={() => setIsTopicDialogOpen(false)}
           onSelectTopic={handleTopicSelection}
+          userNpub={userPublicKey ? nip19.npubEncode(userPublicKey) : ''}
         />
       </div>
     )
