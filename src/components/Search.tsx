@@ -185,7 +185,7 @@ const handleUnfollow = async (pubkey: string) => {
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Enter npub or username"
-          className="flex-grow p-2 border rounded-l text-black"
+          className="flex-grow p-2 border rounded-l bg-white text-black"
         />
         <button
           onClick={handleSearch}
