@@ -44,6 +44,8 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     const poolRef = useRef(props.pool);
     const keyValueRef = useRef(props.keyValue);
     const [modalImage, setModalImage] = useState<string | null>(null);
+    const [touchStart, setTouchStart] = useState<number | null>(null);
+    const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -196,6 +198,31 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
         }
     }, [currentIndex]);
 
+    const handleTouchStart = (e: React.TouchEvent) => {
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+      
+    const handleTouchMove = (e: React.TouchEvent) => {
+        setTouchEnd(e.targetTouches[0].clientX);
+    };
+      
+    const handleTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > 50;
+        const isRightSwipe = distance < -50;
+      
+        if (isLeftSwipe) {
+          setCurrentIndex((prevIndex) => (prevIndex + 1) % peopleToFollow.length);
+        }
+        if (isRightSwipe) {
+          setCurrentIndex((prevIndex) => (prevIndex - 1 + peopleToFollow.length) % peopleToFollow.length);
+        }
+      
+        setTouchStart(null);
+        setTouchEnd(null);
+    };    
+
     const handleFollow = async (person: Person) => {
         if (!props.pool || !props.keyValue) return;
         person.loadingFollowing = true;
@@ -316,8 +343,19 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                             />
                         ))}
                     </div>
-                    <div ref={carouselRef} className="overflow-hidden">
-                        <div className="flex transition-transform duration-300 ease-in-out" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
+                    <div 
+                        ref={carouselRef} 
+                        className="overflow-hidden"
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                    >
+                    <div 
+                        className="flex transition-transform duration-300 ease-in-out" 
+                        style={{ 
+                            transform: `translateX(${touchEnd && touchStart ? (touchEnd - touchStart) - (currentIndex * 100) : -currentIndex * 100}%)` 
+                        }}
+                        >
                             {peopleToFollow.map((person, index) => (
                                 <div key={index} className="w-full flex-shrink-0 p-4">
                                     <div className="flex items-center mb-4 pb-16">
