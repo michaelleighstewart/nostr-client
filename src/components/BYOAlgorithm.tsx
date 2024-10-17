@@ -179,7 +179,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
           <select
             value={selectedAlgorithm || ''}
             onChange={(e) => setSelectedAlgorithm(e.target.value)}
-            className={`flex-grow p-2 border rounded text-black ${algorithms.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`flex-grow p-2 border rounded bg-white text-black ${algorithms.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
             disabled={algorithms.length === 0}
           >
             {algorithms.length === 0 ? (
@@ -206,7 +206,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
               type="text"
               value={currentAlgorithm.name}
               onChange={(e) => handleSettingChange('name', e.target.value)}
-              className={`w-full p-2 border rounded text-black ${nameError ? 'border-red-500' : ''}`}
+              className={`w-full p-2 border rounded bg-white text-black ${nameError ? 'border-red-500' : ''}`}
               placeholder="Enter algorithm name"
             />
             {nameError && <p className="text-red-500 text-sm mt-1">{nameError}</p>}
@@ -216,7 +216,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
             <select
               value={currentAlgorithm.basedOn}
               onChange={(e) => handleSettingChange('basedOn', e.target.value)}
-              className="w-full p-2 border rounded text-black"
+              className="w-full p-2 border rounded bg-white text-black"
             >
               <option value="Following">Following</option>
             </select>
@@ -229,7 +229,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
               max="2"
               value={currentAlgorithm.byoDegrees}
               onChange={(e) => handleSettingChange('byoDegrees', parseInt(e.target.value))}
-              className="w-full p-2 border rounded text-black"
+              className="w-full p-2 border rounded bg-white text-black"
             />
           </div>
           <div className="border rounded p-32 relative">

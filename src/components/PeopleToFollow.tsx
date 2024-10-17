@@ -315,7 +315,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                         value={customHashtag}
                         onChange={(e) => setCustomHashtag(e.target.value)}
                         placeholder="Enter custom hashtag"
-                        className="px-4 py-2 flex-grow border rounded-l focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                        className="px-4 py-2 flex-grow border rounded-l focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-black"
                     />
                     <button
                         type="submit"

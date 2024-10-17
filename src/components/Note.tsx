@@ -411,7 +411,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
           value={replyContent}
           onChange={handleTextareaChange}
           placeholder="Write your reply..."
-          className="w-full p-2 border rounded text-black resize-none overflow-hidden"
+          className="w-full p-2 border rounded bg-white text-black resize-none overflow-hidden"
           style={{ minHeight: '100px' }}
         />
         <div className="flex items-center space-x-2 mt-2">

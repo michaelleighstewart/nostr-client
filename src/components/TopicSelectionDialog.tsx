@@ -111,7 +111,7 @@ const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onC
                 value={customTopic}
                 onChange={(e) => setCustomTopic(e.target.value)}
                 placeholder="Enter custom topic"
-                className="flex-grow p-2 border border-r-0 rounded-l text-black"
+                className="flex-grow p-2 border border-r-0 rounded-l bg-white text-black"
               />
               <button
                 type="submit"

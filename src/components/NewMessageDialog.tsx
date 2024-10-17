@@ -159,7 +159,7 @@ const NewMessageDialog: React.FC<NewMessageDialogProps> = ({ isOpen, onClose, po
                   value={recipientNpub}
                   onChange={handleRecipientChange}
                   placeholder="Recipient's npub"
-                  className="px-8 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-black"
+                  className="px-8 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 bg-white text-black"
                 />
                 {recipientInfo && (
                   <div className="mt-2 flex items-center">
@@ -179,7 +179,7 @@ const NewMessageDialog: React.FC<NewMessageDialogProps> = ({ isOpen, onClose, po
               value={messageContent}
               onChange={(e) => setMessageContent(e.target.value)}
               placeholder="Message content"
-              className="px-8 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 text-black"
+              className="px-8 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 bg-white text-black"
               rows={4}
             />
           </div>
