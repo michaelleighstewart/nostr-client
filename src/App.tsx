@@ -16,14 +16,15 @@ import Search from "./components/Search";
 import NavBar from "./components/NavBar";
 import BYOAlgorithm from "./components/BYOAlgorithm";
 import SocialGraph from './components/SocialGraph';
-import { SimplePool } from "nostr-tools";
+import { getPublicKey, SimplePool } from "nostr-tools";
 import { useState, useEffect, useMemo, useCallback } from "react";
 
 import { RELAYS } from "./utils/constants";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Loading from './components/Loading';
-import { validatePrivateKey } from './utils/helperFunctions';
+import { bech32Decoder, validatePrivateKey } from './utils/helperFunctions';
+import { API_URLS } from './utils/apiConstants';
 //import DefaultHelmet from "./components/DefaultHelmet";
 
 function App() {
@@ -31,7 +32,7 @@ function App() {
   const [key, setKey] = useState('');
   const [nostrExists, setNostrExists] = useState<boolean | null>(null);
 
-  const getPublicKey = useCallback(async () => {
+  const getNostrPublicKey = useCallback(async () => {
     try {
       return await (window as any).nostr.getPublicKey();
     } catch (error) {
@@ -43,6 +44,27 @@ function App() {
     const isValid = validatePrivateKey(value);
     if (isValid) {
       localStorage.setItem('privateKey', value);
+      // Get npub from the private key
+      let pubkey = ''
+      if (nostrExists) {
+        pubkey = await (window as any).nostr.getPublicKey();
+      } else {
+        const skDecoded = bech32Decoder('nsec', value);
+        pubkey = getPublicKey(skDecoded);;
+      }
+      // Call the batch-processor endpoint
+      fetch(`${API_URLS.API_URL}batch-processor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: "trending_topics_processor",
+          params: {
+            npub: pubkey
+          }
+        }),
+      }).catch(error => console.error('Error calling batch-processor:', error));
     }
     setKey(value);
   }, []);
@@ -73,7 +95,7 @@ function App() {
       }
       else {
         if (nostrExists) {
-          const pk = await getPublicKey();
+          const pk = await getNostrPublicKey();
           setKey(pk);
         }
       }

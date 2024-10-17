@@ -7,6 +7,7 @@ import { UserCircleIcon, UserPlusIcon, UserMinusIcon } from '@heroicons/react/24
 import Ostrich from "./Ostrich";
 import { getUserPublicKey } from "../utils/profileUtils";
 import { handleFollowUnfollow } from "../utils/followUtils";
+import { API_URLS } from '../utils/apiConstants';
 
 interface PeopleToFollowProps {
     keyValue: string;
@@ -232,6 +233,19 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
             const newFollowingList = [...prev, nip19.decode(person.npub).data as string];
             if (prev.length === 0 && newFollowingList.length === 1) {
                 setShowOstrich(true);
+                // Call the batch-processor endpoint
+                fetch(`${API_URLS.API_URL}batch-processor`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        type: "trending_topics_processor",
+                        params: {
+                            npub: props.keyValue
+                        }
+                    }),
+                }).catch(error => console.error('Error calling batch-processor:', error));
             }
             return newFollowingList;
             });
