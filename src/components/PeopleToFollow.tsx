@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { SimplePool, nip19 } from "nostr-tools";
+import { SimplePool, getPublicKey, nip19 } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import { Link, useLocation } from "react-router-dom";
@@ -8,6 +8,7 @@ import Ostrich from "./Ostrich";
 import { getUserPublicKey } from "../utils/profileUtils";
 import { handleFollowUnfollow } from "../utils/followUtils";
 import { API_URLS } from '../utils/apiConstants';
+import { bech32Decoder } from "../utils/helperFunctions";
 
 interface PeopleToFollowProps {
     keyValue: string;
@@ -230,19 +231,22 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
         const success = await handleFollowUnfollow(props.pool, props.nostrExists ?? false, props.keyValue, person.npub, false, followingList);
         if (success) {
             setFollowingList(prev => {
-            const newFollowingList = [...prev, nip19.decode(person.npub).data as string];
-            if (prev.length === 0 && newFollowingList.length === 1) {
-                setShowOstrich(true);
-                // Call the batch-processor endpoint
-                fetch(`${API_URLS.API_URL}batch-processor`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        type: "trending_topics_processor",
-                        params: {
-                            npub: props.keyValue
+                const newFollowingList = [...prev, nip19.decode(person.npub).data as string];
+                if (prev.length === 0 && newFollowingList.length === 1) {
+                    setShowOstrich(true);
+                    // Call the batch-processor endpoint
+                    const pubkey = props.nostrExists 
+                    ? (window as any).nostr.getPublicKey()
+                    : getPublicKey(bech32Decoder('nsec', props.keyValue));
+                    fetch(`${API_URLS.API_URL}batch-processor`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            type: "trending_topics_processor",
+                            params: {
+                                npub: pubkey
                         }
                     }),
                 }).catch(error => console.error('Error calling batch-processor:', error));
