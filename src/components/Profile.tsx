@@ -150,7 +150,11 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 RELAYS,
                 { kinds: [3], '#p': [fetchedPubkey] }
             );
-            setFollowersCount(followerEvents.length);
+            // Remove duplicate pubkeys from followerEvents
+            const uniqueFollowerEvents = followerEvents.filter((event, index, self) =>
+                index === self.findIndex((e) => e.pubkey === event.pubkey)
+            );
+            setFollowersCount(uniqueFollowerEvents.length);
         
             // Try to get profile metadata from cache
             const cachedMetadata = getMetadataFromCache(fetchedPubkey);
