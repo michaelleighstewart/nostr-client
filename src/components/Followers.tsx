@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { SimplePool, Event, nip19 } from "nostr-tools";
 import { useParams, Link } from "react-router-dom";
 import { RELAYS } from "../utils/constants";
@@ -32,6 +32,8 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
     const [userMetadata, setUserMetadata] = useState<UserMetadata>({});
     const { npub } = useParams<{ npub: string }>();
     const [currentPage, setCurrentPage] = useState(0);
+    const touchStartX = useRef<number | null>(null);
+    const touchEndX = useRef<number | null>(null);
 
     useEffect(() => {
         const fetchUserMetadata = async () => {
@@ -123,6 +125,30 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
         fetchFollowers();
     }, []);
 
+    const handleTouchStart = (e: React.TouchEvent) => {
+        touchStartX.current = e.touches[0].clientX;
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        touchEndX.current = e.touches[0].clientX;
+    };
+
+    const handleTouchEnd = () => {
+        if (touchStartX.current && touchEndX.current) {
+            const diff = touchStartX.current - touchEndX.current;
+            const pageCount = Math.ceil(followers.length / FOLLOWERS_PER_PAGE);
+
+            if (diff > 50 && currentPage < pageCount - 1) {
+                setCurrentPage(prev => prev + 1);
+            } else if (diff < -50 && currentPage > 0) {
+                setCurrentPage(prev => prev - 1);
+            }
+        }
+
+        touchStartX.current = null;
+        touchEndX.current = null;
+    };
+
     if (loading) {
         return <div className="h-screen"><Loading vCentered={false} /></div>;
     }
@@ -147,7 +173,12 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
             )}
           </Link>
           <h1 className="text-2xl font-bold mb-4">Followers</h1>
-          <div className="relative w-full max-w-3xl mx-auto">
+          <div 
+            className="relative w-full max-w-3xl mx-auto"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             <div className="flex justify-center mb-4">
               {Array.from({ length: pageCount }).map((_, index) => (
                 <button
