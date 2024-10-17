@@ -191,7 +191,11 @@ const Following: React.FC<FollowingProps> = ({ pool }) => {
                                                 <UserCircleIcon className="w-full h-full text-gray-400" />
                                             )}
                                         </div>
-                                        <p className="text-center font-semibold">{follow.name || 'Unknown'}</p>
+                                        <p className="text-center font-semibold">
+                                            {follow.name && follow.name.split(' ').length === 1 && follow.name.length > 16
+                                            ? `${follow.name.substring(0, 16)}...`
+                                            : follow.name || 'Unknown'}
+                                        </p>
                                     </Link>
                                 </div>
                             ))}
