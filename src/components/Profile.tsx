@@ -53,6 +53,8 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [npubFromUrl, setNpubFromUrl] = useState<string | undefined>(undefined);
+    const [followingCount, setFollowingCount] = useState<number>(0);
+    const [followersCount, setFollowersCount] = useState<number>(0);
     const poolRef = useRef(pool);
     const keyValueRef = useRef(keyValue);
 
@@ -140,6 +142,15 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 setFollowingList(followedPubkeys);
                 setIsFollowing(followedPubkeys.includes(fetchedPubkey));
             }
+            const followingCount = followEvents[0].tags.filter(tag => tag[0] === 'p').length;
+            setFollowingCount(followingCount);
+
+            // Fetch followers count
+            const followerEvents = await pool.querySync(
+                RELAYS,
+                { kinds: [3], '#p': [fetchedPubkey] }
+            );
+            setFollowersCount(followerEvents.length);
         
             // Try to get profile metadata from cache
             const cachedMetadata = getMetadataFromCache(fetchedPubkey);
@@ -323,10 +334,12 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                         <Link to={`/profile/${npubFromUrl ? npubFromUrl : nip19.npubEncode(pubkey)}/following/`} className="flex items-center">
                             <UsersIcon className="h-6 w-6 mr-2" />
                             <span>Following</span>
+                            <span className="pl-4">({followingCount})</span>
                         </Link>
                         <Link to={`/profile/${npubFromUrl || nip19.npubEncode(pubkey)}/followers`} className="flex items-center">
                             <UsersIcon className="h-6 w-6 mr-2" />
                             <span>Followers</span>
+                            <span className="pl-4">({followersCount})</span>
                         </Link>
                     </div>
                 </div>
