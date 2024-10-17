@@ -142,7 +142,17 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 setFollowingList(followedPubkeys);
                 setIsFollowing(followedPubkeys.includes(fetchedPubkey));
             }
-            const followingCount = followEvents[0].tags.filter(tag => tag[0] === 'p').length;
+            
+
+            const profileFollowEvents = await pool.querySync(
+                RELAYS,
+                { kinds: [3], authors: [fetchedPubkey] }
+            );
+            let followingCount = 0;
+            if (profileFollowEvents.length > 0) {
+                followingCount = profileFollowEvents[0].tags.filter(tag => tag[0] === 'p').length;
+            }
+
             setFollowingCount(followingCount);
 
             // Fetch followers count
