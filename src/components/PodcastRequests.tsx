@@ -70,7 +70,7 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
                 <div>
                   <h2 className="text-xl font-semibold mb-2">{request.topic}</h2>
                   <p className="text-gray-400">
-                    Created: {new Date(request.created_at).toLocaleDateString()}
+                    Created: {new Date(parseInt(request.created_at) * 1000).toLocaleDateString()}
                   </p>
                   <p className="text-gray-400">
                     Status: <span className={`font-semibold ${

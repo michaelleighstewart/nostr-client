@@ -29,11 +29,6 @@ interface HomeProps {
   nostrExists: boolean | null;
 }
 
-interface TrendingTopic {
-  name: string;
-  value: string;
-}
-
 const Home : React.FC<HomeProps> = (props: HomeProps) => {
     if (props.nostrExists === null) return;
     const [streamedEvents, setStreamedEvents] = useState<ExtendedEvent[]>([]);
