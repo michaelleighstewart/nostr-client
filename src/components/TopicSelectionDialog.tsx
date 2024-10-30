@@ -4,18 +4,19 @@ import { API_URLS } from '../utils/apiConstants';
 interface TopicSelectionDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectTopic: (topic: string) => void;
+  onSelectTopicNote: (topic: string) => void;
+  onSelectTopicPodcast: (topic: string) => void;
   userNpub: string;
 }
 
 //for later
-//interface TrendingTopic {
-//  name: string;
-//  value: string;
-//}
+interface TrendingTopic {
+  name: string;
+  value: string;
+}
 
-const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onClose, onSelectTopic, userNpub }) => {
-  const [customTopic, setCustomTopic] = useState('');
+const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onClose, onSelectTopicNote, onSelectTopicPodcast, userNpub }) => {
+  const [customTopic, setCustomTopic] = useState<TrendingTopic>({name: '', value: ''});
   const [trendingTopics, setTrendingTopics] = useState<string[]>([]);
   const [isTrendingAccordionOpen, setIsTrendingAccordionOpen] = useState(false);
   const [isRecommendedAccordionOpen, setIsRecommendedAccordionOpen] = useState(false);
@@ -40,15 +41,14 @@ const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onC
     }
   }, [isOpen, userNpub]);
 
-  const handleSelectTopic = (topic: string) => {
-    onSelectTopic(topic);
-    onClose();
+  const handleSelectTopic = (topic: TrendingTopic) => {
+    setCustomTopic(topic);
   };
 
   const handleCustomTopicSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (customTopic.trim()) {
-      onSelectTopic(customTopic.trim());
+    if (customTopic.value.trim()) {
+      onSelectTopicNote(customTopic.value.trim());
       onClose();
     }
   };
@@ -73,7 +73,7 @@ const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onC
                 {predefinedTopics.map((topic) => (
                   <button
                     key={topic.name}
-                    onClick={() => handleSelectTopic(topic.value)}
+                    onClick={() => handleSelectTopic(topic)}
                     className="w-full p-2 bg-[#535bf2] text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
                   >
                     {topic.name}
@@ -95,7 +95,7 @@ const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onC
                 {trendingTopics.map((topic, index) => (
                   <button
                     key={index}
-                    onClick={() => handleSelectTopic(topic)}
+                    onClick={() => handleSelectTopic({name: topic, value: topic})}
                     className="w-full p-2 bg-[#535bf2] text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
                   >
                     {topic}
@@ -105,22 +105,42 @@ const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onC
             )}
           </div>
           <form onSubmit={handleCustomTopicSubmit} className="mt-4">
-            <div className="flex">
-              <input
-                type="text"
-                value={customTopic}
-                onChange={(e) => setCustomTopic(e.target.value)}
-                placeholder="Enter custom topic"
-                className="flex-grow p-2 border border-r-0 rounded-l bg-white text-black"
-              />
+          <div className="flex flex-col space-y-2">
+            <input
+              type="text"
+              value={customTopic.name}
+              onChange={(e) => setCustomTopic({name: e.target.value, value: e.target.value})}
+              placeholder="Enter custom topic"
+              className="w-full p-2 border rounded bg-white text-black"
+            />
+            <div className="flex space-x-2">
               <button
-                type="submit"
-                className="p-2 bg-[#535bf2] text-white rounded-r hover:bg-[#535bf2]-700 transition duration-200"
+                type="button"
+                onClick={() => {
+                  if (customTopic.value.trim()) {
+                    onSelectTopicNote(customTopic.value.trim());
+                    onClose();
+                  }
+                }}
+                className="flex-1 p-2 bg-[#535bf2] text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
               >
-                Generate
+                Generate Post
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (customTopic.value.trim()) {
+                    onSelectTopicPodcast(customTopic.value.trim());
+                    onClose();
+                  }
+                }}
+                className="flex-1 p-2 bg-[#535bf2] text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
+              >
+                Generate Podcast
               </button>
             </div>
-          </form>
+          </div>
+        </form>
         </div>
         <button
           onClick={onClose}

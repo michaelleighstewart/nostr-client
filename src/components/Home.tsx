@@ -29,6 +29,11 @@ interface HomeProps {
   nostrExists: boolean | null;
 }
 
+interface TrendingTopic {
+  name: string;
+  value: string;
+}
+
 const Home : React.FC<HomeProps> = (props: HomeProps) => {
     if (props.nostrExists === null) return;
     const [streamedEvents, setStreamedEvents] = useState<ExtendedEvent[]>([]);
@@ -540,8 +545,39 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
       }
     };
+
+    const handleTopicSelectionPodcast = async (topic: string) => {
+      setSelectedTopic(topic);
+      setGeneratingPost(true);
+      try {
+        const response = await fetch(`${API_URLS.API_URL}podcast`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            topic: topic,
+            npub: userPublicKey
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to generate podcast');
+        }
+
+        //const data = await response.json();
+        //setMessage(data.response);
+        showCustomToast("Your podcast request has been queued!")
+        setTimeout(adjustTextareaHeight, 0);
+      } catch (error) {
+        console.error('Error generating podcast:', error);
+        showCustomToast('Failed to generate podcast. Please try again.', 'error');
+      } finally {
+        setGeneratingPost(false);
+      }
+    };
     
-    const handleTopicSelection = async (topic: string) => {
+    const handleTopicSelectionNote = async (topic: string) => {
       setSelectedTopic(topic);
       setGeneratingPost(true);
       try {
@@ -766,7 +802,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         <TopicSelectionDialog
           isOpen={isTopicDialogOpen}
           onClose={() => setIsTopicDialogOpen(false)}
-          onSelectTopic={handleTopicSelection}
+          onSelectTopicNote={handleTopicSelectionNote}
+          onSelectTopicPodcast={handleTopicSelectionPodcast}
           userNpub={userPublicKey ? nip19.npubEncode(userPublicKey) : ''}
         />
       </div>

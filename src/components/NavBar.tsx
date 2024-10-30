@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import * as React from 'react';
 import { HomeIcon, UserIcon, CogIcon, KeyIcon, UserGroupIcon, MagnifyingGlassIcon, ArrowRightOnRectangleIcon, 
-  WrenchIcon, BellIcon, EnvelopeIcon, ShareIcon } from '@heroicons/react/24/outline';
+  WrenchIcon, BellIcon, EnvelopeIcon, ShareIcon, MicrophoneIcon } from '@heroicons/react/24/outline';
 import { validatePrivateKey } from '../utils/helperFunctions';
 import { getPublicKey, SimplePool } from 'nostr-tools';
 import Ostrich from "./Ostrich";
@@ -148,6 +148,11 @@ const NavBar: React.FC<NavBarProps> = ({ keyValue, setKey, nostrExists, pool, is
             <li className="inline-block mx-2 text-center pr-2 mb-2">
               <Link to="/social-graph" className={`flex flex-col items-center ${isActive("/social-graph")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
                 <ShareIcon className="h-6 w-6 my-3" />
+              </Link>
+            </li>
+            <li className="inline-block mx-2 text-center pr-2 mb-2">
+              <Link to="/podcasts" className={`flex flex-col items-center ${isActive("/podcasts")} ${isDisabled ? "pointer-events-none opacity-50" : ""}`}>
+                <MicrophoneIcon className="h-6 w-6 my-3" />
               </Link>
             </li>
             <li className="inline-block mx-2 text-center pr-2 mb-2">
