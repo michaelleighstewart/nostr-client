@@ -127,12 +127,14 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                             const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                             if (postId) {
                                 // Update cached counts
-                                const currentReactions = allNewReactions[postId]?.length || 0;
+                                const currentReactions = allNewReactions[postId]?.filter(r => r.type !== "-").length || 0;
+                                const currentDislikes = allNewReactions[postId]?.filter(r => r.type === "-").length || 0;
                                 const currentReposts = allNewReposts[postId]?.length || 0;
                                 const currentReplies = allNewReplies[postId]?.length || 0;
                                 
                                 setCachedCounts(postId, {
                                     reactions: currentReactions,
+                                    dislikes: currentDislikes,
                                     reposts: currentReposts,
                                     replies: currentReplies,
                                     timestamp: Date.now()
