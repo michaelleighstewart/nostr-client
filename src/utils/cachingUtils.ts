@@ -13,6 +13,7 @@ const ONE_HOUR = 60 * 60 * 1000;
 
 interface CachedCounts {
   reactions: number;
+  dislikes: number;
   reposts: number;
   replies: number;
   timestamp: number;
@@ -102,9 +103,14 @@ export function updateCachedCounts(noteId: string, newCounts: Partial<CachedCoun
   const cachedData = localStorage.getItem(COUNTS_CACHE_KEY);
   const parsedCache = cachedData ? JSON.parse(cachedData) : {};
   const existingCounts = parsedCache[noteId] || { reactions: 0, reposts: 0, replies: 0, timestamp: Date.now() };
+
+  // Update the counts based on the newCounts provided
   parsedCache[noteId] = {
     ...existingCounts,
-    ...newCounts,
+    reactions: existingCounts.reactions + (newCounts.reactions || 0),
+    dislikes: existingCounts.dislikes + (newCounts.dislikes || 0), // Add this line
+    reposts: existingCounts.reposts + (newCounts.reposts || 0),
+    replies: existingCounts.replies + (newCounts.replies || 0),
     timestamp: Date.now()
   };
   localStorage.setItem(COUNTS_CACHE_KEY, JSON.stringify(parsedCache));

@@ -51,6 +51,7 @@ interface Props {
 
   interface CachedCounts {
     reactions: number;
+    dislikes: number;
     reposts: number;
     replies: number;
   }
@@ -114,14 +115,16 @@ interface Props {
 
     useEffect(() => {
       if (!cachedCounts) return;
-  
-      const newReactions = reactions?.length || 0;
+    
+      const newReactions = reactions?.filter(r => r.type === "+").length || 0; // Count likes
+      const newDislikes = reactions?.filter(r => r.type === "-").length || 0; // Count dislikes
       const newReposts = reposts || 0;
       const newReplies = replies || 0;
-  
-      if (newReactions > cachedCounts.reactions || newReposts > cachedCounts.reposts || newReplies > cachedCounts.replies) {
+    
+      if (newReactions > cachedCounts.reactions || newDislikes > cachedCounts.dislikes || newReposts > cachedCounts.reposts || newReplies > cachedCounts.replies) {
         const updatedCounts = {
           reactions: Math.max(newReactions, cachedCounts.reactions),
+          dislikes: Math.max(newDislikes, cachedCounts.dislikes), // Add this line
           reposts: Math.max(newReposts, cachedCounts.reposts),
           replies: Math.max(newReplies, cachedCounts.replies),
           timestamp: Date.now()
@@ -719,7 +722,7 @@ interface Props {
                   className="text-body5 text-gray-400 cursor-pointer hover:underline"
                   onClick={() => handleShowDislikes()}
                 >
-                  {cachedCounts ? cachedCounts.reactions : (allReactions && id in allReactions ? localReactions.filter((r) => r.type === "-").length : <Loading vCentered={true} tiny={true} />)}
+                  {cachedCounts ? cachedCounts.dislikes : (allReactions && id in allReactions ? localReactions.filter((r) => r.type === "-").length : <Loading vCentered={true} tiny={true} />)}
                 </span>
               </div>
             </>
