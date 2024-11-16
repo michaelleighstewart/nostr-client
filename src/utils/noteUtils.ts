@@ -2,7 +2,7 @@ import { SimplePool, Event } from "nostr-tools";
 import { RELAYS } from "./constants";
 import { ExtendedEvent, Metadata, Reaction } from "./interfaces";
 import { getMetadataFromCache, setCachedCounts, setMetadataToCache } from "./cachingUtils";
-
+import { throttleRequest } from './throttle';
 
 export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events: ExtendedEvent[], 
     repostEvents: ExtendedEvent[],
@@ -152,16 +152,14 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     };
 
     // Fetch data for original posts
-    await fetchData(postsToFetch, Array.from(pubkeysToFetchFromNetwork));
-
-    // Fetch data for reposts
+    await throttleRequest(() => fetchData(postsToFetch, Array.from(pubkeysToFetchFromNetwork)));
+    
     if (repostsToFetch.length > 0) {
-        await fetchData(repostsToFetch, repostPubkeysToFetch);
+        await throttleRequest(() => fetchData(repostsToFetch, repostPubkeysToFetch));
     }  
 
-    // Fetch data for replies
     if (replyIdsToFetch.length > 0) {
-        await fetchData(replyIdsToFetch, replyPubkeysToFetch);
+        await throttleRequest(() => fetchData(replyIdsToFetch, replyPubkeysToFetch));
     }
 
     // Update all states at once
