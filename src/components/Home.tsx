@@ -7,7 +7,7 @@ import { getBase64, sendMessage } from "../utils/helperFunctions";
 import { ExtendedEvent, Metadata, Reaction, User } from "../utils/interfaces";
 import Loading from "./Loading";
 import { fetchUserMetadata, getFollowing, getUserPublicKey } from "../utils/profileUtils";
-import { fetchMetadataReactionsAndRepliesAlt, fetchData } from '../utils/noteUtils';
+import { fetchReactionsAndRepliesAlt, fetchData, fetchMetadataAlt } from '../utils/noteUtils';
 import Ostrich from "./Ostrich";
 import { showCustomToast } from "./CustomToast";
 import { PhotoIcon, VideoCameraIcon } from '@heroicons/react/24/solid';
@@ -127,9 +127,10 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         if (event.rootEvent) repliesToFetch.push(event.rootEvent);
         //await fetchMetadataReactionsAndReplies(props.pool, [event], event.repostedEvent ? [event.repostedEvent] : [], 
         //  repliesToFetch, setMetadata, setReactions, setReplies, setReposts);
-        const { metadata: newMetadata, reactions: newReactions, replies: newReplies, reposts: newReposts } = 
-          await fetchMetadataReactionsAndRepliesAlt(props.pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
-          setMetadata(prev => ({...prev, ...newMetadata}));
+        const metaData = await fetchMetadataAlt(props.pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
+        setMetadata(prev => ({...prev, ...metaData}));
+        const { reactions: newReactions, replies: newReplies, reposts: newReposts } = 
+          await fetchReactionsAndRepliesAlt(props.pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
           setReactions(prev => ({...prev, ...newReactions}));
           setReplies(prev => ({...prev, ...newReplies}));
           setReposts(prev => ({...prev, ...newReposts}));
@@ -300,9 +301,11 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                   const repliesToFetch = [];
                   if (event.repliedEvent) repliesToFetch.push(event.repliedEvent);
                   if (event.rootEvent) repliesToFetch.push(event.rootEvent);
-                  const { metadata: newMetadata, reactions: newReactions, replies: newReplies, reposts: newReposts } = 
-                    await fetchMetadataReactionsAndRepliesAlt(props.pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
-                  setMetadata(prev => ({...prev, ...newMetadata}));
+                  const metaData = await fetchMetadataAlt(props.pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
+                  setMetadata(prev => ({...prev, ...metaData}));
+                  const { reactions: newReactions, replies: newReplies, reposts: newReposts } = 
+                    await fetchReactionsAndRepliesAlt(props.pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
+                  //setMetadata(prev => ({...prev, ...newMetadata}));
                   setReactions(prev => ({...prev, ...newReactions}));
                   setReplies(prev => ({...prev, ...newReplies}));
                   setReposts(prev => ({...prev, ...newReposts})); 
@@ -449,9 +452,11 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         _setRepostEvents(prev => [...prev, ...newRepostEvents]);
         _setReplyEvents(prev => [...prev, ...newReplyEvents]);
         //await fetchMetadataReactionsAndReplies(props.pool, allFetchedEvents, newRepostEvents, newReplyEvents, setMetadata, setReactions, setReplies, setReposts);
-        const { metadata: newMetadata, reactions: newReactions, replies: newReplies, reposts: newReposts } = 
-          await fetchMetadataReactionsAndRepliesAlt(props.pool, allFetchedEvents, newRepostEvents, newReplyEvents);
-          setMetadata(prev => ({...prev, ...newMetadata}));
+        const metaData = await fetchMetadataAlt(props.pool, allFetchedEvents, newRepostEvents, newReplyEvents);
+        setMetadata(prev => ({...prev, ...metaData}));
+        const { reactions: newReactions, replies: newReplies, reposts: newReposts } = 
+          await fetchReactionsAndRepliesAlt(props.pool, allFetchedEvents, newRepostEvents, newReplyEvents);
+          //setMetadata(prev => ({...prev, ...newMetadata}));
           setReactions(prev => ({...prev, ...newReactions}));
           setReplies(prev => ({...prev, ...newReplies}));
           setReposts(prev => ({...prev, ...newReposts}));

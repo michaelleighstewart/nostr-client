@@ -4,7 +4,78 @@ import { ExtendedEvent, Metadata, Reaction } from "./interfaces";
 import { getMetadataFromCache, setCachedCounts, setMetadataToCache } from "./cachingUtils";
 import { throttleRequest } from './throttle';
 
-export const fetchMetadataReactionsAndRepliesAlt = async (pool: SimplePool, events: ExtendedEvent[], 
+export const fetchMetadataAlt = async (pool: SimplePool, events: ExtendedEvent[], 
+    repostEvents: ExtendedEvent[],
+    replyEvents: ExtendedEvent[]) => {
+        const eventsToProcess = events;//.slice(0, 10);
+    
+        const pubkeysToFetch = new Set(eventsToProcess.map(event => event.pubkey));
+        //const postsToFetch = eventsToProcess.map(event => event.id);
+        const repostsToFetch: string[] = [];
+        const repostPubkeysToFetch: string[] = [];
+        for (const event of repostEvents) {
+            if (!repostsToFetch.includes(event.id || "")) {
+                repostsToFetch.push(event.id || "");
+            }
+            if (!repostPubkeysToFetch.includes(event.pubkey || "")) {
+                repostPubkeysToFetch.push(event.pubkey || "");
+            }
+        }
+        const replyIdsToFetch: string[] = [];
+        const replyPubkeysToFetch: string[] = [];
+        for (const event of replyEvents) {
+            if (!replyIdsToFetch.includes(event.id || "")) {
+                replyIdsToFetch.push(event.id || "");
+            }
+            if (!replyPubkeysToFetch.includes(event.pubkey || "")) {
+                replyPubkeysToFetch.push(event.pubkey || "");
+            }
+        }
+        repostPubkeysToFetch.forEach(pubkey => pubkeysToFetch.add(pubkey));
+        const cachedMetadata: Record<string, Metadata> = {};
+        const pubkeysToFetchFromNetwork: string[] = [];
+    
+        pubkeysToFetch.forEach(pubkey => {
+            const cachedData = getMetadataFromCache(pubkey);
+
+            if (cachedData) {
+                cachedMetadata[pubkey] = cachedData;
+            } else {
+                pubkeysToFetchFromNetwork.push(pubkey);
+            }
+        });
+    
+        let allNewMetadata: Record<string, Metadata> = {...cachedMetadata};   
+        
+        async function fetchMetaData(pubkeys: string[]) {
+            const data = await pool?.querySync(RELAYS, {
+                kinds: [0],
+                authors: pubkeys
+            });
+            if (!data) return;
+            
+            for (const event of data) {
+                if (event.kind === 0) {
+                    const metadata = JSON.parse(event.content) as Metadata;
+                    allNewMetadata[event.pubkey] = metadata;
+                    setMetadataToCache(event.pubkey, metadata);
+                }
+            }
+        }
+
+        //original post
+        await fetchMetaData(Array.from(pubkeysToFetchFromNetwork))
+
+        //reposts
+        await fetchMetaData(repostPubkeysToFetch);
+
+        //replies
+        await fetchMetaData(replyPubkeysToFetch)
+
+        return allNewMetadata;
+}
+
+export const fetchReactionsAndRepliesAlt = async (pool: SimplePool, events: ExtendedEvent[], 
     repostEvents: ExtendedEvent[],
     replyEvents: ExtendedEvent[]) => {
 
@@ -38,6 +109,7 @@ export const fetchMetadataReactionsAndRepliesAlt = async (pool: SimplePool, even
     
         pubkeysToFetch.forEach(pubkey => {
             const cachedData = getMetadataFromCache(pubkey);
+
             if (cachedData) {
                 cachedMetadata[pubkey] = cachedData;
             } else {
@@ -57,7 +129,7 @@ export const fetchMetadataReactionsAndRepliesAlt = async (pool: SimplePool, even
         });
     
         
-        async function fetchMetaData(pubkeys: string[]) {
+        /*async function fetchMetaData(pubkeys: string[]) {
             const data = await pool?.querySync(RELAYS, {
                 kinds: [0],
                 authors: pubkeys
@@ -71,7 +143,7 @@ export const fetchMetadataReactionsAndRepliesAlt = async (pool: SimplePool, even
                     setMetadataToCache(event.pubkey, metadata);
                 }
             }
-        }
+        }*/
 
         async function fetchData(ids: string[]) {
             const data = await pool?.querySync(RELAYS, {
@@ -146,18 +218,18 @@ export const fetchMetadataReactionsAndRepliesAlt = async (pool: SimplePool, even
 
         //original post
         await fetchData(postsToFetch);
-        await fetchMetaData(Array.from(pubkeysToFetchFromNetwork))
+        //await fetchMetaData(Array.from(pubkeysToFetchFromNetwork))
 
         //reposts
         await fetchData(repostsToFetch);
-        await fetchMetaData(repostPubkeysToFetch);
+        //await fetchMetaData(repostPubkeysToFetch);
 
         //replies
         await fetchData(replyIdsToFetch);
-        await fetchMetaData(replyPubkeysToFetch)
+        //await fetchMetaData(replyPubkeysToFetch)
 
         return {
-            metadata: allNewMetadata,
+            //metadata: allNewMetadata,
             reactions: allNewReactions,
             replies: allNewReplies,
             reposts: allNewReposts
@@ -165,6 +237,7 @@ export const fetchMetadataReactionsAndRepliesAlt = async (pool: SimplePool, even
     
 }
 
+//deprecated
 export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events: ExtendedEvent[], 
     repostEvents: ExtendedEvent[],
     replyEvents: ExtendedEvent[],
