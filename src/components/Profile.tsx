@@ -8,7 +8,7 @@ import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import NoteCard from "./NoteCard";
 import { UsersIcon, UserPlusIcon, ChatBubbleLeftRightIcon, UserMinusIcon } from '@heroicons/react/24/outline';
-import { fetchMetadataReactionsAndReplies, fetchData } from "../utils/noteUtils";
+import { fetchMetadataReactionsAndReplies, fetchData, fetchMetadataReactionsAndRepliesAlt } from "../utils/noteUtils";
 import NewMessageDialog from "./NewMessageDialog";
 import { Helmet } from 'react-helmet';
 import { getMetadataFromCache, setMetadataToCache } from "../utils/cachingUtils";
@@ -68,7 +68,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
         byoReplies: true
     };
 
-    const handleEventReceived = useCallback((event: ExtendedEvent) => {
+    const handleEventReceived = useCallback(async (event: ExtendedEvent) => {
         setStreamedEvents(prev => {
             if (prev.some(e => e.id === event.id)) {
                 return prev;
@@ -80,7 +80,12 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
             const repliesToFetch = [];
             if (event.repliedEvent) repliesToFetch.push(event.repliedEvent);
             if (event.rootEvent) repliesToFetch.push(event.rootEvent);
-            fetchMetadataReactionsAndReplies(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch, setMetadata, setReactions, setReplies, setReposts);
+            const { metadata: newMetadata, reactions: newReactions, replies: newReplies, reposts: newReposts } = 
+                await fetchMetadataReactionsAndRepliesAlt(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
+            setMetadata(prev => ({...prev, ...newMetadata}));
+            setReactions(prev => ({...prev, ...newReactions}));
+            setReplies(prev => ({...prev, ...newReplies}));
+            setReposts(prev => ({...prev, ...newReposts}));
         }
     }, []);
 
@@ -185,8 +190,8 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 }
                 setLoadingProfile(false);
             }
-            const filter = { kinds: [1, 5, 6], authors: [fetchedPubkey], limit: 10 };
-            const newEvents = await fetchData(pool, 0, false, 0, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
+            const filter = { kinds: [1, 5, 6], authors: [fetchedPubkey], limit: 5 };
+            let newEvents = await fetchData(pool, 0, false, 0, isLoggedIn ?? false, nostrExists ?? false, keyValue ?? "",
                 setLoading, setLoadingMore, setError, setStreamedEvents, [], repostEvents, replyEvents, setLastFetchedTimestamp, 
                 setDeletedNoteIds, setUserPublicKey, setInitialLoadComplete, filter, handleEventReceived, defaultAlgorithm, false);
             setLoadingPosts(false);
@@ -199,24 +204,29 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                   .sort((a, b) => b.created_at - a.created_at);
               });
               if (pool) {
-                newEvents?.forEach(event => {
+                for (const event of newEvents || []) {
                     const repliesToFetch = [];
                     if (event.repliedEvent) repliesToFetch.push(event.repliedEvent);
                     if (event.rootEvent) repliesToFetch.push(event.rootEvent);
-                    fetchMetadataReactionsAndReplies(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch, setMetadata, setReactions, setReplies, setReposts);
-            
-                });
+                    //fetchMetadataReactionsAndReplies(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch, setMetadata, setReactions, setReplies, setReposts);
+                    const { metadata: newMetadata, reactions: newReactions, replies: newReplies, reposts: newReposts } = 
+                        await fetchMetadataReactionsAndRepliesAlt(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
+                    setMetadata(prev => ({...prev, ...newMetadata}));
+                    setReactions(prev => ({...prev, ...newReactions}));
+                    setReplies(prev => ({...prev, ...newReplies}));
+                    setReposts(prev => ({...prev, ...newReposts}));
+                }
             }
         };
 
         fetchProfileData();
     }, [nostrExists, npub, pool]);
 
-    useEffect(() => {
+    /*useEffect(() => {
         if (!pool || streamedEvents.length === 0) return;
         fetchMetadataReactionsAndReplies(pool, streamedEvents, repostEvents, replyEvents, setMetadata, setReactions, 
             setReplies, setReposts);
-    }, [pool, streamedEvents]);
+    }, [pool, streamedEvents]);*/
 
 
     const handleUnfollow = async () => {
