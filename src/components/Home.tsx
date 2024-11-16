@@ -142,28 +142,27 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         pubkeysToFetch.push(event.repliedEvent.pubkey);
       }
       
-      pubkeysToFetch.forEach(pubkey => {
+      pubkeysToFetch.forEach(async pubkey => {
         const cachedMetadata = getMetadataFromCache(pubkey);
         if (cachedMetadata) {
           setMetadata(prev => ({...prev, [pubkey]: cachedMetadata}));
         } else if (props.pool && !metadata[pubkey]) {
-          props.pool.subscribeManyEose(
+          const metaData = await props.pool.querySync(
             RELAYS,
-            [{ kinds: [0], authors: [pubkey] }],
             {
-              onevent(metadataEvent) {
-                try {
-                  const metadata = JSON.parse(metadataEvent.content) as Metadata;
-                  setMetadata(prev => ({...prev, [pubkey]: metadata}));
-                  if (isLoggedIn) {
-                    setMetadataToCache(pubkey, metadata);
-                  }
-                } catch (error) {
-                  console.error("Error parsing metadata:", error);
-                }
-              }
+              kinds: [0],
+              authors: [pubkey]
             }
           );
+          try {
+            const metadata = JSON.parse(metaData[0].content) as Metadata;
+            setMetadata(prev => ({...prev, [pubkey]: metadata}));
+            if (isLoggedIn) {
+              setMetadataToCache(pubkey, metadata);
+            }
+          } catch (error) {
+            console.error("Error parsing metadata:", error);
+          }
         }
       });
     }, [props.pool, metadata, isLoggedIn, setMetadata, setReactions, setReplies, setReposts]);
@@ -171,8 +170,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
 
     const fetchFollowingAndData = useCallback(async () => {
       if (!props.pool || initialLoadComplete) return;
-      //let setAlgo = false;
-      // Fetch BYO algorithms
       let algoSelected = null;
       if (keyValueRef.current) {
         const pk = await getUserPublicKey(props.nostrExists ?? false, keyValueRef.current);
@@ -193,16 +190,12 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             if (selectedAlgorithm === null) {
               setSelectedAlgorithm(data.algos[0]);
               algoSelected = data.algos[0];
-              //setAlgo = true;
             }
           }
         } catch (error) {
           console.error("Error fetching BYO algorithms:", error);
         }
       }
-      //if (!setAlgo) {
-        //setLoading(true);
-
 
         try {
           let newFollowing: string[] = [];
@@ -271,7 +264,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           const now = Math.floor(Date.now() / 1000);
           
           for (const range of timeRanges) {
-            //if (allFetchedEvents.length >= 5) break;
+            if (allFetchedEvents.length >= 5) break;
             const since = now - range.end;
             const until = now - range.start;
             let filterObj = isLoggedIn
@@ -281,7 +274,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
             const newEvents = await fetchData(props.pool, since, false, until, isLoggedIn, props.nostrExists ?? false, keyValueRef.current,
               setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
               setUserPublicKey, setInitialLoadComplete, filterObj.filter, handleEventReceived, selectedAlgorithm ?? algoSelected, range.name === '1 hour');
-            setStreamedEvents(prevEvents => {
+            allFetchedEvents.push(...(newEvents ?? []));
+            if (allFetchedEvents.length >= 5) break;
+              setStreamedEvents(prevEvents => {
                 if (!newEvents) return prevEvents;
                 const uniqueEvents = Array.from(new Set([...prevEvents, ...newEvents].map(event => event.id)))
                     .map(id => [...prevEvents, ...newEvents].find(event => event.id === id))
@@ -305,8 +300,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                   const repliesToFetch = [];
                   if (event.repliedEvent) repliesToFetch.push(event.repliedEvent);
                   if (event.rootEvent) repliesToFetch.push(event.rootEvent);
-                  //await fetchMetadataReactionsAndReplies(props.pool, [event], event.repostedEvent ? [event.repostedEvent] : [], 
-                  //  repliesToFetch, setMetadata, setReactions, setReplies, setReposts);
                   const { metadata: newMetadata, reactions: newReactions, replies: newReplies, reposts: newReposts } = 
                     await fetchMetadataReactionsAndRepliesAlt(props.pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
                   setMetadata(prev => ({...prev, ...newMetadata}));
@@ -322,37 +315,36 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 }
               }
               
-              pubkeysToFetch.forEach(pubkey => {
+              pubkeysToFetch.forEach(async pubkey => {
                 const cachedMetadata = getMetadataFromCache(pubkey);
                 if (cachedMetadata) {
                   setMetadata(prev => ({...prev, [pubkey]: cachedMetadata}));
                 } else if (props.pool && !metadata[pubkey]) {
-                  props.pool.subscribeManyEose(
+                  const metaData = await props.pool.querySync(
                     RELAYS,
-                    [{ kinds: [0], authors: [pubkey] }],
                     {
-                      onevent(metadataEvent) {
-                        try {
-                          const metadata = JSON.parse(metadataEvent.content) as Metadata;
-                          setMetadata(prev => ({...prev, [pubkey]: metadata}));
-                          if (isLoggedIn) {
-                            setMetadataToCache(pubkey, metadata);
-                          }
-                        } catch (error) {
-                          console.error("Error parsing metadata:", error);
-                        }
-                      }
+                      kinds: [0],
+                      authors: [pubkey]
                     }
                   );
+                  try {
+                    const metadata = JSON.parse(metaData[0].content) as Metadata;
+                    setMetadata(prev => ({...prev, [pubkey]: metadata}));
+                    if (isLoggedIn) {
+                      setMetadataToCache(pubkey, metadata);
+                    }
+                  } catch (error) {
+                    console.error("Error parsing metadata:", error);
+                  }
                 }
               });
             }
             
             
-            if (allFetchedEvents.length >= 10) break;
+            if (allFetchedEvents.length >= 5) break;
           }
 
-          allFetchedEvents = allFetchedEvents.slice(0, 10);
+          allFetchedEvents = allFetchedEvents.slice(0, 5);
     
           if (allFetchedEvents.length > 0) {
             const newLastFetchedTimestamp = Math.min(...allFetchedEvents.map(event => event.created_at));
@@ -372,7 +364,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         } finally {
           setLoading(false);
         }
-    }, [selectedAlgorithm]);
+    }, []);
 
     useEffect(() => {
       fetchUserMetadata(props.pool, userPublicKey ?? "", setShowOstrich, setMetadata);
@@ -399,7 +391,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         }*/
         fetchFollowingAndData();
       }
-    }, [initialLoadComplete]);
+    }, []);
 
 
     const debouncedLoadMore = debounce(async () => {
@@ -416,8 +408,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       let allFetchedEvents: ExtendedEvent[] = [];
       const oldestTimestamp = Math.min(...streamedEvents.map(e => e.created_at));
       const seenEventIds = new Set(streamedEvents.map(e => e.id));
-      
+      let allInFirstHour = false;
       for (const range of timeRanges) {
+        if (allFetchedEvents.length >= 5) break;
         const since = oldestTimestamp - range.end;
         const until = oldestTimestamp - range.start;
         let filter = isLoggedIn
@@ -436,10 +429,11 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           setInitialLoadComplete, filter, handleNewEvent, selectedAlgorithm, true);
         
         allFetchedEvents.push(...newEvents);
-        if (allFetchedEvents.length >= 10) break;
+        if (allFetchedEvents.length >= 5 && range.name === '1 hour') allInFirstHour = true;
+        if (allFetchedEvents.length >= 5) break;
       }
     
-      if (allFetchedEvents.length > 0) {
+      if (allFetchedEvents.length > 0 && !allInFirstHour) {
         const newLastFetchedTimestamp = Math.min(...allFetchedEvents.map(event => event.created_at));
         setLastFetchedTimestamp(newLastFetchedTimestamp);
         
