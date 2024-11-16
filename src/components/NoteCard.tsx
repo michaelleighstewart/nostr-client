@@ -1,7 +1,7 @@
 import { BoltIcon, HandThumbUpIcon, HandThumbDownIcon, TrashIcon, ChatBubbleLeftIcon, ArrowPathRoundedSquareIcon } from "@heroicons/react/16/solid";
 import { sendZap, reactToPost, deletePost, bech32Decoder, repostMessage } from "../utils/helperFunctions";
 import { SimplePool, getPublicKey } from "nostr-tools";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { showCustomToast } from './CustomToast';
 import { Link, useNavigate } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
@@ -105,6 +105,26 @@ interface Props {
     const [cachedReplies, setCachedReplies] = useState<number | null>(null);
     const [cachedCounts, setCachedCounts] = useState<CachedCounts | null>(null);
     const [referencedNote, setReferencedNote] = useState<ExtendedEvent | null>(referencedNoteInput);
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const carouselRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      const imageRegex = /(https?:\/\/.*\.(?:png|jpg|jpeg|gif))/gi;
+      const imageMatches: string[] = content.match(imageRegex) || [];
+      setImageUrls(imageMatches);
+    }, [content]);
+  
+    const handleNext = () => {
+      if (currentIndex < imageUrls.length - 1) {
+          setCurrentIndex((prevIndex) => prevIndex + 1);
+      }
+    };
+
+    const handlePrev = () => {
+        if (currentIndex > 0) {
+            setCurrentIndex((prevIndex) => prevIndex - 1);
+        }
+    };
 
     useEffect(() => {
       const fetchedCachedCounts = getCachedCounts(id);
@@ -537,6 +557,44 @@ interface Props {
             </div>
           )}
         </div>
+        {imageUrls.length > 0 && (
+          <div className="relative">
+            {imageUrls.length > 1 && (
+            <div className="flex justify-center mb-4">
+              <button onClick={handlePrev} 
+              disabled={currentIndex === 0}
+              className={`font-bold py-2 px-6 rounded flex items-center mb-2 sm:mb-0 sm:mr-2 ${currentIndex === 0 ? 'bg-gray-500 text-gray-300 cursor-not-allowed hover:bg-gray-500 hover:text-gray-300' : 'text-white'}`}>
+                Previous
+              </button>
+              <button onClick={handleNext} 
+              className={`font-bold py-2 px-6 rounded flex items-center mb-2 sm:mb-0 sm:mr-2 ${currentIndex === imageUrls.length - 1 ? 'bg-gray-500 text-gray-300 cursor-not-allowed hover:bg-gray-500 hover:text-gray-300' : 'text-white'}`}
+              disabled={currentIndex === imageUrls.length - 1}>
+                Next
+              </button>
+            </div>)}
+            <div ref={carouselRef} className="overflow-hidden">
+              <div
+                className="flex transition-transform duration-300 ease-in-out"
+                style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+              >
+                {imageUrls.map((url, index) => (
+                  <div key={index} className="w-full flex-shrink-0 p-4">
+                    <img
+                      src={url}
+                      alt={`Post content ${index + 1}`}
+                      className="max-w-full h-auto rounded-lg mt-2 cursor-pointer" 
+                      style={{ maxHeight: '1200px', objectFit: 'cover' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleImageClick(url);
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
         {referencedNote && (
           <div className="mt-4 border-l-2 border-gray-500 pl-4">
             <div className="flex justify-between items-center mb-2">
@@ -644,19 +702,6 @@ interface Props {
               ></iframe>
             </div>
           )}
-          {imageUrls.map((url, index) => (
-            <img 
-              key={index} 
-              src={url} 
-              alt="Post content" 
-              className="max-w-full h-auto rounded-lg mt-2 cursor-pointer" 
-              style={{ maxHeight: '1200px', objectFit: 'cover' }}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleImageClick(url);
-              }}
-            />
-          ))}
         </div>
         <ul className="flex flex-wrap gap-12">
           {hashtags
