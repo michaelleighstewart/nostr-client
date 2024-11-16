@@ -70,6 +70,7 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
         if (!(id in allNewReposts)) allNewReposts[id] = [];
     });
 
+    //this function needs to be fixed - michael
     const fetchData = async (ids: string[], pubkeys: string[]) => {
         return new Promise<void>((resolve) => {
             const sub = pool?.subscribeManyEose(

@@ -105,7 +105,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       return null;
     };
 
-    const handleEventReceived = useCallback((event: ExtendedEvent) => {
+    const handleEventReceived = useCallback(async (event: ExtendedEvent) => {
       setStreamedEvents(prev => {
         if (prev.some(e => e.id === event.id)) {
           return prev;
@@ -125,7 +125,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         const repliesToFetch = [];
         if (event.repliedEvent) repliesToFetch.push(event.repliedEvent);
         if (event.rootEvent) repliesToFetch.push(event.rootEvent);
-        fetchMetadataReactionsAndReplies(props.pool, [event], event.repostedEvent ? [event.repostedEvent] : [], 
+        await fetchMetadataReactionsAndReplies(props.pool, [event], event.repostedEvent ? [event.repostedEvent] : [], 
           repliesToFetch, setMetadata, setReactions, setReplies, setReposts);
       }
       
@@ -285,12 +285,12 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 return pubkeys;
               });
     
-              newEvents?.forEach(event => {
+              newEvents?.forEach(async event => {
                 if (props.pool) {
                   const repliesToFetch = [];
                   if (event.repliedEvent) repliesToFetch.push(event.repliedEvent);
                   if (event.rootEvent) repliesToFetch.push(event.rootEvent);
-                  fetchMetadataReactionsAndReplies(props.pool, [event], event.repostedEvent ? [event.repostedEvent] : [], 
+                  await fetchMetadataReactionsAndReplies(props.pool, [event], event.repostedEvent ? [event.repostedEvent] : [], 
                     repliesToFetch, setMetadata, setReactions, setReplies, setReposts);
                 }
                 
