@@ -56,8 +56,24 @@ export const fetchMetadataReactionsAndRepliesAlt = async (pool: SimplePool, even
             if (!(id in allNewReposts)) allNewReposts[id] = [];
         });
     
-        //this function needs to be fixed - michael
-        async function fetchData(ids: string[], pubkeys: string[], type: string) {
+        
+        async function fetchMetaData(pubkeys: string[]) {
+            const data = await pool?.querySync(RELAYS, {
+                kinds: [0],
+                authors: pubkeys
+            });
+            if (!data) return;
+            
+            for (const event of data) {
+                if (event.kind === 0) {
+                    const metadata = JSON.parse(event.content) as Metadata;
+                    allNewMetadata[event.pubkey] = metadata;
+                    setMetadataToCache(event.pubkey, metadata);
+                }
+            }
+        }
+
+        async function fetchData(ids: string[]) {
             const data = await pool?.querySync(RELAYS, {
                 kinds: [7, 1, 6],
                 '#e': ids
@@ -128,15 +144,17 @@ export const fetchMetadataReactionsAndRepliesAlt = async (pool: SimplePool, even
             }
         }
 
-
         //original post
-        await fetchData(postsToFetch, Array.from(pubkeysToFetchFromNetwork), "original");
+        await fetchData(postsToFetch);
+        await fetchMetaData(Array.from(pubkeysToFetchFromNetwork))
 
         //reposts
-        await fetchData(repostsToFetch, repostPubkeysToFetch, "reposts");
+        await fetchData(repostsToFetch);
+        await fetchMetaData(repostPubkeysToFetch);
 
         //replies
-        await fetchData(replyIdsToFetch, replyPubkeysToFetch, "replies");
+        await fetchData(replyIdsToFetch);
+        await fetchMetaData(replyPubkeysToFetch)
 
         return {
             metadata: allNewMetadata,

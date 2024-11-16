@@ -8,7 +8,7 @@ import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import NoteCard from "./NoteCard";
 import { UsersIcon, UserPlusIcon, ChatBubbleLeftRightIcon, UserMinusIcon } from '@heroicons/react/24/outline';
-import { fetchMetadataReactionsAndReplies, fetchData, fetchMetadataReactionsAndRepliesAlt } from "../utils/noteUtils";
+import { fetchData, fetchMetadataReactionsAndRepliesAlt } from "../utils/noteUtils";
 import NewMessageDialog from "./NewMessageDialog";
 import { Helmet } from 'react-helmet';
 import { getMetadataFromCache, setMetadataToCache } from "../utils/cachingUtils";
