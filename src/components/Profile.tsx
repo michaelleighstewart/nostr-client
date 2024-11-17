@@ -2,13 +2,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { SimplePool } from "nostr-tools";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { bech32Decoder } from "../utils/helperFunctions";
-import { ExtendedEvent, Metadata } from "../utils/interfaces";
+import { ExtendedEvent } from "../utils/interfaces";
 import { getPublicKey, nip19 } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import NoteCard from "./NoteCard";
 import { UsersIcon, UserPlusIcon, ChatBubbleLeftRightIcon, UserMinusIcon } from '@heroicons/react/24/outline';
-import { fetchData, fetchMetadataAlt } from "../utils/noteUtils";
+import { fetchData } from "../utils/noteUtils";
 import NewMessageDialog from "./NewMessageDialog";
 import { Helmet } from 'react-helmet';
 import { getMetadataFromCache, setMetadataToCache } from "../utils/cachingUtils";
@@ -34,10 +34,6 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const [pubkey, setPubkey] = useState<string>('');
     const [isFollowing, setIsFollowing] = useState(false);
     const [followingList, setFollowingList] = useState<string[]>([]);
-    //const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
-    //const [replies, setReplies] = useState<Record<string, ExtendedEvent[]>>({});
-    //const [reposts, setReposts] = useState<Record<string, ExtendedEvent[]>>({});
-    const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [loadingProfile, setLoadingProfile] = useState(true);
     const [loadingPosts, setLoadingPosts] = useState(true);
     const [deletedNoteIds, setDeletedNoteIds] = useState<Set<string>>(new Set());
@@ -57,6 +53,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const [followersCount, setFollowersCount] = useState<number>(0);
     const poolRef = useRef(pool);
     const keyValueRef = useRef(keyValue);
+    const [isPoolReady, setIsPoolReady] = useState(false);
 
     const { npub } = useParams<{ npub: string }>();
     const navigate = useNavigate();
@@ -80,14 +77,6 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
             const repliesToFetch = [];
             if (event.repliedEvent) repliesToFetch.push(event.repliedEvent);
             if (event.rootEvent) repliesToFetch.push(event.rootEvent);
-            const metaData = await fetchMetadataAlt(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
-            setMetadata(prev => ({...prev, ...metaData}));
-            //const { reactions: newReactions, replies: newReplies, reposts: newReposts } = 
-            //    await fetchReactionsAndRepliesAlt(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
-            //setMetadata(prev => ({...prev, ...newMetadata}));
-            //setReactions(prev => ({...prev, ...newReactions}));
-            //setReplies(prev => ({...prev, ...newReplies}));
-            //setReposts(prev => ({...prev, ...newReposts}));
         }
     }, []);
 
@@ -101,6 +90,14 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
       }, []);
 
     useEffect(() => {
+        if (pool) {
+          const isReady = RELAYS.every(relay => pool?.ensureRelay(relay));
+          setIsPoolReady(isReady);
+        }
+    }, [pool]);
+
+    useEffect(() => {
+        if (!isPoolReady) return;
         poolRef.current = pool;
         keyValueRef.current = keyValue;
         const fetchProfileData = async () => {
@@ -210,28 +207,12 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                     const repliesToFetch = [];
                     if (event.repliedEvent) repliesToFetch.push(event.repliedEvent);
                     if (event.rootEvent) repliesToFetch.push(event.rootEvent);
-                    //fetchMetadataReactionsAndReplies(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch, setMetadata, setReactions, setReplies, setReposts);
-                    const metaData = await fetchMetadataAlt(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
-                    setMetadata(prev => ({...prev, ...metaData}));
-                    //const { reactions: newReactions, replies: newReplies, reposts: newReposts } = 
-                    //    await fetchReactionsAndRepliesAlt(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
-                    //setMetadata(prev => ({...prev, ...newMetadata}));
-                    //setReactions(prev => ({...prev, ...newReactions}));
-                    //setReplies(prev => ({...prev, ...newReplies}));
-                    //setReposts(prev => ({...prev, ...newReposts}));
                 }
             }
         };
 
         fetchProfileData();
-    }, [nostrExists, npub, pool]);
-
-    /*useEffect(() => {
-        if (!pool || streamedEvents.length === 0) return;
-        fetchMetadataReactionsAndReplies(pool, streamedEvents, repostEvents, replyEvents, setMetadata, setReactions, 
-            setReplies, setReposts);
-    }, [pool, streamedEvents]);*/
-
+    }, [nostrExists, npub, pool, isPoolReady]);
 
     const handleUnfollow = async () => {
         if (!pool) return;
@@ -406,18 +387,10 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                                             hashtags={post.tags.filter(tag => tag[0] === 't').map(tag => tag[1])}
                                             pool={pool}
                                             nostrExists={nostrExists}
-                                            //reactions={reactions[post.id] || []}
                                             keyValue={keyValue}
                                             deleted={post.deleted === true}
-                                            //replies={replies?.[post.id]?.length || 0}
                                             repostedEvent={post.repostedEvent || null}
-                                            metadata={metadata}
-                                            //allReactions={reactions}
-                                            //allReplies={replies}
                                             repliedEvent={post.repliedEvent || null}
-                                            //reposts={reposts?.[post.id]?.length || 0}
-                                            //allReposts={reposts}
-                                            setMetadata={setMetadata}
                                             connectionInfo={null}
                                             onUserClick={handleUserClick}
                                         />

@@ -46,11 +46,12 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   const [threadedReplies, setThreadedReplies] = useState<Record<string, Reply>>({});
   const [isGeneratingReply, setIsGeneratingReply] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isPoolReady, setIsPoolReady] = useState(false);
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!pool || !id) return;
+    if (!pool || !id || !isPoolReady) return;
   
     const allReplies: Record<string, Reply> = {};
     const allRepliesToSend: Record<string, ExtendedEvent> = {};
@@ -133,8 +134,8 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
             fetchMetadataReactionsAndReplies(
               pool,
               allEvents,
-              [], // repostEvents (we don't have this information here)
-              [], // replyEvents (we don't have this information here)
+              [],
+              [],
               setMetadata,
               setAllReactions,
               setAllReplies,
@@ -148,7 +149,14 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
     return () => {
       sub.close();
     };
-  }, [id, pool]);
+  }, [id, pool, isPoolReady]);
+
+  useEffect(() => {
+    if (pool) {
+      const isReady = RELAYS.every(relay => pool?.ensureRelay(relay));
+      setIsPoolReady(isReady);
+    }
+  }, [pool]);
 
 
   const handleGenerateReply = async () => {
@@ -286,8 +294,8 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
       await fetchMetadataReactionsAndReplies(
         pool,
         allEvents as unknown as ExtendedEvent[],
-        [], // repostEvents (we don't have this information here)
-        [], // replyEvents (we don't have this information here)
+        [],
+        [],
         setMetadata,
         setAllReactions,
         setAllReplies,
@@ -390,18 +398,10 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         hashtags={[]}
         pool={pool}
         nostrExists={nostrExists}
-        //reactions={allReactions[post.id] || []}
         keyValue={keyValue}
         deleted={false}
-        //replies={allReplies[post.id]?.length || 0}
         repostedEvent={null}
-        metadata={metadata}
-        //allReactions={allReactions}
-        //allReplies={allReplies} repliedEvent={null}
-        //reposts={allReposts[post.id]?.length || 0}
-        //allReposts={allReposts}
         repliedEvent={null}
-        setMetadata={setMetadata}
         connectionInfo={null}
         rootEvent={null}
         onUserClick={() => handleUserClick(post.pubkey)}

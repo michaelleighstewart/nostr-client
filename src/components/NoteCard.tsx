@@ -14,7 +14,7 @@ import Loading from "./Loading";
 import ConnectionInfoDialog from './ConnectionInfoDialog';
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/solid';
 import { getCachedCounts, updateCachedCounts } from "../utils/cachingUtils";
-import { fetchReactionsAndRepliesAlt } from '../utils/noteUtils';
+import { fetchReactionsAndRepliesAlt, fetchMetadataAlt } from '../utils/noteUtils';
 
 interface Props {
     id: string;
@@ -25,19 +25,11 @@ interface Props {
     hashtags: string[];
     pool: SimplePool | null;
     nostrExists: boolean | null;
-    //reactions: Reaction[];
     keyValue: string;
-    //replies: number;
     deleted: boolean | undefined;
     repostedEvent: ExtendedEvent | null;
     repliedEvent: ExtendedEvent | null;
-    metadata: Record<string, Metadata> | null;
-    //allReactions: Record<string, Reaction[]> | null;
-    //allReplies: Record<string, ExtendedEvent[]> | null;
-    //reposts: number;
-    //allReposts: Record<string, ExtendedEvent[]> | null;
     isPreview: boolean;
-    setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>;
     connectionInfo: {
       degree: number;
       connectedThrough?: {
@@ -68,19 +60,11 @@ interface Props {
     hashtags,
     pool,
     nostrExists,
-    //reactions,
     keyValue,
     deleted,
-    //replies,
     repostedEvent,
     repliedEvent,
-    metadata,
-    //allReactions,
-    //allReplies,
-    //reposts,
-    //allReposts,
     isPreview, 
-    setMetadata,
     connectionInfo,
     replyDepth,
     rootEvent,
@@ -90,7 +74,6 @@ interface Props {
     const [alreadyLiked, setAlreadyLiked] = useState(false);
     const [alreadyDisliked, setAlreadyDisliked] = useState(false);
     const [publicKey, setPublicKey] = useState<string | null>(null);
-    //const [localReactions, setLocalReactions] = useState<Reaction[]>(reactions || []);
     const [localReactions, setLocalReactions] = useState<Reaction[]>([]);
     const [localReplies, setLocalReplies] = useState<ExtendedEvent[]>([]);
     const [localReposts, setLocalReposts] = useState<ExtendedEvent[]>([]);
@@ -116,6 +99,7 @@ interface Props {
     const carouselRef = useRef<HTMLDivElement>(null);
     const [isAccordionOpen, setIsAccordionOpen] = useState(false);
     const [loadingCounts, setLoadingCounts] = useState(true);
+    const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
 
     const toggleAccordion = async () => {
       setIsAccordionOpen(prev => !prev);
@@ -129,11 +113,24 @@ interface Props {
           setLocalReposts(newReposts[id]);
           setLocalReplies(newReplies[id]);
           setLoadingCounts(false);
-          //setReplies(prev => ({...prev, ...newReplies}));
         }
-        //setReposts(prev => ({...prev, ...newReposts}));
       }
     };
+
+    useEffect(() => {
+      const fetchUserMetadata = async () => {
+        if (!pool || !user.pubkey) return;
+        if (event) {
+          const repliesToFetch = [];
+          if (event.repliedEvent) repliesToFetch.push(event.repliedEvent);
+          if (event.rootEvent) repliesToFetch.push(event.rootEvent);
+          const metaData = await fetchMetadataAlt(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
+          setMetadata(prev => ({...prev, ...metaData}));
+        }
+      };
+    
+      fetchUserMetadata();
+    }, [pool, user.pubkey, event, repostedEvent, repliedEvent]);
 
 
     useEffect(() => {
@@ -163,20 +160,15 @@ interface Props {
 
     useEffect(() => {
       if (!cachedCounts) return;
-    
-      //const newReactions = reactions?.filter(r => r.type === "+").length || 0; // Count likes
-      //const newDislikes = reactions?.filter(r => r.type === "-").length || 0; // Count dislikes
       const newReactions = localReactions?.filter(r => r.type === "+").length || 0;
       const newDislikes = localReactions?.filter(r => r.type === "-").length || 0;
-      //const newReposts = reposts || 0;
-      //const newReplies = replies || 0;
       const newReposts = localReposts.length || 0;
       const newReplies = localReplies.length || 0;
 
       if (newReactions > cachedCounts.reactions || newDislikes > cachedCounts.dislikes || newReposts > cachedCounts.reposts || newReplies > cachedCounts.replies) {
         const updatedCounts = {
           reactions: Math.max(newReactions, cachedCounts.reactions),
-          dislikes: Math.max(newDislikes, cachedCounts.dislikes), // Add this line
+          dislikes: Math.max(newDislikes, cachedCounts.dislikes),
           reposts: Math.max(newReposts, cachedCounts.reposts),
           replies: Math.max(newReplies, cachedCounts.replies),
           timestamp: Date.now()
@@ -184,7 +176,6 @@ interface Props {
         updateCachedCounts(id, updatedCounts);
         setCachedCounts(updatedCounts);
       }
-    //}, [id, reactions, reposts, replies, cachedCounts]);
   }, [id, localReactions, localReposts, localReplies, cachedCounts]);
 
     const openConnectionInfo = (e: React.MouseEvent) => {
@@ -212,9 +203,6 @@ interface Props {
     
       // Update cache if new counts are higher
       const updateCache = () => {
-        //const newReactions = reactions?.length || 0;
-        //const newReposts = reposts || 0;
-        //const newReplies = replies || 0;
         const newReactions = localReactions?.length || 0;
         const newReposts = localReposts?.length || 0;
         const newReplies = localReplies?.length || 0;
@@ -291,7 +279,7 @@ interface Props {
                     if (prevContent.some(item => 
                       item !== null && typeof item === 'object' && 'key' in item && item.key === `preview-${event.id}`
                     )) {
-                      return prevContent; // If it has, return the previous content without changes
+                      return prevContent;
                     }
                     // If it hasn't been processed, add it to the content
                     return [
@@ -402,7 +390,7 @@ interface Props {
         if (lastIndex < part.length) {
           result.push(part.slice(lastIndex));
         }
-        return result.map((item, i) => {
+        return result.map((item: string | JSX.Element, i) => {
           if (typeof item === 'string') {
             const lines = item.split('\n');
             return (
@@ -411,7 +399,7 @@ interface Props {
                   <React.Fragment key={lineIndex}>
                     {lineIndex > 0 && <br />}
                     {line.split(hashtagRegex).map((segment, segmentIndex) => {
-                      if (segmentIndex % 2 === 1) { // This is a hashtag
+                      if (segmentIndex % 2 === 1) {
                         return (
                           <Link 
                             key={segmentIndex} 
@@ -486,10 +474,6 @@ interface Props {
         setCanDelete(false);
       }
     }, [keyValue]);
-
-    //useEffect(() => {
-    //  setLocalReactions(reactions || []);
-    //}, [reactions]);
   
     useEffect(() => {
       checkReactions();
@@ -521,12 +505,6 @@ interface Props {
         }
       });
     }
-
-    /*const handleContentClick = () => {
-      if (!isPreview) {
-        navigate(`/note/${id}`);
-      }
-    };*/
 
     const handleImageClick = (url: string) => {
       setSelectedImage(url);
@@ -662,19 +640,11 @@ interface Props {
               pool={pool}
               nostrExists={nostrExists}
               keyValue={keyValue}
-              metadata={metadata}
-              setMetadata={setMetadata}
               connectionInfo={null}
               onUserClick={onUserClick}
-              //reactions={[]}
-              //replies={0}
               deleted={false}
               repostedEvent={null}
               repliedEvent={null}
-              //allReactions={allReactions}
-              //allReplies={allReplies}
-              //reposts={0}
-              //allReposts={allReposts}
               rootEvent={null}
               referencedNoteInput={null}
             />
@@ -707,18 +677,10 @@ interface Props {
               hashtags={[]}
               pool={pool}
               nostrExists={nostrExists}
-              //reactions={allReactions?.[repostedEvent.id] ?? []}
               keyValue={keyValue}
-              //replies={allReplies?.[repostedEvent.id]?.length ?? 0}
               deleted={repostedEvent.deleted}
               repostedEvent={null}
               repliedEvent={repliedEvent}
-              metadata={metadata}
-              //allReactions={allReactions}
-              //allReplies={allReplies}
-              //reposts={allReposts?.[repostedEvent.id]?.length ?? 0}
-              //allReposts={allReposts}
-              setMetadata={setMetadata}
               connectionInfo={null}
               rootEvent={null}
               onUserClick={onUserClick}
@@ -764,13 +726,10 @@ interface Props {
         </ul>
       {!isPreview && (
         <div className="flex justify-between items-center">
-          <div>
-            {/* Other content can go here if needed */}
-          </div>
           <button 
             onClick={toggleAccordion} 
             className="flex items-center text-blue-500 focus:outline-none"
-            style={{ padding: '10px', background: 'transparent', border: 'none' }} // Optional inline styles for better visibility
+            style={{ padding: '10px', background: 'transparent', border: 'none' }}
           >
             <svg
               className={`w-6 h-6 transform transition-transform duration-200 ${isAccordionOpen ? 'rotate-180' : ''}`}
@@ -928,19 +887,11 @@ interface Props {
               hashtags={[]}
               pool={pool}
               nostrExists={nostrExists}
-              //reactions={allReactions?.[repliedEvent.id] ?? []}
               keyValue={keyValue}
-              //replies={allReplies?.[repliedEvent.id]?.length ?? 0}
               deleted={repliedEvent.deleted}
               repostedEvent={null}
               repliedEvent={null}
               rootEvent={null}
-              metadata={metadata}
-              //allReactions={allReactions}
-              //allReplies={allReplies}
-              //reposts={allReposts?.[repliedEvent.id]?.length ?? 0}
-              //allReposts={allReposts}
-              setMetadata={setMetadata}
               connectionInfo={null}
               onUserClick={onUserClick}
             />
@@ -967,19 +918,11 @@ interface Props {
               hashtags={[]}
               pool={pool}
               nostrExists={nostrExists}
-              //reactions={allReactions?.[rootEvent.id] ?? []}
               keyValue={keyValue}
-              //replies={allReplies?.[rootEvent.id]?.length ?? 0}
               deleted={rootEvent.deleted}
               repostedEvent={null}
               repliedEvent={null}
               rootEvent={null}
-              metadata={metadata}
-              //allReactions={allReactions}
-              //llReplies={allReplies}
-              //reposts={allReposts?.[rootEvent.id]?.length ?? 0}
-              //allReposts={allReposts}
-              setMetadata={setMetadata}
               connectionInfo={null}
               onUserClick={onUserClick}
             />

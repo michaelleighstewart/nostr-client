@@ -7,10 +7,9 @@ import { throttleRequest } from './throttle';
 export const fetchMetadataAlt = async (pool: SimplePool, events: ExtendedEvent[], 
     repostEvents: ExtendedEvent[],
     replyEvents: ExtendedEvent[]) => {
-        const eventsToProcess = events;//.slice(0, 10);
-    
+        //console.log("FETCH METADATA ALT");
+        const eventsToProcess = events;
         const pubkeysToFetch = new Set(eventsToProcess.map(event => event.pubkey));
-        //const postsToFetch = eventsToProcess.map(event => event.id);
         const repostsToFetch: string[] = [];
         const repostPubkeysToFetch: string[] = [];
         for (const event of repostEvents) {
@@ -48,30 +47,38 @@ export const fetchMetadataAlt = async (pool: SimplePool, events: ExtendedEvent[]
         let allNewMetadata: Record<string, Metadata> = {...cachedMetadata};   
         
         async function fetchMetaData(pubkeys: string[]) {
-            const data = await pool?.querySync(RELAYS, {
-                kinds: [0],
-                authors: pubkeys
-            });
-            if (!data) return;
-            
-            for (const event of data) {
-                if (event.kind === 0) {
-                    const metadata = JSON.parse(event.content) as Metadata;
-                    allNewMetadata[event.pubkey] = metadata;
-                    setMetadataToCache(event.pubkey, metadata);
+            if (pubkeys.length > 0) {
+                console.log("getting metada for key (2)", pubkeys)
+                const data = await pool?.querySync(RELAYS, {
+                    kinds: [0],
+                    authors: pubkeys
+                });
+                if (!data) return;
+                
+                for (const event of data) {
+                    if (event.kind === 0) {
+                        const metadata = JSON.parse(event.content) as Metadata;
+                        allNewMetadata[event.pubkey] = metadata;
+                        setMetadataToCache(event.pubkey, metadata);
+                    }
                 }
             }
         }
 
         //original post
-        console.log("Fetching metadata for pubkeys", Array.from(pubkeysToFetchFromNetwork))
-        await fetchMetaData(Array.from(pubkeysToFetchFromNetwork))
+        if (Array.from(pubkeysToFetch).length > 0) {
+            await fetchMetaData(Array.from(pubkeysToFetchFromNetwork));
+        }
 
         //reposts
-        await fetchMetaData(repostPubkeysToFetch);
+        if (repostPubkeysToFetch.length > 0) {
+            await fetchMetaData(repostPubkeysToFetch);
+        }
 
         //replies
-        await fetchMetaData(replyPubkeysToFetch)
+        if (replyPubkeysToFetch.length > 0) {
+            await fetchMetaData(replyPubkeysToFetch);
+        }
 
         return allNewMetadata;
 }
@@ -79,8 +86,9 @@ export const fetchMetadataAlt = async (pool: SimplePool, events: ExtendedEvent[]
 export const fetchReactionsAndRepliesAlt = async (pool: SimplePool, events: ExtendedEvent[], 
     repostEvents: ExtendedEvent[],
     replyEvents: ExtendedEvent[]) => {
+        console.log("FETCH REACTIONS ALT");
 
-        const eventsToProcess = events;//.slice(0, 10);
+        const eventsToProcess = events;
     
         const pubkeysToFetch = new Set(eventsToProcess.map(event => event.pubkey));
         const postsToFetch = eventsToProcess.map(event => event.id);
@@ -128,23 +136,6 @@ export const fetchReactionsAndRepliesAlt = async (pool: SimplePool, events: Exte
             if (!(id in allNewReplies)) allNewReplies[id] = [];
             if (!(id in allNewReposts)) allNewReposts[id] = [];
         });
-    
-        
-        /*async function fetchMetaData(pubkeys: string[]) {
-            const data = await pool?.querySync(RELAYS, {
-                kinds: [0],
-                authors: pubkeys
-            });
-            if (!data) return;
-            
-            for (const event of data) {
-                if (event.kind === 0) {
-                    const metadata = JSON.parse(event.content) as Metadata;
-                    allNewMetadata[event.pubkey] = metadata;
-                    setMetadataToCache(event.pubkey, metadata);
-                }
-            }
-        }*/
 
         async function fetchData(ids: string[]) {
             const data = await pool?.querySync(RELAYS, {
@@ -219,18 +210,14 @@ export const fetchReactionsAndRepliesAlt = async (pool: SimplePool, events: Exte
 
         //original post
         await fetchData(postsToFetch);
-        //await fetchMetaData(Array.from(pubkeysToFetchFromNetwork))
 
         //reposts
         await fetchData(repostsToFetch);
-        //await fetchMetaData(repostPubkeysToFetch);
 
         //replies
         await fetchData(replyIdsToFetch);
-        //await fetchMetaData(replyPubkeysToFetch)
 
         return {
-            //metadata: allNewMetadata,
             reactions: allNewReactions,
             replies: allNewReplies,
             reposts: allNewReposts
@@ -247,7 +234,7 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
     setReplies: React.Dispatch<React.SetStateAction<Record<string, ExtendedEvent[]>>>,
     setReposts: React.Dispatch<React.SetStateAction<Record<string, ExtendedEvent[]>>>) => {
 
-    const eventsToProcess = events;//.slice(0, 10);
+    const eventsToProcess = events;
     
     const pubkeysToFetch = new Set(eventsToProcess.map(event => event.pubkey));
     const postsToFetch = eventsToProcess.map(event => event.id);
@@ -450,6 +437,7 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
     selectedAlgorithm: any,
     isRecentSubscription: boolean = false
 ) => {
+    console.log("FETCH DATA");
     try {
         if (!append) {
             setLoading(true);
@@ -478,35 +466,30 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
               
                 const fetchAndCreateExtendedEvent = async (id: string | null, _type: 'root' | 'reply') => {
                   if (!id || !pool) return null;
-            
-                  return new Promise<ExtendedEvent | null>((resolve) => {
+                    console.log("Requesting event id", id)
                     let eventToResolve: ExtendedEvent | null = null;
-                    const sub = pool.subscribeManyEose(
-                      RELAYS,
-                      [{ kinds: [1], ids: [id] }],
-                      {
-                        onevent(originalEvent) {
-                          const extendedOriginalEvent: ExtendedEvent = {
-                            ...originalEvent,
-                            id: originalEvent.id,
-                            pubkey: originalEvent.pubkey,
-                            created_at: originalEvent.created_at,
-                            content: originalEvent.content,
-                            tags: originalEvent.tags,
-                            deleted: false,
-                            repostedEvent: null,
-                            repliedEvent: null,
-                            rootEvent: null
-                          };
-                          eventToResolve = extendedOriginalEvent;
-                        },
-                        onclose() {
-                          resolve(eventToResolve);
-                          sub.close();
+                    const resolvedEvent = await pool.querySync(
+                        RELAYS,
+                        {
+                            kinds: [1],
+                            ids: [id]
                         }
-                      }
                     );
-                  });
+                    const originalEvent = resolvedEvent[0];
+                    const extendedOriginalEvent: ExtendedEvent = {
+                        ...originalEvent,
+                        id: originalEvent.id,
+                        pubkey: originalEvent.pubkey,
+                        created_at: originalEvent.created_at,
+                        content: originalEvent.content,
+                        tags: originalEvent.tags,
+                        deleted: false,
+                        repostedEvent: null,
+                        repliedEvent: null,
+                        rootEvent: null
+                      };
+                      eventToResolve = extendedOriginalEvent;
+                      return eventToResolve;
                 };
             
                 const rootEvent = await fetchAndCreateExtendedEvent(rootTag ? rootTag[1] : null, 'root');

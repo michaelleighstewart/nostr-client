@@ -107,7 +107,6 @@ export const fetchUserMetadata = async (pool: SimplePool | null, userPublicKey: 
       }));
       return;
     }
-
   const events = await pool.querySync(RELAYS, {
     kinds: [0],
     authors: [userPublicKey],

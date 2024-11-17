@@ -63,18 +63,10 @@ interface ThreadedReplyProps {
             hashtags={reply.hashtags}
             pool={pool}
             nostrExists={nostrExists}
-            //reactions={allReactions[reply.id] || []}
             keyValue={keyValue}
             deleted={false}
-            //replies={reply.replies.length}
             repostedEvent={null}
-            metadata={metadata}
-            //allReactions={allReactions}
-            //allReplies={allReplies}
             repliedEvent={null} 
-            //reposts={allReposts[reply.id]?.length || 0}
-            //allReposts={allReposts}
-            setMetadata={setMetadata}
             connectionInfo={null}
             rootEvent={null}
             onUserClick={() => {handleUserClick(reply.pubkey)}}

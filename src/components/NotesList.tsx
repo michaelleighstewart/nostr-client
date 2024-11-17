@@ -22,7 +22,7 @@ interface Props {
       } | null;
 }
 
-const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists, keyValue, initialLoadComplete, calculateConnectionInfo }: Props) => {
+const NotesList = React.memo(({ notes, metadata, pool, nostrExists, keyValue, initialLoadComplete, calculateConnectionInfo }: Props) => {
     const [visibleNotes, setVisibleNotes] = useState<ExtendedEvent[]>([]);
     const isLoggedIn = nostrExists || !!keyValue;
 
@@ -76,18 +76,10 @@ const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists,
                         hashtags={note.tags.filter((t) => t[0] === "t").map((t) => t[1])}
                         pool={pool}
                         nostrExists={nostrExists}
-                        //reactions={reactions[note.id]}
-                        //allReactions={reactions}
                         keyValue={keyValue}
-                        //replies={replies?.[note.id]?.length ?? 0}
-                        //allReplies={replies}
                         deleted={note.deleted}
                         repostedEvent={note.repostedEvent}
                         repliedEvent={note.repliedEvent}
-                        metadata={metadata}
-                        //reposts={reposts?.[note.id]?.length ?? 0}
-                        //allReposts={reposts}
-                        setMetadata={setMetadata}
                         connectionInfo={calculateConnectionInfo(note.pubkey)}
                         rootEvent={note.rootEvent}
                         onUserClick={() => {handleUserClick(note.pubkey)}}
