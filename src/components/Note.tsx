@@ -390,16 +390,17 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         hashtags={[]}
         pool={pool}
         nostrExists={nostrExists}
-        reactions={allReactions[post.id] || []}
+        //reactions={allReactions[post.id] || []}
         keyValue={keyValue}
         deleted={false}
-        replies={allReplies[post.id]?.length || 0}
+        //replies={allReplies[post.id]?.length || 0}
         repostedEvent={null}
         metadata={metadata}
-        allReactions={allReactions}
-        allReplies={allReplies} repliedEvent={null}
-        reposts={allReposts[post.id]?.length || 0}
-        allReposts={allReposts}
+        //allReactions={allReactions}
+        //allReplies={allReplies} repliedEvent={null}
+        //reposts={allReposts[post.id]?.length || 0}
+        //allReposts={allReposts}
+        repliedEvent={null}
         setMetadata={setMetadata}
         connectionInfo={null}
         rootEvent={null}

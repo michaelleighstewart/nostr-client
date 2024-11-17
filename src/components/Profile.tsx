@@ -2,13 +2,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { SimplePool } from "nostr-tools";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { bech32Decoder } from "../utils/helperFunctions";
-import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";
+import { ExtendedEvent, Metadata } from "../utils/interfaces";
 import { getPublicKey, nip19 } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import NoteCard from "./NoteCard";
 import { UsersIcon, UserPlusIcon, ChatBubbleLeftRightIcon, UserMinusIcon } from '@heroicons/react/24/outline';
-import { fetchData, fetchReactionsAndRepliesAlt, fetchMetadataAlt } from "../utils/noteUtils";
+import { fetchData, fetchMetadataAlt } from "../utils/noteUtils";
 import NewMessageDialog from "./NewMessageDialog";
 import { Helmet } from 'react-helmet';
 import { getMetadataFromCache, setMetadataToCache } from "../utils/cachingUtils";
@@ -34,9 +34,9 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     const [pubkey, setPubkey] = useState<string>('');
     const [isFollowing, setIsFollowing] = useState(false);
     const [followingList, setFollowingList] = useState<string[]>([]);
-    const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
-    const [replies, setReplies] = useState<Record<string, ExtendedEvent[]>>({});
-    const [reposts, setReposts] = useState<Record<string, ExtendedEvent[]>>({});
+    //const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
+    //const [replies, setReplies] = useState<Record<string, ExtendedEvent[]>>({});
+    //const [reposts, setReposts] = useState<Record<string, ExtendedEvent[]>>({});
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [loadingProfile, setLoadingProfile] = useState(true);
     const [loadingPosts, setLoadingPosts] = useState(true);
@@ -82,12 +82,12 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
             if (event.rootEvent) repliesToFetch.push(event.rootEvent);
             const metaData = await fetchMetadataAlt(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
             setMetadata(prev => ({...prev, ...metaData}));
-            const { reactions: newReactions, replies: newReplies, reposts: newReposts } = 
-                await fetchReactionsAndRepliesAlt(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
+            //const { reactions: newReactions, replies: newReplies, reposts: newReposts } = 
+            //    await fetchReactionsAndRepliesAlt(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
             //setMetadata(prev => ({...prev, ...newMetadata}));
-            setReactions(prev => ({...prev, ...newReactions}));
-            setReplies(prev => ({...prev, ...newReplies}));
-            setReposts(prev => ({...prev, ...newReposts}));
+            //setReactions(prev => ({...prev, ...newReactions}));
+            //setReplies(prev => ({...prev, ...newReplies}));
+            //setReposts(prev => ({...prev, ...newReposts}));
         }
     }, []);
 
@@ -213,12 +213,12 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                     //fetchMetadataReactionsAndReplies(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch, setMetadata, setReactions, setReplies, setReposts);
                     const metaData = await fetchMetadataAlt(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
                     setMetadata(prev => ({...prev, ...metaData}));
-                    const { reactions: newReactions, replies: newReplies, reposts: newReposts } = 
-                        await fetchReactionsAndRepliesAlt(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
+                    //const { reactions: newReactions, replies: newReplies, reposts: newReposts } = 
+                    //    await fetchReactionsAndRepliesAlt(pool, [event], event.repostedEvent ? [event.repostedEvent] : [], repliesToFetch);
                     //setMetadata(prev => ({...prev, ...newMetadata}));
-                    setReactions(prev => ({...prev, ...newReactions}));
-                    setReplies(prev => ({...prev, ...newReplies}));
-                    setReposts(prev => ({...prev, ...newReposts}));
+                    //setReactions(prev => ({...prev, ...newReactions}));
+                    //setReplies(prev => ({...prev, ...newReplies}));
+                    //setReposts(prev => ({...prev, ...newReposts}));
                 }
             }
         };
@@ -393,6 +393,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                                             referencedNoteInput={null}
                                             isPreview={false}
                                             id={post.id}
+                                            event={post}
                                             rootEvent={post.rootEvent}
                                             content={post.content}
                                             user={{
@@ -405,17 +406,17 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                                             hashtags={post.tags.filter(tag => tag[0] === 't').map(tag => tag[1])}
                                             pool={pool}
                                             nostrExists={nostrExists}
-                                            reactions={reactions[post.id] || []}
+                                            //reactions={reactions[post.id] || []}
                                             keyValue={keyValue}
                                             deleted={post.deleted === true}
-                                            replies={replies?.[post.id]?.length || 0}
+                                            //replies={replies?.[post.id]?.length || 0}
                                             repostedEvent={post.repostedEvent || null}
                                             metadata={metadata}
-                                            allReactions={reactions}
-                                            allReplies={replies}
+                                            //allReactions={reactions}
+                                            //allReplies={replies}
                                             repliedEvent={post.repliedEvent || null}
-                                            reposts={reposts?.[post.id]?.length || 0}
-                                            allReposts={reposts}
+                                            //reposts={reposts?.[post.id]?.length || 0}
+                                            //allReposts={reposts}
                                             setMetadata={setMetadata}
                                             connectionInfo={null}
                                             onUserClick={handleUserClick}

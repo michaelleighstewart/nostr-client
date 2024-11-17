@@ -64,6 +64,7 @@ export const fetchMetadataAlt = async (pool: SimplePool, events: ExtendedEvent[]
         }
 
         //original post
+        console.log("Fetching metadata for pubkeys", Array.from(pubkeysToFetchFromNetwork))
         await fetchMetaData(Array.from(pubkeysToFetchFromNetwork))
 
         //reposts

@@ -24,7 +24,7 @@ export async function constructFilterFromBYOAlgo(byoAlgo: BYOAlgo | null, follow
     const filter: any = {
         kinds: [],
         authors: followers,
-        limit: 5,
+        limit: 10,
         since,
         until
     };

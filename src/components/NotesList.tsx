@@ -1,7 +1,7 @@
 import { nip19 } from "nostr-tools";
 import NoteCard from "./NoteCard";
 import { SimplePool } from "nostr-tools";
-import { ExtendedEvent, Metadata, Reaction } from "../utils/interfaces";
+import { ExtendedEvent, Metadata } from "../utils/interfaces";
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -11,10 +11,7 @@ interface Props {
     setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>;
     pool: SimplePool | null;
     nostrExists: boolean | null;
-    reactions: Record<string, Reaction[]>;
     keyValue: string;
-    replies: Record<string, ExtendedEvent[]>;
-    reposts: Record<string, ExtendedEvent[]>;
     initialLoadComplete: boolean;
     calculateConnectionInfo: (notePubkey: string) => {
         degree: number;
@@ -25,7 +22,7 @@ interface Props {
       } | null;
 }
 
-const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists, reactions, keyValue, replies, reposts, initialLoadComplete, calculateConnectionInfo }: Props) => {
+const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists, keyValue, initialLoadComplete, calculateConnectionInfo }: Props) => {
     const [visibleNotes, setVisibleNotes] = useState<ExtendedEvent[]>([]);
     const isLoggedIn = nostrExists || !!keyValue;
 
@@ -64,6 +61,7 @@ const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists,
             {visibleNotes.map((note, _index) => (
                 <div key={note.id} className="mb-4 py-16">
                     <NoteCard
+                        event={note}
                         referencedNoteInput={null}
                         isPreview={false}
                         id={note.id}
@@ -78,17 +76,17 @@ const NotesList = React.memo(({ notes, metadata, setMetadata, pool, nostrExists,
                         hashtags={note.tags.filter((t) => t[0] === "t").map((t) => t[1])}
                         pool={pool}
                         nostrExists={nostrExists}
-                        reactions={reactions[note.id]}
-                        allReactions={reactions}
+                        //reactions={reactions[note.id]}
+                        //allReactions={reactions}
                         keyValue={keyValue}
-                        replies={replies?.[note.id]?.length ?? 0}
-                        allReplies={replies}
+                        //replies={replies?.[note.id]?.length ?? 0}
+                        //allReplies={replies}
                         deleted={note.deleted}
                         repostedEvent={note.repostedEvent}
                         repliedEvent={note.repliedEvent}
                         metadata={metadata}
-                        reposts={reposts?.[note.id]?.length ?? 0}
-                        allReposts={reposts}
+                        //reposts={reposts?.[note.id]?.length ?? 0}
+                        //allReposts={reposts}
                         setMetadata={setMetadata}
                         connectionInfo={calculateConnectionInfo(note.pubkey)}
                         rootEvent={note.rootEvent}

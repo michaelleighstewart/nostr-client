@@ -7,33 +7,35 @@ import { Link, useNavigate } from 'react-router-dom';
 import { nip19 } from 'nostr-tools';
 import React from "react";
 import { RELAYS } from "../utils/constants";
-import { Metadata, Reaction, User, ExtendedEvent } from "../utils/interfaces";
+import { Metadata, Reaction, User, ExtendedEvent, Reply } from "../utils/interfaces";
 import VideoEmbed from "./VideoEmbed";
 import ProfilesModal from "./ProfilesModal";
 import Loading from "./Loading";
 import ConnectionInfoDialog from './ConnectionInfoDialog';
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/solid';
 import { getCachedCounts, updateCachedCounts } from "../utils/cachingUtils";
+import { fetchReactionsAndRepliesAlt } from '../utils/noteUtils';
 
 interface Props {
     id: string;
+    event?: ExtendedEvent | null;
     content: string;
     user: User;
     created_at: number;
     hashtags: string[];
     pool: SimplePool | null;
     nostrExists: boolean | null;
-    reactions: Reaction[];
+    //reactions: Reaction[];
     keyValue: string;
-    replies: number;
+    //replies: number;
     deleted: boolean | undefined;
     repostedEvent: ExtendedEvent | null;
     repliedEvent: ExtendedEvent | null;
     metadata: Record<string, Metadata> | null;
-    allReactions: Record<string, Reaction[]> | null;
-    allReplies: Record<string, ExtendedEvent[]> | null;
-    reposts: number;
-    allReposts: Record<string, ExtendedEvent[]> | null;
+    //allReactions: Record<string, Reaction[]> | null;
+    //allReplies: Record<string, ExtendedEvent[]> | null;
+    //reposts: number;
+    //allReposts: Record<string, ExtendedEvent[]> | null;
     isPreview: boolean;
     setMetadata: React.Dispatch<React.SetStateAction<Record<string, Metadata>>>;
     connectionInfo: {
@@ -47,6 +49,7 @@ interface Props {
     rootEvent: ExtendedEvent | null;
     onUserClick: (pubkey: string) => void;
     referencedNoteInput: ExtendedEvent | null;
+    reply?: Reply | null;
   }
 
   interface CachedCounts {
@@ -58,23 +61,24 @@ interface Props {
   
   const NoteCard = React.memo(function NoteCard({
     id,
+    event,
     content,
     user,
     created_at,
     hashtags,
     pool,
     nostrExists,
-    reactions,
+    //reactions,
     keyValue,
     deleted,
-    replies,
+    //replies,
     repostedEvent,
     repliedEvent,
     metadata,
-    allReactions,
-    allReplies,
-    reposts,
-    allReposts,
+    //allReactions,
+    //allReplies,
+    //reposts,
+    //allReposts,
     isPreview, 
     setMetadata,
     connectionInfo,
@@ -86,7 +90,10 @@ interface Props {
     const [alreadyLiked, setAlreadyLiked] = useState(false);
     const [alreadyDisliked, setAlreadyDisliked] = useState(false);
     const [publicKey, setPublicKey] = useState<string | null>(null);
-    const [localReactions, setLocalReactions] = useState<Reaction[]>(reactions || []);
+    //const [localReactions, setLocalReactions] = useState<Reaction[]>(reactions || []);
+    const [localReactions, setLocalReactions] = useState<Reaction[]>([]);
+    const [localReplies, setLocalReplies] = useState<ExtendedEvent[]>([]);
+    const [localReposts, setLocalReposts] = useState<ExtendedEvent[]>([]);
     const [canDelete, setCanDelete] = useState(false);
     const [localDeleted, setLocalDeleted] = useState(deleted);
     const [userNpub, setUserNpub] = useState<string>('');
@@ -107,6 +114,27 @@ interface Props {
     const [referencedNote, setReferencedNote] = useState<ExtendedEvent | null>(referencedNoteInput);
     const [currentIndex, setCurrentIndex] = useState(0);
     const carouselRef = useRef<HTMLDivElement>(null);
+    const [isAccordionOpen, setIsAccordionOpen] = useState(false);
+    const [loadingCounts, setLoadingCounts] = useState(true);
+
+    const toggleAccordion = async () => {
+      setIsAccordionOpen(prev => !prev);
+      if (!isAccordionOpen) {
+        // Fetch counts only when opening the accordion
+        if (pool && event) {
+          setLoadingCounts(true);
+          const { reactions: newReactions, replies: newReplies, reposts: newReposts } = 
+            await fetchReactionsAndRepliesAlt(pool, [event], repostedEvent ? [repostedEvent] : [], localReplies);
+          setLocalReactions(newReactions[id]);
+          setLocalReposts(newReposts[id]);
+          setLocalReplies(newReplies[id]);
+          setLoadingCounts(false);
+          //setReplies(prev => ({...prev, ...newReplies}));
+        }
+        //setReposts(prev => ({...prev, ...newReposts}));
+      }
+    };
+
 
     useEffect(() => {
       const imageRegex = /(https?:\/\/.*\.(?:png|jpg|jpeg|gif))/gi;
@@ -136,11 +164,15 @@ interface Props {
     useEffect(() => {
       if (!cachedCounts) return;
     
-      const newReactions = reactions?.filter(r => r.type === "+").length || 0; // Count likes
-      const newDislikes = reactions?.filter(r => r.type === "-").length || 0; // Count dislikes
-      const newReposts = reposts || 0;
-      const newReplies = replies || 0;
-    
+      //const newReactions = reactions?.filter(r => r.type === "+").length || 0; // Count likes
+      //const newDislikes = reactions?.filter(r => r.type === "-").length || 0; // Count dislikes
+      const newReactions = localReactions?.filter(r => r.type === "+").length || 0;
+      const newDislikes = localReactions?.filter(r => r.type === "-").length || 0;
+      //const newReposts = reposts || 0;
+      //const newReplies = replies || 0;
+      const newReposts = localReposts.length || 0;
+      const newReplies = localReplies.length || 0;
+
       if (newReactions > cachedCounts.reactions || newDislikes > cachedCounts.dislikes || newReposts > cachedCounts.reposts || newReplies > cachedCounts.replies) {
         const updatedCounts = {
           reactions: Math.max(newReactions, cachedCounts.reactions),
@@ -152,7 +184,8 @@ interface Props {
         updateCachedCounts(id, updatedCounts);
         setCachedCounts(updatedCounts);
       }
-    }, [id, reactions, reposts, replies, cachedCounts]);
+    //}, [id, reactions, reposts, replies, cachedCounts]);
+  }, [id, localReactions, localReposts, localReplies, cachedCounts]);
 
     const openConnectionInfo = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -179,10 +212,13 @@ interface Props {
     
       // Update cache if new counts are higher
       const updateCache = () => {
-        const newReactions = reactions?.length || 0;
-        const newReposts = reposts || 0;
-        const newReplies = replies || 0;
-    
+        //const newReactions = reactions?.length || 0;
+        //const newReposts = reposts || 0;
+        //const newReplies = replies || 0;
+        const newReactions = localReactions?.length || 0;
+        const newReposts = localReposts?.length || 0;
+        const newReplies = localReplies?.length || 0;
+
         if (newReactions > (cachedReactions || 0) || newReposts > (cachedReposts || 0) || newReplies > (cachedReplies || 0)) {
           updateCachedCounts(id, {
             reactions: Math.max(newReactions, cachedReactions || 0),
@@ -196,7 +232,8 @@ interface Props {
       };
     
       updateCache();
-    }, [id, reactions, reposts, replies]);
+    //}, [id, reactions, reposts, replies]);
+  }, [id, localReactions, localReposts, localReplies]);
 
     useEffect(() => {
       // Check if content contains image URLs
@@ -450,9 +487,9 @@ interface Props {
       }
     }, [keyValue]);
 
-    useEffect(() => {
-      setLocalReactions(reactions || []);
-    }, [reactions]);
+    //useEffect(() => {
+    //  setLocalReactions(reactions || []);
+    //}, [reactions]);
   
     useEffect(() => {
       checkReactions();
@@ -611,6 +648,7 @@ interface Props {
             </div>
             <NoteCard
               id={referencedNote.id}
+              event={referencedNote}
               content={referencedNote.content}
               user={{
                 name: metadata?.[referencedNote.pubkey]?.name ?? `${nip19.npubEncode(referencedNote.pubkey).slice(0, 12)}...`,
@@ -628,15 +666,15 @@ interface Props {
               setMetadata={setMetadata}
               connectionInfo={null}
               onUserClick={onUserClick}
-              reactions={[]}
-              replies={0}
+              //reactions={[]}
+              //replies={0}
               deleted={false}
               repostedEvent={null}
               repliedEvent={null}
-              allReactions={allReactions}
-              allReplies={allReplies}
-              reposts={0}
-              allReposts={allReposts}
+              //allReactions={allReactions}
+              //allReplies={allReplies}
+              //reposts={0}
+              //allReposts={allReposts}
               rootEvent={null}
               referencedNoteInput={null}
             />
@@ -652,6 +690,7 @@ interface Props {
             <p className="text-gray-400 text-sm mb-2 pl-4">Reposted</p>
             <NoteCard
               referencedNoteInput={referencedNote}
+              event={repostedEvent}
               isPreview={false}
               id={repostedEvent.id}
               content={repostedEvent.content}
@@ -668,17 +707,17 @@ interface Props {
               hashtags={[]}
               pool={pool}
               nostrExists={nostrExists}
-              reactions={allReactions?.[repostedEvent.id] ?? []}
+              //reactions={allReactions?.[repostedEvent.id] ?? []}
               keyValue={keyValue}
-              replies={allReplies?.[repostedEvent.id]?.length ?? 0}
+              //replies={allReplies?.[repostedEvent.id]?.length ?? 0}
               deleted={repostedEvent.deleted}
               repostedEvent={null}
               repliedEvent={repliedEvent}
               metadata={metadata}
-              allReactions={allReactions}
-              allReplies={allReplies}
-              reposts={allReposts?.[repostedEvent.id]?.length ?? 0}
-              allReposts={allReposts}
+              //allReactions={allReactions}
+              //allReplies={allReplies}
+              //reposts={allReposts?.[repostedEvent.id]?.length ?? 0}
+              //allReposts={allReposts}
               setMetadata={setMetadata}
               connectionInfo={null}
               rootEvent={null}
@@ -723,6 +762,29 @@ interface Props {
               </Link>
             ))}
         </ul>
+      {!isPreview && (
+        <div className="flex justify-between items-center">
+          <div>
+            {/* Other content can go here if needed */}
+          </div>
+          <button 
+            onClick={toggleAccordion} 
+            className="flex items-center text-blue-500 focus:outline-none"
+            style={{ padding: '10px', background: 'transparent', border: 'none' }} // Optional inline styles for better visibility
+          >
+            <svg
+              className={`w-6 h-6 transform transition-transform duration-200 ${isAccordionOpen ? 'rotate-180' : ''}`}
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>)}
+
+      {isAccordionOpen && (
       <div className="flex flex-wrap items-center justify-start">
         {!repostedEvent && !isPreview && (
           <>
@@ -740,8 +802,7 @@ interface Props {
                 onClick={!alreadyLiked ? () => handleReaction("+") : undefined}
               />
             </div>
-            {allReactions && id in allReactions ? (
-            <>
+            {loadingCounts ? <Loading vCentered={true} tiny={true}></Loading> : (
             <div className="p-4">
               <span 
                 className="text-body5 text-gray-400 cursor-pointer hover:underline"
@@ -749,9 +810,8 @@ interface Props {
               >
                 {localReactions.filter((r) => r.type !== "-").length}
               </span>
-            </div>
-            </>
-            ) : <div className="p-4"><Loading vCentered={true} tiny={true} /></div>}
+            </div>)}
+            
             <ProfilesModal
               npubs={localReactions.length ? localReactions.filter(r => r.type !== "-").map(r => nip19.npubEncode(r.liker_pubkey)) : []}
               pool={pool}
@@ -766,18 +826,15 @@ interface Props {
                 onClick={!alreadyDisliked ? () => handleReaction("-") : undefined}
               />
             </div>
-            {allReactions && id in allReactions ? (
-            <>
+            {loadingCounts ? <Loading vCentered={true} tiny={true}></Loading> : (
               <div className="p-4">
                 <span 
                   className="text-body5 text-gray-400 cursor-pointer hover:underline"
                   onClick={() => handleShowDislikes()}
                 >
-                  {cachedCounts ? cachedCounts.dislikes : (allReactions && id in allReactions ? localReactions.filter((r) => r.type === "-").length : <Loading vCentered={true} tiny={true} />)}
+                  {cachedCounts ? cachedCounts.dislikes : (localReactions ? localReactions.filter((r) => r.type === "-").length : <Loading vCentered={true} tiny={true} />)}
                 </span>
-              </div>
-            </>
-            ) : <div className="p-4"><Loading vCentered={true} tiny={true} /></div>}
+              </div>)}
             <ProfilesModal
               npubs={localReactions.length ? localReactions.filter(r => r.type === '-').map(r => nip19.npubEncode(r.liker_pubkey)) : []}
               pool={pool}
@@ -792,20 +849,17 @@ interface Props {
                 onClick={handleRepost}
               />
             </div>
-            {allReposts && id in allReposts ? (
-            <>
+            {loadingCounts ? <Loading vCentered={true} tiny={true}></Loading> : (
               <div className="p-4">
                 <span 
                   className="text-body5 text-gray-400 cursor-pointer hover:underline"
                   onClick={() => handleShowReposts()}
                 >
-                  {cachedCounts ? cachedCounts.reposts : (allReposts && id in allReposts ? reposts : <Loading vCentered={true} tiny={true} />)}
+                  {cachedCounts ? cachedCounts.reposts : (localReposts ? localReposts.length : <Loading vCentered={true} tiny={true} />)}
                 </span>
-              </div>
-            </>
-            ) : <div className="p-4"><Loading vCentered={true} tiny={true} /></div>}
+              </div>)}
             <ProfilesModal
-              npubs={(allReposts && allReposts[id]) ? allReposts[id].map(r => nip19.npubEncode(r.pubkey)) : []}
+              npubs={(localReposts) ? localReposts.map(r => nip19.npubEncode(r.pubkey)) : []}
               pool={pool}
               isOpen={showRepostsModal}
               onClose={() => setShowRepostsModal(false)}
@@ -818,17 +872,15 @@ interface Props {
                 onClick={() => navigate(`/note/${id}`)}
               />
             </div>
-            {allReplies && id in allReplies ? (
-              <>
+              {loadingCounts ? <Loading vCentered={true} tiny={true}></Loading> : (
                 <div className="p-4">
                   <Link to={`/note/${id}`}>
                     <span className="text-body5 text-gray-400 cursor-pointer hover:underline font-normal">
-                      {cachedCounts ? cachedCounts.replies : (allReplies && id in allReplies ? replies : <Loading vCentered={true} tiny={true} />)}
+                    {cachedCounts ? cachedCounts.replies : (localReplies ? localReplies.length : <Loading vCentered={true} tiny={true} />)}
                     </span>
                   </Link>
                 </div>
-              </>
-            ) : <div className="p-4"><Loading vCentered={true} tiny={true} /></div>}
+              )}
           </>
         )}
         {canDelete && !isPreview &&
@@ -841,6 +893,7 @@ interface Props {
           </div>
         }
         </div>
+      )}
         {selectedImage && (
           <div 
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
@@ -858,6 +911,7 @@ interface Props {
           <div className="mt-2 border-l-2 border-gray-500">
             <p className="text-gray-400 text-sm mb-2 pl-4">Replied to</p>
             <NoteCard
+              event={repliedEvent}
               referencedNoteInput={null}
               isPreview={false}
               id={repliedEvent.id}
@@ -874,18 +928,18 @@ interface Props {
               hashtags={[]}
               pool={pool}
               nostrExists={nostrExists}
-              reactions={allReactions?.[repliedEvent.id] ?? []}
+              //reactions={allReactions?.[repliedEvent.id] ?? []}
               keyValue={keyValue}
-              replies={allReplies?.[repliedEvent.id]?.length ?? 0}
+              //replies={allReplies?.[repliedEvent.id]?.length ?? 0}
               deleted={repliedEvent.deleted}
               repostedEvent={null}
               repliedEvent={null}
               rootEvent={null}
               metadata={metadata}
-              allReactions={allReactions}
-              allReplies={allReplies}
-              reposts={allReposts?.[repliedEvent.id]?.length ?? 0}
-              allReposts={allReposts}
+              //allReactions={allReactions}
+              //allReplies={allReplies}
+              //reposts={allReposts?.[repliedEvent.id]?.length ?? 0}
+              //allReposts={allReposts}
               setMetadata={setMetadata}
               connectionInfo={null}
               onUserClick={onUserClick}
@@ -896,6 +950,7 @@ interface Props {
           <div className="mt-2 border-l-2 border-gray-500">
             <p className="text-gray-400 text-sm mb-2 pl-4">Original note</p>
             <NoteCard
+              event={rootEvent}
               referencedNoteInput={null}
               isPreview={false}
               id={rootEvent.id}
@@ -912,18 +967,18 @@ interface Props {
               hashtags={[]}
               pool={pool}
               nostrExists={nostrExists}
-              reactions={allReactions?.[rootEvent.id] ?? []}
+              //reactions={allReactions?.[rootEvent.id] ?? []}
               keyValue={keyValue}
-              replies={allReplies?.[rootEvent.id]?.length ?? 0}
+              //replies={allReplies?.[rootEvent.id]?.length ?? 0}
               deleted={rootEvent.deleted}
               repostedEvent={null}
               repliedEvent={null}
               rootEvent={null}
               metadata={metadata}
-              allReactions={allReactions}
-              allReplies={allReplies}
-              reposts={allReposts?.[rootEvent.id]?.length ?? 0}
-              allReposts={allReposts}
+              //allReactions={allReactions}
+              //llReplies={allReplies}
+              //reposts={allReposts?.[rootEvent.id]?.length ?? 0}
+              //allReposts={allReposts}
               setMetadata={setMetadata}
               connectionInfo={null}
               onUserClick={onUserClick}

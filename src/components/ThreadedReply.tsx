@@ -51,6 +51,7 @@ interface ThreadedReplyProps {
             referencedNoteInput={null}
             isPreview={false}
             id={reply.id}
+            reply={reply}
             content={reply.content}
             user={{
               pubkey: reply.pubkey,
@@ -62,17 +63,17 @@ interface ThreadedReplyProps {
             hashtags={reply.hashtags}
             pool={pool}
             nostrExists={nostrExists}
-            reactions={allReactions[reply.id] || []}
+            //reactions={allReactions[reply.id] || []}
             keyValue={keyValue}
             deleted={false}
-            replies={reply.replies.length}
+            //replies={reply.replies.length}
             repostedEvent={null}
             metadata={metadata}
-            allReactions={allReactions}
-            allReplies={allReplies}
+            //allReactions={allReactions}
+            //allReplies={allReplies}
             repliedEvent={null} 
-            reposts={allReposts[reply.id]?.length || 0}
-            allReposts={allReposts}
+            //reposts={allReposts[reply.id]?.length || 0}
+            //allReposts={allReposts}
             setMetadata={setMetadata}
             connectionInfo={null}
             rootEvent={null}
