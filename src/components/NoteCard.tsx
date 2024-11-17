@@ -485,11 +485,11 @@ interface Props {
       });
     }
 
-    const handleContentClick = () => {
+    /*const handleContentClick = () => {
       if (!isPreview) {
         navigate(`/note/${id}`);
       }
-    };
+    };*/
 
     const handleImageClick = (url: string) => {
       setSelectedImage(url);
@@ -538,14 +538,20 @@ interface Props {
               />
             </Link> : <></>}
             <div>
-              <span
-                className="text-body3 text-white overflow-hidden text-ellipsis"
-              >
+              <Link to={`/profile/${userNpub}`} className="text-body3 text-white overflow-hidden text-ellipsis">
                 {user.name}
-              </span>
-              <span className="px-16 text-body5 text-gray-400">
-                {new Date(created_at * 1000).toISOString().split("T")[0]}
-              </span>
+              </Link>
+              <Link to={`/note/${id}`} className="px-16 text-body5 text-gray-400 cursor-pointer">
+                {new Date(created_at * 1000).toLocaleString(undefined, {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: false
+                })}
+              </Link>
             </div>
           </div>
           {connectionInfo && (
@@ -688,7 +694,7 @@ interface Props {
           ></div>
         )}
 
-        <div className={isPreview ? "" : "cursor-pointer"} onClick={handleContentClick}>
+        <div>
           <p>{processedContent}</p>
           {youtubeVideoId && (
             <div className="mt-2">
