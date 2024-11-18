@@ -66,7 +66,7 @@ export const fetchReactionsAndRepliesAlt = async (pool: SimplePool, events: Exte
     repostEvents: ExtendedEvent[],
     replyEvents: ExtendedEvent[]) => {
     const eventsToProcess = events;
-    const pubkeysToFetch = new Set(eventsToProcess.map(event => event.pubkey));
+    //const pubkeysToFetch = new Set(eventsToProcess.map(event => event.pubkey));
     const postsToFetch = eventsToProcess.map(event => event.id);
     const repostsToFetch = repostEvents.map(event => event.id).filter(Boolean);
     const replyIdsToFetch = replyEvents.map(event => event.id).filter(Boolean);
