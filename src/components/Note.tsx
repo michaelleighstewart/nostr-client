@@ -309,7 +309,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   }, [pool, post, replies]);
 
   const handleReplyClick = (replyId: string) => {
-    window.location.href = `/note/${replyId}`;
+    //window.location.href = `/note/${replyId}`;
   };
 
   const handleReply = async () => {

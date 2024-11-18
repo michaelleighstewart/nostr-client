@@ -46,7 +46,7 @@ interface ThreadedReplyProps {
   
     return (
       <div style={{ marginLeft: `${depth * 20}px` }}>
-        <div onClick={() => handleReplyClick(reply.id)}>
+        <div>
           <NoteCard
             referencedNoteInput={null}
             isPreview={false}
