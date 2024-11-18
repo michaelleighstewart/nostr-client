@@ -15,6 +15,7 @@ import ConnectionInfoDialog from './ConnectionInfoDialog';
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/solid';
 import { getCachedCounts, updateCachedCounts } from "../utils/cachingUtils";
 import { fetchReactionsAndRepliesAlt, fetchMetadataAlt } from '../utils/noteUtils';
+import AudioEmbed from "./AudioEmbed";
 
 interface Props {
     id: string;
@@ -101,6 +102,7 @@ interface Props {
     const [loadingCounts, setLoadingCounts] = useState(true);
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
     const [_loadingEvents, setLoadingEvents] = useState<Record<string, boolean>>({});
+    const [_audioUrls, setAudioUrls] = useState<string[]>([]);
 
     const toggleAccordion = async () => {
       setIsAccordionOpen(prev => !prev);
@@ -238,6 +240,11 @@ interface Props {
       const videoMatches: string[] = content.match(videoRegex) || [];
       setVideoUrls(videoMatches);
 
+      // Audio
+      const audioRegex = /(https?:\/\/.*?\.(?:mp3|wav|ogg|m4a)(?:[^"\s]*)?(?:\?[^"\s]*)?)/gi;
+      const audioMatches: string[] = content.match(audioRegex) || [];
+      setAudioUrls(audioMatches);
+
       // Check for YouTube video
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?(.+)/g;
       const youtubeMatch = youtubeRegex.exec(content);
@@ -252,6 +259,9 @@ interface Props {
       
       const processed = parts.map((part, index) => {
         if (part.match(linkRegex)) {
+          if (audioMatches.includes(part as string)) {
+            return <AudioEmbed url={part} />
+          }
           if (videoMatches.includes(part as string)) {
             return <VideoEmbed key={index} url={part} />;
           } else if (!imageMatches.includes(part as string) && !youtubeMatch) {
