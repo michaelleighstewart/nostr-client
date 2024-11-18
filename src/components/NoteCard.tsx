@@ -108,11 +108,14 @@ interface Props {
         // Fetch counts only when opening the accordion
         if (pool && event) {
           setLoadingCounts(true);
-          const { reactions: newReactions, replies: newReplies, reposts: newReposts } = 
-            await fetchReactionsAndRepliesAlt(pool, [event], repostedEvent ? [repostedEvent] : [], localReplies);
-          setLocalReactions(newReactions[id]);
-          setLocalReposts(newReposts[id]);
-          setLocalReplies(newReplies[id]);
+          const result = await fetchReactionsAndRepliesAlt(pool, [event], repostedEvent ? [repostedEvent] : [], localReplies) as {
+            reactions: Record<string, Reaction[]>;
+            replies: Record<string, ExtendedEvent[]>;
+            reposts: Record<string, ExtendedEvent[]>;
+          };
+          setLocalReactions(result.reactions[id]);
+          setLocalReposts(result.reposts[id]);
+          setLocalReplies(result.replies[id]);
           setLoadingCounts(false);
         }
       }

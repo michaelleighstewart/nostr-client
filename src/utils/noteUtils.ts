@@ -7,218 +7,156 @@ import { throttleRequest } from './throttle';
 export const fetchMetadataAlt = async (pool: SimplePool, events: ExtendedEvent[], 
     repostEvents: ExtendedEvent[],
     replyEvents: ExtendedEvent[]) => {
-        const eventsToProcess = events;
-        const pubkeysToFetch = new Set(eventsToProcess.map(event => event.pubkey));
-        const repostsToFetch: string[] = [];
-        const repostPubkeysToFetch: string[] = [];
-        for (const event of repostEvents) {
-            if (!repostsToFetch.includes(event.id || "")) {
-                repostsToFetch.push(event.id || "");
-            }
-            if (!repostPubkeysToFetch.includes(event.pubkey || "")) {
-                repostPubkeysToFetch.push(event.pubkey || "");
-            }
-        }
-        const replyIdsToFetch: string[] = [];
-        const replyPubkeysToFetch: string[] = [];
-        for (const event of replyEvents) {
-            if (!replyIdsToFetch.includes(event.id || "")) {
-                replyIdsToFetch.push(event.id || "");
-            }
-            if (!replyPubkeysToFetch.includes(event.pubkey || "")) {
-                replyPubkeysToFetch.push(event.pubkey || "");
-            }
-        }
-        repostPubkeysToFetch.forEach(pubkey => pubkeysToFetch.add(pubkey));
-        const cachedMetadata: Record<string, Metadata> = {};
-        const pubkeysToFetchFromNetwork: string[] = [];
+    const eventsToProcess = events;
+    const pubkeysToFetch = new Set(eventsToProcess.map(event => event.pubkey));
     
-        pubkeysToFetch.forEach(pubkey => {
-            const cachedData = getMetadataFromCache(pubkey);
+    // Add repost and reply pubkeys to the set
+    repostEvents.forEach(event => pubkeysToFetch.add(event.pubkey));
+    replyEvents.forEach(event => pubkeysToFetch.add(event.pubkey));
 
-            if (cachedData) {
-                cachedMetadata[pubkey] = cachedData;
-            } else {
-                pubkeysToFetchFromNetwork.push(pubkey);
-            }
-        });
-    
-        let allNewMetadata: Record<string, Metadata> = {...cachedMetadata};   
-        
-        async function fetchMetaData(pubkeys: string[]) {
-            if (pubkeys.length > 0) {
-                const data = await pool?.querySync(RELAYS, {
+    // Check cache first
+    const cachedMetadata: Record<string, Metadata> = {};
+    const pubkeysToFetchFromNetwork: string[] = [];
+
+    pubkeysToFetch.forEach(pubkey => {
+        const cachedData = getMetadataFromCache(pubkey);
+        if (cachedData) {
+            cachedMetadata[pubkey] = cachedData;
+        } else {
+            pubkeysToFetchFromNetwork.push(pubkey);
+        }
+    });
+
+    let allNewMetadata: Record<string, Metadata> = {...cachedMetadata};
+
+    // Fetch all metadata in one connection if there are keys to fetch
+    if (pubkeysToFetchFromNetwork.length > 0) {
+        return new Promise<Record<string, Metadata>>((resolve) => {
+            const sub = pool?.subscribeManyEose(
+                RELAYS,
+                [{
                     kinds: [0],
-                    authors: pubkeys
-                });
-                if (!data) return;
-                
-                for (const event of data) {
-                    if (event.kind === 0) {
-                        const metadata = JSON.parse(event.content) as Metadata;
-                        allNewMetadata[event.pubkey] = metadata;
-                        setMetadataToCache(event.pubkey, metadata);
+                    authors: pubkeysToFetchFromNetwork
+                }],
+                {
+                    onevent(event) {
+                        if (event.kind === 0) {
+                            try {
+                                const metadata = JSON.parse(event.content) as Metadata;
+                                allNewMetadata[event.pubkey] = metadata;
+                                setMetadataToCache(event.pubkey, metadata);
+                            } catch (error) {
+                                console.error("Error parsing metadata:", error);
+                            }
+                        }
+                    },
+                    onclose() {
+                        sub?.close();
+                        resolve(allNewMetadata);
                     }
                 }
-            }
-        }
+            );
+        });
+    }
 
-        //original post
-        if (Array.from(pubkeysToFetch).length > 0) {
-            await fetchMetaData(Array.from(pubkeysToFetchFromNetwork));
-        }
-
-        //reposts
-        if (repostPubkeysToFetch.length > 0) {
-            await fetchMetaData(repostPubkeysToFetch);
-        }
-
-        //replies
-        if (replyPubkeysToFetch.length > 0) {
-            await fetchMetaData(replyPubkeysToFetch);
-        }
-
-        return allNewMetadata;
+    return allNewMetadata;
 }
 
 export const fetchReactionsAndRepliesAlt = async (pool: SimplePool, events: ExtendedEvent[], 
     repostEvents: ExtendedEvent[],
     replyEvents: ExtendedEvent[]) => {
-        const eventsToProcess = events;
-        const pubkeysToFetch = new Set(eventsToProcess.map(event => event.pubkey));
-        const postsToFetch = eventsToProcess.map(event => event.id);
-        const repostsToFetch: string[] = [];
-        const repostPubkeysToFetch: string[] = [];
-        for (const event of repostEvents) {
-            if (!repostsToFetch.includes(event.id || "")) {
-                repostsToFetch.push(event.id || "");
-            }
-            if (!repostPubkeysToFetch.includes(event.pubkey || "")) {
-                repostPubkeysToFetch.push(event.pubkey || "");
-            }
-        }
-        const replyIdsToFetch: string[] = [];
-        const replyPubkeysToFetch: string[] = [];
-        for (const event of replyEvents) {
-            if (!replyIdsToFetch.includes(event.id || "")) {
-                replyIdsToFetch.push(event.id || "");
-            }
-            if (!replyPubkeysToFetch.includes(event.pubkey || "")) {
-                replyPubkeysToFetch.push(event.pubkey || "");
-            }
-        }
-        repostPubkeysToFetch.forEach(pubkey => pubkeysToFetch.add(pubkey));
-        const cachedMetadata: Record<string, Metadata> = {};
-        const pubkeysToFetchFromNetwork: string[] = [];
+    const eventsToProcess = events;
+    const pubkeysToFetch = new Set(eventsToProcess.map(event => event.pubkey));
+    const postsToFetch = eventsToProcess.map(event => event.id);
+    const repostsToFetch = repostEvents.map(event => event.id).filter(Boolean);
+    const replyIdsToFetch = replyEvents.map(event => event.id).filter(Boolean);
+
+    // Initialize collections
+    let allNewMetadata: Record<string, Metadata> = {};
+    let allNewReactions: Record<string, Reaction[]> = {};
+    let allNewReplies: Record<string, ExtendedEvent[]> = {};
+    let allNewReposts: Record<string, ExtendedEvent[]> = {};
+
+    // Initialize empty arrays for all IDs
+    [...new Set([...postsToFetch, ...repostsToFetch, ...replyIdsToFetch])].forEach(id => {
+        allNewReactions[id] = [];
+        allNewReplies[id] = [];
+        allNewReposts[id] = [];
+    });
+
+    // Combine all IDs to fetch in a single request
+    const allIds = [...new Set([...postsToFetch, ...repostsToFetch, ...replyIdsToFetch])];
     
-        pubkeysToFetch.forEach(pubkey => {
-            const cachedData = getMetadataFromCache(pubkey);
-
-            if (cachedData) {
-                cachedMetadata[pubkey] = cachedData;
-            } else {
-                pubkeysToFetchFromNetwork.push(pubkey);
-            }
-        });
-    
-        let allNewMetadata: Record<string, Metadata> = {...cachedMetadata};
-        let allNewReactions: Record<string, Reaction[]> = {};
-        let allNewReplies: Record<string, ExtendedEvent[]> = {};
-        let allNewReposts: Record<string, ExtendedEvent[]> = {};
-    
-        [...new Set([...postsToFetch, ...repostsToFetch, ...replyIdsToFetch])].forEach(id => {
-            if (!(id in allNewReactions)) allNewReactions[id] = [];
-            if (!(id in allNewReplies)) allNewReplies[id] = [];
-            if (!(id in allNewReposts)) allNewReposts[id] = [];
-        });
-
-        async function fetchData(ids: string[]) {
-            const data = await pool?.querySync(RELAYS, {
-                kinds: [7, 1, 6],
-                '#e': ids
-            });
-            if (!data) return;
-            
-            for (const event of data) {
-                if (event.kind === 0) {
-                    const metadata = JSON.parse(event.content) as Metadata;
-                    allNewMetadata[event.pubkey] = metadata;
-                    setMetadataToCache(event.pubkey, metadata);
-                } else if (event.kind === 7) {
-                    const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                    if (postId) {
-                        const newReaction: Reaction = {
-                            id: event.id,
-                            liker_pubkey: event.pubkey,
-                            type: event.content,
-                            sig: event.sig
-                        };
-                        if (!allNewReactions[postId]) {
-                            allNewReactions[postId] = [];
-                        }
-                        if (!allNewReactions[postId].some(r => r.sig === newReaction.sig)) {
-                            allNewReactions[postId].push(newReaction);
-                        }
-                    }
-                } else if (event.kind === 1) {
-                    const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                    if (postId) {
-                        if (!allNewReplies[postId]) {
-                            allNewReplies[postId] = [];
-                        }
-                        if (!allNewReplies[postId].some(r => r.id === event.id)) {
-                            allNewReplies[postId].push(event as unknown as ExtendedEvent);
-                        }
-                    }
-                } else if (event.kind === 6) {
-                    const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                    if (postId) {
-                        if (!allNewReposts[postId]) {
-                            allNewReposts[postId] = [];
-                        }
-                        if (!allNewReposts[postId].some(r => r.id === event.id)) {
-                            allNewReposts[postId].push(event as unknown as ExtendedEvent);
-                        }
-                    }
-                }
-                
-                if (event.kind === 7 || event.kind === 6 || event.kind === 1) {
-                    const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
-                    if (postId) {
-                        // Update cached counts
-                        const currentReactions = allNewReactions[postId]?.filter(r => r.type !== "-").length || 0;
-                        const currentDislikes = allNewReactions[postId]?.filter(r => r.type === "-").length || 0;
-                        const currentReposts = allNewReposts[postId]?.length || 0;
-                        const currentReplies = allNewReplies[postId]?.length || 0;
-                        
-                        setCachedCounts(postId, {
-                            reactions: currentReactions,
-                            dislikes: currentDislikes,
-                            reposts: currentReposts,
-                            replies: currentReplies,
-                            timestamp: Date.now()
-                        });
-                    }
-                }
-            }
-        }
-
-        //original post
-        await fetchData(postsToFetch);
-
-        //reposts
-        await fetchData(repostsToFetch);
-
-        //replies
-        await fetchData(replyIdsToFetch);
-
+    if (allIds.length === 0) {
         return {
+            metadata: allNewMetadata,
             reactions: allNewReactions,
             replies: allNewReplies,
             reposts: allNewReposts
         };
-    
-}
+    }
+
+    // Fetch all data in one connection
+    return new Promise((resolve) => {
+        const sub = pool?.subscribeManyEose(
+            RELAYS,
+            [{
+                kinds: [7, 1, 6],
+                '#e': allIds
+            }],
+            {
+                onevent(event) {
+                    const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
+                    if (!postId) return;
+
+                    switch (event.kind) {
+                        case 7: // Reaction
+                            const newReaction: Reaction = {
+                                id: event.id,
+                                liker_pubkey: event.pubkey,
+                                type: event.content,
+                                sig: event.sig
+                            };
+                            if (!allNewReactions[postId].some(r => r.sig === newReaction.sig)) {
+                                allNewReactions[postId].push(newReaction);
+                            }
+                            break;
+
+                        case 1: // Reply
+                            if (!allNewReplies[postId].some(r => r.id === event.id)) {
+                                allNewReplies[postId].push(event as unknown as ExtendedEvent);
+                            }
+                            break;
+
+                        case 6: // Repost
+                            if (!allNewReposts[postId].some(r => r.id === event.id)) {
+                                allNewReposts[postId].push(event as unknown as ExtendedEvent);
+                            }
+                            break;
+                    }
+
+                    // Update cached counts
+                    setCachedCounts(postId, {
+                        reactions: allNewReactions[postId]?.filter(r => r.type !== "-").length || 0,
+                        dislikes: allNewReactions[postId]?.filter(r => r.type === "-").length || 0,
+                        reposts: allNewReposts[postId]?.length || 0,
+                        replies: allNewReplies[postId]?.length || 0,
+                        timestamp: Date.now()
+                    });
+                },
+                onclose() {
+                    sub?.close();
+                    resolve({
+                        metadata: allNewMetadata,
+                        reactions: allNewReactions,
+                        replies: allNewReplies,
+                        reposts: allNewReposts
+                    });
+                }
+            }
+        );
+    });
+};
 
 //deprecated
 export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events: ExtendedEvent[], 
