@@ -19,6 +19,7 @@ interface PodcastRequest {
   created_at: string;
   download_url?: string;
   podcast_topic?: string;
+  completion_percentage?: number;
 }
 
 const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists, pool }) => {
@@ -92,6 +93,14 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
         <div className="grid gap-8">
           {requests.map((request) => (
             <div key={request.id} className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700">
+              {request.status === 'processing' && request.completion_percentage !== undefined && (
+                <div className="w-full bg-gray-700 h-2.5 mb-4">
+                  <div 
+                    className="bg-blue-500 h-2.5 transition-all duration-500"
+                    style={{ width: `${request.completion_percentage}%` }}
+                  ></div>
+                </div>
+              )}
               <div className="flex flex-col">
                 <div className="flex justify-between items-center mb-4">
                   <div>
@@ -113,6 +122,11 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
                         {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                       </span>
                     </p>
+                    {request.status === 'processing' && request.completion_percentage !== undefined && (
+                      <p className="text-gray-400 text-sm mt-1">
+                        {request.completion_percentage}% complete
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-col gap-4">
                     {request.download_url && (
