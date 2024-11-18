@@ -100,7 +100,7 @@ interface Props {
     const [isAccordionOpen, setIsAccordionOpen] = useState(false);
     const [loadingCounts, setLoadingCounts] = useState(true);
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
-    const [loadingEvents, setLoadingEvents] = useState<Record<string, boolean>>({});
+    const [_loadingEvents, setLoadingEvents] = useState<Record<string, boolean>>({});
 
     const toggleAccordion = async () => {
       setIsAccordionOpen(prev => !prev);
