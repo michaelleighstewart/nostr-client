@@ -308,7 +308,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
     fetchData();
   }, [pool, post, replies]);
 
-  const handleReplyClick = (replyId: string) => {
+  const handleReplyClick = (_replyId: string) => {
     //window.location.href = `/note/${replyId}`;
   };
 
