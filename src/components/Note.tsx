@@ -47,6 +47,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   const [isGeneratingReply, setIsGeneratingReply] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isPoolReady, setIsPoolReady] = useState(false);
+  const [event, setEvent] = useState<ExtendedEvent | null>(null);
 
   const navigate = useNavigate();
 
@@ -87,6 +88,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
     
             if (event.id === id) {
               setPost(newReply);
+              setEvent(newReplyExtendedEvent);
             } else {
               allReplies[event.id] = newReply;
               allRepliesToSend[event.id] = newReplyExtendedEvent;
@@ -387,6 +389,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         referencedNoteInput={null}
         isPreview={false}
         id={post.id}
+        event={event}
         content={post.content}
         user={{
           pubkey: post.pubkey,
