@@ -32,8 +32,17 @@ const Following: React.FC<FollowingProps> = ({ pool }) => {
     const [currentPage, setCurrentPage] = useState(0);
     const touchStartX = useRef<number | null>(null);
     const touchEndX = useRef<number | null>(null);
+    const [isPoolReady, setIsPoolReady] = useState(false);
 
     useEffect(() => {
+        if (pool) {
+          const isReady = RELAYS.every(relay => pool?.ensureRelay(relay));
+          setIsPoolReady(isReady);
+        }
+    }, [pool]);
+
+    useEffect(() => {
+        if (!isPoolReady) return;
         const fetchUserMetadata = async () => {
             if (!pool || !npub) return;
             let pk = npub;
@@ -131,7 +140,7 @@ const Following: React.FC<FollowingProps> = ({ pool }) => {
 
         fetchUserMetadata();
         fetchFollowing();
-    }, []);
+    }, [isPoolReady]);
 
     const handleTouchStart = (e: React.TouchEvent) => {
         touchStartX.current = e.touches[0].clientX;

@@ -36,6 +36,7 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
   const [hasOlderMessages, setHasOlderMessages] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [modalImage, setModalImage] = useState<string | null>(null);
+  const [isPoolReady, setIsPoolReady] = useState(false);
 
   useEffect(() => {
     const fetchUserPubkey = async () => {
@@ -134,6 +135,14 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
   };
 
   useEffect(() => {
+    if (pool) {
+      const isReady = RELAYS.every(relay => pool?.ensureRelay(relay));
+      setIsPoolReady(isReady);
+    }
+  }, [pool]);
+
+  useEffect(() => {
+    if (!isPoolReady) return;
     const initialFetch = fetchMessages(Math.floor(Date.now() / 1000));
     
     // Set up a subscription for new messages
@@ -182,7 +191,7 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
       initialFetch.then(unsubscribe => unsubscribe?.());
       newMessagesSub?.close();
     };
-  }, [pool, id, userPubkey, nostrExists, privateKey]);
+  }, [pool, isPoolReady, id, userPubkey, nostrExists, privateKey]);
 
   useEffect(() => {
     const fetchUserMetadata = async () => {

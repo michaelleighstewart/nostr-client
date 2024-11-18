@@ -34,8 +34,17 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
     const [currentPage, setCurrentPage] = useState(0);
     const touchStartX = useRef<number | null>(null);
     const touchEndX = useRef<number | null>(null);
+    const [isPoolReady, setIsPoolReady] = useState(false);
 
     useEffect(() => {
+      if (pool) {
+        const isReady = RELAYS.every(relay => pool?.ensureRelay(relay));
+        setIsPoolReady(isReady);
+      }
+  }, [pool]);
+
+    useEffect(() => {
+        if (!isPoolReady) return;
         const fetchUserMetadata = async () => {
             if (!pool || !npub) return;
             let pk: string;
@@ -123,7 +132,7 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
 
         fetchUserMetadata();
         fetchFollowers();
-    }, []);
+    }, [isPoolReady]);
 
     const handleTouchStart = (e: React.TouchEvent) => {
         touchStartX.current = e.touches[0].clientX;

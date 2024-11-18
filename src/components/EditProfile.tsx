@@ -31,8 +31,17 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
     const [saving, setSaving] = useState(false);
     const [uploadingPicture, setUploadingPicture] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isPoolReady, setIsPoolReady] = useState(false);
 
     useEffect(() => {
+        if (props.pool) {
+          const isReady = RELAYS.every(relay => props.pool?.ensureRelay(relay));
+          setIsPoolReady(isReady);
+        }
+    }, [props.pool]);
+
+    useEffect(() => {
+        if (!isPoolReady) return;
         setLoading(true);
         const fetchData = async() => {
             let authors = [];
@@ -60,7 +69,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
             });
         }
         fetchData();
-      }, [props.nostrExists, props.keyValue, props.pool, saving]);
+      }, [props.nostrExists, isPoolReady, props.keyValue, props.pool, saving]);
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];

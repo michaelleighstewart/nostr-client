@@ -22,6 +22,7 @@ const NavBar: React.FC<NavBarProps> = ({ keyValue, setKey, nostrExists, pool, is
   const location = useLocation();
   const [newNotifications, setNewNotifications] = useState<boolean>(false);
   const [newMessages, setNewMessages] = useState<boolean>(false);
+  const [isPoolReady, setIsPoolReady] = useState(false);
 
   useEffect(() => {
     const isValid = validatePrivateKey(keyValue);
@@ -38,7 +39,14 @@ const NavBar: React.FC<NavBarProps> = ({ keyValue, setKey, nostrExists, pool, is
   }, [keyValue]);
 
   useEffect(() => {
-    if (pool && publicKey) {
+    if (pool) {
+      const isReady = RELAYS.every(relay => pool?.ensureRelay(relay));
+      setIsPoolReady(isReady);
+    }
+  }, [pool]);
+
+  useEffect(() => {
+    if (pool && publicKey && isPoolReady) {
       const notificationSub = pool.subscribeMany(RELAYS, [
         {
           kinds: [1, 7],
@@ -83,7 +91,7 @@ const NavBar: React.FC<NavBarProps> = ({ keyValue, setKey, nostrExists, pool, is
         messageSub.close();
       };
     }
-  }, [pool, publicKey]);
+  }, [pool, isPoolReady, publicKey]);
 
   const isActive = (path: string) => {
     return location.pathname === path ? "text-white" : "";

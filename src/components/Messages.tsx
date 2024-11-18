@@ -31,8 +31,17 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
   const subscriptionMap = new Map<string, SubCloser>(); // To store subscriptions
   const poolRef = useRef(pool);
   const keyValueRef = useRef(keyValue);
+  const [isPoolReady, setIsPoolReady] = useState(false);
 
   useEffect(() => {
+    if (pool) {
+      const isReady = RELAYS.every(relay => pool?.ensureRelay(relay));
+      setIsPoolReady(isReady);
+    }
+  }, [pool]);
+
+  useEffect(() => {
+    if (!isPoolReady) return;
     poolRef.current = pool;
     keyValueRef.current = keyValue;
 
@@ -114,7 +123,7 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
     };
 
     fetchMessages();
-  }, [nostrExists]);
+  }, [nostrExists, isPoolReady]);
 
 
   useEffect(() => {

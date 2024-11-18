@@ -48,6 +48,14 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     const [modalImage, setModalImage] = useState<string | null>(null);
     const [touchStart, setTouchStart] = useState<number | null>(null);
     const [touchEnd, setTouchEnd] = useState<number | null>(null);
+    const [isPoolReady, setIsPoolReady] = useState(false);
+
+    useEffect(() => {
+        if (props.pool) {
+          const isReady = RELAYS.every(relay => props.pool?.ensureRelay(relay));
+          setIsPoolReady(isReady);
+        }
+      }, [props.pool]);
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -91,7 +99,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     }
 
     useEffect(() => { 
-        if (!props.pool || peopleToFollow.length === 0) return;
+        if (!props.pool || peopleToFollow.length === 0 || !isPoolReady) return;
         
         const fetchMetadata = async () => {
             const authors = peopleToFollow.map(person => nip19.decode(person.npub).data as string);
@@ -121,7 +129,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
         };
     
         fetchMetadata();
-    }, [peopleToFollow, props.pool]);
+    }, [peopleToFollow, isPoolReady, props.pool]);
     
     useEffect(() => {
         setPeopleToFollow(prev => prev.map(person => {
