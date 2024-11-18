@@ -7,7 +7,6 @@ import { throttleRequest } from './throttle';
 export const fetchMetadataAlt = async (pool: SimplePool, events: ExtendedEvent[], 
     repostEvents: ExtendedEvent[],
     replyEvents: ExtendedEvent[]) => {
-        //console.log("FETCH METADATA ALT");
         const eventsToProcess = events;
         const pubkeysToFetch = new Set(eventsToProcess.map(event => event.pubkey));
         const repostsToFetch: string[] = [];
@@ -48,7 +47,6 @@ export const fetchMetadataAlt = async (pool: SimplePool, events: ExtendedEvent[]
         
         async function fetchMetaData(pubkeys: string[]) {
             if (pubkeys.length > 0) {
-                console.log("getting metada for key (2)", pubkeys)
                 const data = await pool?.querySync(RELAYS, {
                     kinds: [0],
                     authors: pubkeys
@@ -86,10 +84,7 @@ export const fetchMetadataAlt = async (pool: SimplePool, events: ExtendedEvent[]
 export const fetchReactionsAndRepliesAlt = async (pool: SimplePool, events: ExtendedEvent[], 
     repostEvents: ExtendedEvent[],
     replyEvents: ExtendedEvent[]) => {
-        console.log("FETCH REACTIONS ALT");
-
         const eventsToProcess = events;
-    
         const pubkeysToFetch = new Set(eventsToProcess.map(event => event.pubkey));
         const postsToFetch = eventsToProcess.map(event => event.id);
         const repostsToFetch: string[] = [];
@@ -437,7 +432,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
     selectedAlgorithm: any,
     isRecentSubscription: boolean = false
 ) => {
-    console.log("FETCH DATA");
     try {
         if (!append) {
             setLoading(true);
@@ -466,7 +460,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
               
                 const fetchAndCreateExtendedEvent = async (id: string | null, _type: 'root' | 'reply') => {
                   if (!id || !pool) return null;
-                    console.log("Requesting event id", id)
                     let eventToResolve: ExtendedEvent | null = null;
                     const resolvedEvent = await pool.querySync(
                         RELAYS,
@@ -655,11 +648,6 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
         for (const chunk of authorChunks) {
             await createSubscription(chunk);
         }
-
-        // Process any remaining events that weren't part of the initial 10
-        //if (fetchedEvents.length > 10) {
-        //    fetchedEvents.slice(10).forEach(e => onEventReceived(e));
-        //}
 
         // Batch update states
         setLastFetchedTimestamp(newLastFetchedTimestamp);
