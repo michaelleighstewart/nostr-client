@@ -136,7 +136,7 @@ function App() {
               <Route path="profile/:npub/following" element={<Following pool={pool} />} />
               <Route path="notifications" element={<Notifications keyValue={key} pool={pool} nostrExists={nostrExists} />} />
               <Route path="social-graph" element={<SocialGraph keyValue={key} pool={pool} nostrExists={nostrExists} />} />
-              <Route path="/podcasts" element={<PodcastRequests keyValue={key} nostrExists={nostrExists} />} />
+              <Route path="/podcasts" element={<PodcastRequests keyValue={key} pool={pool} nostrExists={nostrExists} />} />
               <Route path="messages" element={<Messages keyValue={key} pool={pool} nostrExists={nostrExists} />} />
               <Route path="generate-key" element={<GenerateKey isLoggedIn={isLoggedIn} setKeyValue={handleSetKey} keyValue={key} pool={pool} nostrExists={nostrExists} />} />
               <Route path="people-to-follow" element={<PeopleToFollow keyValue={key} pool={pool} nostrExists={nostrExists} />} />
