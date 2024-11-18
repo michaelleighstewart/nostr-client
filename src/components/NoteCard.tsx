@@ -100,6 +100,7 @@ interface Props {
     const [isAccordionOpen, setIsAccordionOpen] = useState(false);
     const [loadingCounts, setLoadingCounts] = useState(true);
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
+    const [loadingEvents, setLoadingEvents] = useState<Record<string, boolean>>({});
 
     const toggleAccordion = async () => {
       setIsAccordionOpen(prev => !prev);
@@ -242,9 +243,10 @@ interface Props {
       }
 
       const linkRegex = /(https?:\/\/[^\s]+)/g;
-      const nostrBech32Regex = /(nostr:(naddr|npub|note|nsec|nprofile)1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]+)\b/g;
+      const nostrBech32Regex = /(nostr:(naddr|npub|note|nsec|nprofile|nevent)1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]+)\b/g;
       const hashtagRegex = /#(\w+)/g;
       const parts: string[] = content.split(linkRegex);
+      
       const processed = parts.map((part, index) => {
         if (part.match(linkRegex)) {
           if (videoMatches.includes(part as string)) {
@@ -257,6 +259,8 @@ interface Props {
         let result = [];
         let lastIndex = 0;
         let match;
+
+        
         while ((match = nostrBech32Regex.exec(part)) !== null) {
           const [fullMatch, nostrEntity] = match;
           const beforeText = part.slice(lastIndex, match.index);
@@ -265,7 +269,71 @@ interface Props {
           }
           try {
             const decoded = nip19.decode(nostrEntity.slice(6));
-            if (decoded.type === 'naddr' && decoded.data.kind === 30023) {
+            if (decoded.type === 'nevent') {
+              const eventId = decoded.data.id;
+              pool?.subscribeManyEose(RELAYS, [{
+                ids: [decoded.data.id],
+                authors: decoded.data.author ? [decoded.data.author] : undefined,
+              }], 
+              {
+                onevent(event) {
+                  setReferencedNote({
+                    id: event.id,
+                    content: event.content,
+                    created_at: event.created_at,
+                    pubkey: event.pubkey,
+                    tags: event.tags,
+                    deleted: false,
+                    repostedEvent: null,
+                    repliedEvent: null,
+                    rootEvent: null
+                  });
+                  
+                  // Fetch metadata for the referenced note's author if not in cache
+                  if (!metadata?.[event.pubkey]) {
+                    pool?.subscribeManyEose(RELAYS, [{
+                      kinds: [0],
+                      authors: [event.pubkey]
+                    }], 
+                    {
+                      onevent(metadataEvent) {
+                        const eventMetadata = JSON.parse(metadataEvent.content);
+                        setMetadata((prev: any) => ({
+                          ...prev,
+                          [event.pubkey]: {
+                            name: eventMetadata.name || 'Unknown',
+                            picture: eventMetadata.picture
+                          }
+                        }));
+                      }
+                    });
+                  }
+                  setLoadingEvents(prev => ({ ...prev, [eventId]: false }));
+                }
+              });
+              
+              // Add a loading placeholder while the event is being fetched
+              /*if (loadingEvents[eventId] && !referencedNote) {
+                result.push(
+                  <span key={`nevent-${index}-${match.index}`} className="text-blue-500">
+                    Loading referenced note...
+                  </span>
+                );
+              } else if (!referencedNote) {
+                // michael - completely removed
+                result.push(
+                  <Link 
+                    key={`nostr-${index}-${match.index}`}
+                    to={`/note/${eventId}`}
+                    className="text-blue-500 hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {nostrEntity}
+                  </Link>
+                );
+              }*/
+            }
+            else if (decoded.type === 'naddr' && decoded.data.kind === 30023) {
               pool?.subscribeManyEose(RELAYS, [{
                 kinds: [30023],
                 authors: [decoded.data.pubkey],
@@ -370,16 +438,18 @@ interface Props {
                 }
               });
             } else {
-              result.push(
-                <Link 
-                  key={`nostr-${index}-${match.index}`}
-                  to={`/profile/${nostrEntity.slice(6)}`}
-                  className="text-blue-500 hover:underline"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {nostrEntity}
-                </Link>
-              );
+              if (decoded.type !== 'nevent') {
+                result.push(
+                  <Link 
+                    key={`nostr-${index}-${match.index}`}
+                    to={`/profile/${nostrEntity.slice(6)}`}
+                    className="text-blue-500 hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {nostrEntity}
+                  </Link>
+                );
+              }
             }
           } catch (error) {
             console.error("Error decoding Nostr entity:", error);
@@ -390,7 +460,7 @@ interface Props {
         if (lastIndex < part.length) {
           result.push(part.slice(lastIndex));
         }
-        return result.map((item: string | JSX.Element, i) => {
+        return result.map((item: string | JSX.Element | null, i) => {
           if (typeof item === 'string') {
             const lines = item.split('\n');
             return (
@@ -421,6 +491,7 @@ interface Props {
           return item;
         });
       });
+      // Filter out nostr:nevent links from processed content
       setProcessedContent(processed.flat().filter(Boolean));
     }, [content, metadata]);
   
