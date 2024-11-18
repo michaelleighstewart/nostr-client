@@ -75,7 +75,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         if (secondDegreeConnection) {
           const connectedThroughPubkey = secondDegreeConnection.id;
           if (!metadata[connectedThroughPubkey] && props.pool) {
-            props.pool.subscribeManyEose(
+            const sub = props.pool.subscribeManyEose(
               RELAYS,
               [{ kinds: [0], authors: [connectedThroughPubkey] }],
               {
@@ -89,6 +89,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                   } catch (error) {
                     console.error("Error parsing metadata:", error);
                   }
+                },
+                onclose() {
+                  sub.close();
                 }
               }
             );
