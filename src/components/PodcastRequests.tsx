@@ -110,9 +110,9 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
   };
 
   const handlePost = async () => {
-    if (!selectedRequest?.download_url) return;
+    if (!selectedRequest?.video_url) return;
     
-    const messageWithLink = `${shareMessage}\n\n${selectedRequest.download_url}`;
+    const messageWithLink = `${shareMessage}\n\n${selectedRequest.video_url}`;
     await sendMessage(pool, nostrExists, keyValue, messageWithLink, setPosting, setShareMessage);
     setShowShareDialog(false);
     showCustomToast('Posted successfully!');
