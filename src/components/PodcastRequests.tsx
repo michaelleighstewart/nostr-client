@@ -24,53 +24,84 @@ interface PodcastRequest {
   completion_percentage?: number;
 }
 
+interface PaginatedResponse {
+  requests: PodcastRequest[];
+  next_key?: string;
+}
+
+const REQUESTS_PER_PAGE = 10;
+
 const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists, pool }) => {
   const [requests, setRequests] = useState<PodcastRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
   const [shareMessage, setShareMessage] = useState('');
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<PodcastRequest | null>(null);
   const [downloadTypes, setDownloadTypes] = useState<Record<string, 'audio' | 'video'>>({});
+  const [nextKey, setNextKey] = useState<string | undefined>();
+  const [hasMore, setHasMore] = useState(true);
+
+  const fetchPodcastRequests = async (startKey?: string) => {
+    try {
+      const userPubkey = await getUserPublicKey(nostrExists ?? false, keyValue);
+      const npub = nip19.npubEncode(userPubkey);
+      
+      let url = `${API_URLS.API_URL}podcast-requests?npub=${npub}&limit=${REQUESTS_PER_PAGE}`;
+      if (startKey) {
+        url += `&startKey=${startKey}`;
+      }
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch podcast requests');
+      }
+
+      const data: PaginatedResponse = await response.json();
+      
+      // Sort requests with newest first
+      const sortedRequests = data.requests.sort((a, b) => 
+        parseInt(b.created_at) - parseInt(a.created_at)
+      );
+
+      if (!startKey) {
+        setRequests(sortedRequests);
+      } else {
+        setRequests(prev => [...prev, ...sortedRequests]);
+      }
+
+      setNextKey(data.next_key);
+      setHasMore(!!data.next_key);
+      
+      // Initialize download types for new requests
+      const newDownloadTypes: Record<string, 'audio' | 'video'> = {};
+      sortedRequests.forEach((request) => {
+        newDownloadTypes[request.request_id] = request.download_url ? 'audio' : 'video';
+      });
+      setDownloadTypes(prev => ({...prev, ...newDownloadTypes}));
+
+    } catch (error) {
+      console.error('Error fetching podcast requests:', error);
+      setError('Failed to load podcast requests');
+      showCustomToast('Failed to load podcast requests', 'error');
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchPodcastRequests = async () => {
-      try {
-        const userPubkey = await getUserPublicKey(nostrExists ?? false, keyValue);
-        const npub = nip19.npubEncode(userPubkey);
-        
-        const response = await fetch(`${API_URLS.API_URL}podcast-requests?npub=${npub}`);
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch podcast requests');
-        }
-
-        const data = await response.json();
-        // Sort requests with newest first
-        const sortedRequests = data.requests.sort((a: PodcastRequest, b: PodcastRequest) => 
-          parseInt(b.created_at) - parseInt(a.created_at)
-        );
-        setRequests(sortedRequests);
-        
-        // Initialize download types for each request
-        const initialDownloadTypes: Record<string, 'audio' | 'video'> = {};
-        sortedRequests.forEach((request: PodcastRequest) => {
-          // Default to 'audio' if available, otherwise 'video'
-          initialDownloadTypes[request.request_id] = request.download_url ? 'audio' : 'video';
-        });
-        setDownloadTypes(initialDownloadTypes);
-      } catch (error) {
-        console.error('Error fetching podcast requests:', error);
-        setError('Failed to load podcast requests');
-        showCustomToast('Failed to load podcast requests', 'error');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchPodcastRequests();
   }, [keyValue, nostrExists]);
+
+  const loadMore = () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    fetchPodcastRequests(nextKey);
+  };
 
   const handleShare = (request: PodcastRequest) => {
     setSelectedRequest(request);
@@ -195,6 +226,18 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
               </div>
             </div>
           ))}
+          
+          {hasMore && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="bg-[#535bf2] text-white px-8 py-2 rounded hover:bg-[#4349d6] disabled:opacity-50"
+              >
+                {loadingMore ? 'Loading...' : 'Load More'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
