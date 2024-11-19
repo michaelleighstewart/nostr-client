@@ -14,7 +14,7 @@ interface PodcastRequestsProps {
 }
 
 interface PodcastRequest {
-  id: string;
+  request_id: string;
   topic: string;
   status: string;
   created_at: string;
@@ -32,7 +32,7 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
   const [shareMessage, setShareMessage] = useState('');
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<PodcastRequest | null>(null);
-  const [downloadType, setDownloadType] = useState<'audio' | 'video'>('audio');
+  const [downloadTypes, setDownloadTypes] = useState<Record<string, 'audio' | 'video'>>({});
 
   useEffect(() => {
     const fetchPodcastRequests = async () => {
@@ -52,6 +52,14 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
           parseInt(b.created_at) - parseInt(a.created_at)
         );
         setRequests(sortedRequests);
+        
+        // Initialize download types for each request
+        const initialDownloadTypes: Record<string, 'audio' | 'video'> = {};
+        sortedRequests.forEach((request: PodcastRequest) => {
+          // Default to 'audio' if available, otherwise 'video'
+          initialDownloadTypes[request.request_id] = request.download_url ? 'audio' : 'video';
+        });
+        setDownloadTypes(initialDownloadTypes);
       } catch (error) {
         console.error('Error fetching podcast requests:', error);
         setError('Failed to load podcast requests');
@@ -79,6 +87,13 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
     showCustomToast('Posted successfully!');
   };
 
+  const handleDownloadTypeChange = (requestId: string, type: 'audio' | 'video') => {
+    setDownloadTypes(prev => ({
+      ...prev,
+      [requestId]: type
+    }));
+  };
+
   if (loading) {
     return <div className="h-screen"><Loading vCentered={false} /></div>;
   }
@@ -95,7 +110,7 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
       ) : (
         <div className="grid gap-8">
           {requests.map((request) => (
-            <div key={request.id} className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700">
+            <div key={request.request_id} className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700">
               {request.status === 'processing' && request.completion_percentage !== undefined && (
                 <div className="w-full bg-gray-700 h-2.5 mb-4">
                   <div 
@@ -136,15 +151,15 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
                       <>
                         <div className="flex flex-col gap-2">
                           <select
-                            value={downloadType}
-                            onChange={(e) => setDownloadType(e.target.value as 'audio' | 'video')}
+                            value={downloadTypes[request.request_id]}
+                            onChange={(e) => handleDownloadTypeChange(request.request_id, e.target.value as 'audio' | 'video')}
                             className="bg-gray-700 text-white px-4 py-2 rounded"
                           >
                             {request.download_url && <option value="audio">Audio (MP3)</option>}
                             {request.video_url && <option value="video">Video</option>}
                           </select>
                           <a
-                            href={downloadType === 'audio' ? request.download_url : request.video_url}
+                            href={downloadTypes[request.request_id] === 'audio' ? request.download_url : request.video_url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="bg-[#535bf2] text-white px-16 py-2 rounded hover:bg-[#4349d6] transition duration-200 text-center"
@@ -162,10 +177,10 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
                     )}
                   </div>
                 </div>
-                {downloadType === 'audio' && request.download_url && (
+                {downloadTypes[request.request_id] === 'audio' && request.download_url && (
                   <AudioEmbed url={request.download_url} />
                 )}
-                {downloadType === 'video' && request.video_url && (
+                {downloadTypes[request.request_id] === 'video' && request.video_url && (
                   <div className="w-full">
                     <video 
                       controls
