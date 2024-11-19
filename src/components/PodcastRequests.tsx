@@ -5,6 +5,7 @@ import { getUserPublicKey } from '../utils/profileUtils';
 import { nip19, SimplePool } from 'nostr-tools';
 import { showCustomToast } from './CustomToast';
 import { sendMessage } from '../utils/helperFunctions';
+import AudioEmbed from './AudioEmbed';
 
 interface PodcastRequestsProps {
   keyValue: string;
@@ -18,6 +19,7 @@ interface PodcastRequest {
   status: string;
   created_at: string;
   download_url?: string;
+  video_url?: string;
   podcast_topic?: string;
   completion_percentage?: number;
 }
@@ -30,6 +32,7 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
   const [shareMessage, setShareMessage] = useState('');
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<PodcastRequest | null>(null);
+  const [downloadType, setDownloadType] = useState<'audio' | 'video'>('audio');
 
   useEffect(() => {
     const fetchPodcastRequests = async () => {
@@ -129,16 +132,26 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
                     )}
                   </div>
                   <div className="flex flex-col gap-4">
-                    {request.download_url && (
+                    {(request.download_url || request.video_url) && (
                       <>
-                        <a
-                          href={request.download_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="bg-[#535bf2] text-white px-16 py-2 rounded hover:bg-[#4349d6] transition duration-200"
-                        >
-                          Download
-                        </a>
+                        <div className="flex flex-col gap-2">
+                          <select
+                            value={downloadType}
+                            onChange={(e) => setDownloadType(e.target.value as 'audio' | 'video')}
+                            className="bg-gray-700 text-white px-4 py-2 rounded"
+                          >
+                            {request.download_url && <option value="audio">Audio (MP3)</option>}
+                            {request.video_url && <option value="video">Video</option>}
+                          </select>
+                          <a
+                            href={downloadType === 'audio' ? request.download_url : request.video_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-[#535bf2] text-white px-16 py-2 rounded hover:bg-[#4349d6] transition duration-200 text-center"
+                          >
+                            Download
+                          </a>
+                        </div>
                         <button
                           onClick={() => handleShare(request)}
                           className="bg-green-600 text-white px-16 py-2 rounded hover:bg-green-700 transition duration-200"
@@ -149,16 +162,19 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
                     )}
                   </div>
                 </div>
-                {request.download_url && (
+                {downloadType === 'audio' && request.download_url && (
+                  <AudioEmbed url={request.download_url} />
+                )}
+                {downloadType === 'video' && request.video_url && (
                   <div className="w-full">
-                    <audio 
+                    <video 
                       controls
                       className="w-full mt-2"
                       preload="none"
                     >
-                      <source src={request.download_url} type="audio/mpeg" />
-                      Your browser does not support the audio element.
-                    </audio>
+                      <source src={request.video_url} type="video/mp4" />
+                      Your browser does not support the video element.
+                    </video>
                   </div>
                 )}
               </div>
