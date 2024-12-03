@@ -435,6 +435,37 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           const newEvents = [...prev, ...allFetchedEvents];
           return newEvents.sort((a, b) => b.created_at - a.created_at);
         });
+        const pubkeysToFetch = allFetchedEvents.flatMap(event => {
+          const pubkeys = [event.pubkey];
+          if (event.repostedEvent) pubkeys.push(event.repostedEvent.pubkey);
+          if (event.repliedEvent) pubkeys.push(event.repliedEvent.pubkey);
+          if (event.rootEvent) pubkeys.push(event.rootEvent.pubkey);
+          return pubkeys;
+        });
+    
+        pubkeysToFetch.forEach(async pubkey => {
+          const cachedMetadata = getMetadataFromCache(pubkey);
+          if (cachedMetadata) {
+            setMetadata(prev => ({...prev, [pubkey]: cachedMetadata}));
+          } else if (props.pool && !metadata[pubkey]) {
+            const metaData = await props.pool.querySync(
+              RELAYS,
+              {
+                kinds: [0],
+                authors: [pubkey]
+              }
+            );
+            try {
+              const metadata = JSON.parse(metaData[0].content) as Metadata;
+              setMetadata(prev => ({...prev, [pubkey]: metadata}));
+              if (isLoggedIn) {
+                setMetadataToCache(pubkey, metadata);
+              }
+            } catch (error) {
+              console.error("Error parsing metadata:", error);
+            }
+          }
+        });
         const newRepostEvents = allFetchedEvents.filter(event => event.repostedEvent).map(event => event.repostedEvent!);
         const newReplyEvents = [
           ...allFetchedEvents.filter(event => event.repliedEvent).map(event => event.repliedEvent!),
