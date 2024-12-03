@@ -262,7 +262,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               setLoading, setLoadingMore, setError, () => {}, streamedEvents, repostEvents, replyEvents, setLastFetchedTimestamp, setDeletedNoteIds, 
               setUserPublicKey, setInitialLoadComplete, filterObj.filter, handleEventReceived, selectedAlgorithm ?? algoSelected, range.name === '1 hour');
             allFetchedEvents.push(...(newEvents ?? []));
-            if (allFetchedEvents.length >= 5) break;
+            //if (allFetchedEvents.length >= 5) break;
               setStreamedEvents(prevEvents => {
                 if (!newEvents) return prevEvents;
                 const uniqueEvents = Array.from(new Set([...prevEvents, ...newEvents].map(event => event.id)))
