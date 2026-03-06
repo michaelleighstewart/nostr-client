@@ -1,4 +1,4 @@
-# GhostCopyWrite
+# GhostCopyWrite Nostr Client
 A client built on top of the Nostr protocol
 
 # Install
