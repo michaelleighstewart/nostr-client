@@ -103,7 +103,7 @@ const Following: React.FC<FollowingProps> = ({ pool }) => {
 
             const followingProfiles: Event[] = [];
             await new Promise<void>((resolve) => {
-                pool.subscribeMany(
+                activeSub = pool.subscribeMany(
                     RELAYS,
                     [{ kinds: [0], authors: followingPubkeys }],
                     {
@@ -138,9 +138,14 @@ const Following: React.FC<FollowingProps> = ({ pool }) => {
             setLoading(false);
         };
 
+        let activeSub: any;
+
         fetchUserMetadata();
         fetchFollowing();
-    }, [isPoolReady]);
+        return () => {
+            activeSub?.close();
+        };
+    }, [isPoolReady, npub]);
 
     const handleTouchStart = (e: React.TouchEvent) => {
         touchStartX.current = e.touches[0].clientX;

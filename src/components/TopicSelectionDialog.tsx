@@ -56,14 +56,20 @@ const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onC
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-gray-800">
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="card w-96 max-w-full p-5 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
         <h3 className="text-lg font-medium leading-6 text-white mb-4">Select a Topic</h3>
         <div className="mt-2 space-y-4">
-          <div className="border-t border-gray-600 pt-4">
+          <div className="border-t border-[var(--color-border)] pt-4">
             <button
               onClick={() => setIsRecommendedAccordionOpen(!isRecommendedAccordionOpen)}
-              className="w-full p-2 bg-gray-700 text-white rounded flex justify-between items-center"
+              className="btn-ghost w-full flex justify-between items-center"
             >
               <span>Recommended Topics</span>
               <span>{isRecommendedAccordionOpen ? '▲' : '▼'}</span>
@@ -74,7 +80,7 @@ const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onC
                   <button
                     key={topic.name}
                     onClick={() => handleSelectTopic(topic)}
-                    className="w-full p-2 bg-[#535bf2] text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
+                    className="btn-primary w-full"
                   >
                     {topic.name}
                   </button>
@@ -82,10 +88,10 @@ const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onC
               </div>
             )}
           </div>
-          <div className="border-t border-gray-600 pt-4">
+          <div className="border-t border-[var(--color-border)] pt-4">
             <button
               onClick={() => setIsTrendingAccordionOpen(!isTrendingAccordionOpen)}
-              className="w-full p-2 bg-gray-700 text-white rounded flex justify-between items-center"
+              className="btn-ghost w-full flex justify-between items-center"
             >
               <span>Trending Topics In Your Network</span>
               <span>{isTrendingAccordionOpen ? '▲' : '▼'}</span>
@@ -96,7 +102,7 @@ const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onC
                   <button
                     key={index}
                     onClick={() => handleSelectTopic({name: topic, value: topic})}
-                    className="w-full p-2 bg-[#535bf2] text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
+                    className="btn-primary w-full"
                   >
                     {topic}
                   </button>
@@ -111,7 +117,7 @@ const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onC
               value={customTopic.name}
               onChange={(e) => setCustomTopic({name: e.target.value, value: e.target.value})}
               placeholder="Enter custom topic"
-              className="w-full p-2 border rounded bg-white text-black"
+              className="input-field"
             />
             <div className="flex space-x-2">
               <button
@@ -122,7 +128,7 @@ const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onC
                     onClose();
                   }
                 }}
-                className="flex-1 p-2 bg-[#535bf2] text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
+                className="btn-primary flex-1"
               >
                 Generate Post
               </button>
@@ -134,7 +140,7 @@ const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onC
                     onClose();
                   }
                 }}
-                className="flex-1 p-2 bg-[#535bf2] text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
+                className="btn-primary flex-1"
               >
                 Generate Podcast
               </button>
@@ -144,7 +150,7 @@ const TopicSelectionDialog: React.FC<TopicSelectionDialogProps> = ({ isOpen, onC
         </div>
         <button
           onClick={onClose}
-          className="mt-4 w-full p-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 transition duration-200"
+          className="btn-secondary mt-4 w-full"
         >
           Cancel
         </button>

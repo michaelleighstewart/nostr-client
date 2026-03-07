@@ -44,38 +44,37 @@ export async function constructFilterFromBYOAlgo(byoAlgo: BYOAlgo | null, follow
     let followingStructure: FollowingStructure[] = [];
 
     if (byoAlgo.byoDegrees > 1) {
-        console.log(`Fetching followers up to ${byoAlgo.byoDegrees} degrees of separation`);
-        
-        const getFollowing = async (pubkey: string): Promise<string[]> => {
-            return new Promise((resolve) => {
-                const following: string[] = [];
-                pool.subscribeManyEose(
+        const allFollowers = new Set(followers);
+        const chunkSize = 50;
+
+        for (let i = 0; i < followers.length; i += chunkSize) {
+            const chunk = followers.slice(i, i + chunkSize);
+            await new Promise<void>((resolve) => {
+                const chunkFollowing: Record<string, string[]> = {};
+                chunk.forEach(f => { chunkFollowing[f] = []; });
+                const sub = pool.subscribeManyEose(
                     RELAYS,
-                    [{ kinds: [3], authors: [pubkey] }],
+                    [{ kinds: [3], authors: chunk }],
                     {
                         onevent(event) {
                             const newFollowing = event.tags
                                 .filter(tag => tag[0] === 'p')
                                 .map(tag => tag[1]);
-                            following.push(...newFollowing);
+                            if (chunkFollowing[event.pubkey]) {
+                                chunkFollowing[event.pubkey].push(...newFollowing);
+                            }
                         },
                         onclose() {
-                            resolve(following);
+                            sub?.close();
+                            for (const [pubkey, following] of Object.entries(chunkFollowing)) {
+                                followingStructure.push({ id: pubkey, following });
+                                following.forEach(f => allFollowers.add(f));
+                            }
+                            resolve();
                         }
                     }
                 );
             });
-        };
-
-        const allFollowers = new Set(followers);
-
-        for (const follower of followers) {
-            const secondDegreeFollowing = await getFollowing(follower);
-            followingStructure.push({
-                id: follower,
-                following: secondDegreeFollowing
-            });
-            secondDegreeFollowing.forEach(f => allFollowers.add(f));
         }
 
         filter.authors = Array.from(allFollowers);

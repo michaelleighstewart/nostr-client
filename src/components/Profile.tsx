@@ -7,10 +7,10 @@ import { getPublicKey, nip19 } from "nostr-tools";
 import { RELAYS } from "../utils/constants";
 import Loading from "./Loading";
 import NoteCard from "./NoteCard";
-import { UsersIcon, UserPlusIcon, ChatBubbleLeftRightIcon, UserMinusIcon } from '@heroicons/react/24/outline';
+import { UserPlusIcon, ChatBubbleLeftRightIcon, UserMinusIcon } from '@heroicons/react/24/outline';
 import { fetchData } from "../utils/noteUtils";
 import NewMessageDialog from "./NewMessageDialog";
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 import { getMetadataFromCache, setMetadataToCache } from "../utils/cachingUtils";
 import { useLayoutEffect } from "react";
 import { handleFollowUnfollow } from "../utils/followUtils";
@@ -91,8 +91,9 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
 
     useEffect(() => {
         if (pool) {
-          const isReady = RELAYS.every(relay => pool?.ensureRelay(relay));
-          setIsPoolReady(isReady);
+          Promise.all(RELAYS.map(relay => pool.ensureRelay(relay)))
+            .then(() => setIsPoolReady(true))
+            .catch(err => console.error("Error connecting to relays:", err));
         }
     }, [pool]);
 
@@ -122,14 +123,26 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                     fetchedPubkey = targetNpub;
                 }
             } else if (nostrExists) {
-                fetchedPubkey = await (window as any).nostr.getPublicKey();
+                try {
+                    fetchedPubkey = await (window as any).nostr.getPublicKey();
+                } catch (error) {
+                    console.warn("Nostr extension error:", (error as Error).message);
+                    const skDecoded = bech32Decoder("nsec", keyValue);
+                    fetchedPubkey = getPublicKey(skDecoded);
+                }
             } else {
                 const skDecoded = bech32Decoder("nsec", keyValue);
                 fetchedPubkey = getPublicKey(skDecoded);
             }
             setPubkey(fetchedPubkey);
             if (nostrExists) {
-                currentUserPubkey = await (window as any).nostr.getPublicKey();
+                try {
+                    currentUserPubkey = await (window as any).nostr.getPublicKey();
+                } catch (error) {
+                    console.warn("Nostr extension error:", (error as Error).message);
+                    const skDecoded = bech32Decoder("nsec", keyValue);
+                    currentUserPubkey = getPublicKey(skDecoded);
+                }
             } else {
                 const skDecoded = bech32Decoder("nsec", keyValue);
                 currentUserPubkey = getPublicKey(skDecoded);
@@ -261,7 +274,17 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     });
 
     if (loadingProfile) {
-        return <div className="h-screen"><Loading vCentered={false} /></div>;
+        return (
+            <div className="pt-4 pb-20 md:pb-8">
+                <div className="card p-8 animate-pulse">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="w-24 h-24 rounded-full bg-gray-700" />
+                        <div className="h-5 bg-gray-700 rounded w-32" />
+                        <div className="h-3 bg-gray-700 rounded w-48" />
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     let title = '';
@@ -287,7 +310,7 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
     };
 
     return (
-        <div className="py-16">
+        <div className="pt-4 pb-20 md:pb-8">
             <Helmet>
                 <title>{title}</title>
                 <meta property="og:title" content={title} />
@@ -298,110 +321,118 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
                 <meta name="twitter:card" content="summary_large_image" />
             </Helmet>
             {profileData ? (
-                <div className="flex flex-col items-center">
-                    <div className="flex flex-col sm:flex-row items-center mb-4">
+                <div className="card p-6 mb-6">
+                    <div className="flex flex-col items-center text-center">
                         {profileData?.picture && (
                             <img 
                                 src={profileData.picture} 
                                 alt="Profile" 
-                                className="w-64 h-64 rounded-full mb-4 sm:mb-0 sm:mr-4 cursor-pointer" 
+                                className="w-24 h-24 rounded-full object-cover ring-2 ring-violet-500/30 mb-4 cursor-pointer hover:ring-violet-500 transition-all" 
                                 onClick={() => setSelectedImage(profileData.picture ?? null)}
                             />
                         )}
-                        <div className="flex flex-col items-center sm:items-start">
-                            <h1 className="text-3xl font-bold mb-4 sm:mb-2">{profileData?.name}</h1>
-                            <div className="flex flex-col sm:flex-row items-center">
-                            {!isFollowing ? (
-                                    <button
-                                        onClick={handleFollow}
-                                        className="text-white font-bold py-2 px-6 rounded flex items-center mb-2 sm:mb-0 sm:mr-2"
-                                    >
-                                        <UserPlusIcon className="h-5 w-5 mr-2" />
-                                        Follow
-                                    </button>
-                                ) : (
-                                    <button
-                                        onClick={handleUnfollow}
-                                        className="text-white font-bold py-2 px-6 rounded flex items-center mb-2 sm:mb-0 sm:mr-2 bg-red-500 hover:bg-red-600"
-                                    >
-                                        <UserMinusIcon className="h-5 w-5 mr-2" />
-                                        Unfollow
-                                    </button>
-                                )}
-                                <button
-                                    onClick={() => setIsMessageDialogOpen(true)}
-                                    className="text-white font-bold py-2 px-6 rounded flex items-center"
-                                >
-                                    <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
-                                    Message
-                                </button>
-                            </div>
+                        <h1 className="text-2xl font-bold text-white mb-1">{profileData?.name}</h1>
+                        {profileData?.about && (
+                            <p className="text-sm text-gray-400 mb-4 max-w-md leading-relaxed">{profileData.about}</p>
+                        )}
+
+                        <div className="flex items-center gap-6 mb-4">
+                            <Link to={`/profile/${npubFromUrl ? npubFromUrl : nip19.npubEncode(pubkey)}/following/`} className="flex flex-col items-center group">
+                                <span className="text-lg font-bold text-white group-hover:text-violet-400 transition-colors">{followingCount}</span>
+                                <span className="text-xs text-gray-500">Following</span>
+                            </Link>
+                            <div className="w-px h-8 bg-gray-700" />
+                            <Link to={`/profile/${npubFromUrl || nip19.npubEncode(pubkey)}/followers`} className="flex flex-col items-center group">
+                                <span className="text-lg font-bold text-white group-hover:text-violet-400 transition-colors">{followersCount}</span>
+                                <span className="text-xs text-gray-500">Followers</span>
+                            </Link>
                         </div>
-                    </div>
-                    <p className="text-gray-600 mb-4 text-center sm:text-left">{profileData?.about}</p>
-                    <div className="flex items-center space-x-8 mb-4">
-                        <Link to={`/profile/${npubFromUrl ? npubFromUrl : nip19.npubEncode(pubkey)}/following/`} className="flex items-center">
-                            <UsersIcon className="h-6 w-6 mr-2" />
-                            <span>Following</span>
-                            <span className="pl-4">({followingCount})</span>
-                        </Link>
-                        <Link to={`/profile/${npubFromUrl || nip19.npubEncode(pubkey)}/followers`} className="flex items-center">
-                            <UsersIcon className="h-6 w-6 mr-2" />
-                            <span>Followers</span>
-                            <span className="pl-4">({followersCount})</span>
-                        </Link>
+
+                        <div className="flex gap-2">
+                            {!isFollowing ? (
+                                <button onClick={handleFollow} className="btn-primary flex items-center gap-2 text-sm">
+                                    <UserPlusIcon className="h-4 w-4" />
+                                    Follow
+                                </button>
+                            ) : (
+                                <button onClick={handleUnfollow} className="btn-danger flex items-center gap-2 text-sm">
+                                    <UserMinusIcon className="h-4 w-4" />
+                                    Unfollow
+                                </button>
+                            )}
+                            <button onClick={() => setIsMessageDialogOpen(true)} className="btn-secondary flex items-center gap-2 text-sm">
+                                <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                                Message
+                            </button>
+                        </div>
                     </div>
                 </div>
             ) : (
-                <p>No profile data available.</p>
+                <div className="card p-8 text-center">
+                    <p className="text-sm text-gray-500">No profile data available.</p>
+                </div>
             )}
 
             {loadingPosts ? (
-                <div className="h-screen"><Loading vCentered={false} /></div>
+                <div className="space-y-3">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="card p-4 animate-pulse">
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="w-10 h-10 rounded-full bg-gray-700" />
+                                <div className="space-y-2 flex-1">
+                                    <div className="h-3 bg-gray-700 rounded w-24" />
+                                    <div className="h-2 bg-gray-700 rounded w-16" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="h-3 bg-gray-700 rounded w-full" />
+                                <div className="h-3 bg-gray-700 rounded w-3/4" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
             ) : (
                 <div>
-                    <h2 className="text-2xl font-bold mt-8 mb-4 pb-16">Recent Notes</h2>
+                    <h2 className="text-lg font-semibold text-white mb-4">Recent Notes</h2>
                     {sortedPosts.length === 0 ? (
-                        <p>No notes found.</p>
+                        <div className="card p-8 text-center">
+                            <p className="text-sm text-gray-500">No notes found.</p>
+                        </div>
                     ) : (
-                        <div className="space-y-8">
+                        <div className="space-y-3">
                             {streamedEvents
                                 .filter(post => !deletedNoteIds.has(post.id))
                                 .sort((a, b) => b.created_at - a.created_at)
-                                .map((post, _index) => (
-                                    <div key={post.id} className="mb-8 pb-32">
-                                        <NoteCard
-                                            referencedNoteInput={null}
-                                            isPreview={false}
-                                            id={post.id}
-                                            event={post}
-                                            rootEvent={post.rootEvent}
-                                            content={post.content}
-                                            user={{
-                                                name: profileData?.name || 'Unknown',
-                                                image: profileData?.picture,
-                                                pubkey: post.pubkey,
-                                                nip05: profileData?.nip05
-                                            }}
-                                            created_at={post.created_at}
-                                            hashtags={post.tags.filter(tag => tag[0] === 't').map(tag => tag[1])}
-                                            pool={pool}
-                                            nostrExists={nostrExists}
-                                            keyValue={keyValue}
-                                            deleted={post.deleted === true}
-                                            repostedEvent={post.repostedEvent || null}
-                                            repliedEvent={post.repliedEvent || null}
-                                            connectionInfo={null}
-                                            onUserClick={handleUserClick}
-                                        />
-                                    </div>
+                                .map((post) => (
+                                    <NoteCard
+                                        key={post.id}
+                                        referencedNoteInput={null}
+                                        isPreview={false}
+                                        id={post.id}
+                                        event={post}
+                                        rootEvent={post.rootEvent}
+                                        content={post.content}
+                                        user={{
+                                            name: profileData?.name || 'Unknown',
+                                            image: profileData?.picture,
+                                            pubkey: post.pubkey,
+                                            nip05: profileData?.nip05
+                                        }}
+                                        created_at={post.created_at}
+                                        hashtags={post.tags.filter(tag => tag[0] === 't').map(tag => tag[1])}
+                                        pool={pool}
+                                        nostrExists={nostrExists}
+                                        keyValue={keyValue}
+                                        deleted={post.deleted === true}
+                                        repostedEvent={post.repostedEvent || null}
+                                        repliedEvent={post.repliedEvent || null}
+                                        connectionInfo={null}
+                                        onUserClick={handleUserClick}
+                                    />
                                 ))}
                             {!loadingMore && (
-                                <div className="mt-8 mb-8 text-center">
-                                    <button
-                                        onClick={handleLoadMore}
-                                        className="text-white font-bold py-3 px-6 rounded"
-                                    >
+                                <div className="mt-6 text-center">
+                                    <button onClick={handleLoadMore} className="btn-secondary">
                                         Load More
                                     </button>
                                 </div>
@@ -421,13 +452,13 @@ const Profile: React.FC<ProfileProps> = ({ keyValue, pool, nostrExists }) => {
             />
             {selectedImage && (
                 <div 
-                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+                    className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
                     onClick={() => setSelectedImage(null)}
                 >
                     <img 
                         src={selectedImage} 
                         alt="Full size profile" 
-                        className="max-w-full max-h-full object-contain"
+                        className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
                         onClick={(e) => e.stopPropagation()}
                     />
                 </div>

@@ -41,8 +41,16 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
   useEffect(() => {
     const fetchUserPubkey = async () => {
       if (nostrExists) {
-        const pubkey = await (window as any).nostr.getPublicKey();
-        setUserPubkey(pubkey);
+        try {
+          const pubkey = await (window as any).nostr.getPublicKey();
+          setUserPubkey(pubkey);
+        } catch (error) {
+          console.warn("Nostr extension error:", (error as Error).message);
+          const skDecoded = bech32Decoder('nsec', keyValue);
+          const pubkey = getPublicKey(skDecoded);
+          setUserPubkey(pubkey);
+          setPrivateKey(skDecoded.toString('hex'));
+        }
       } else {
         const skDecoded = bech32Decoder('nsec', keyValue);
         const pubkey = getPublicKey(skDecoded);
@@ -228,7 +236,11 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
       };
     };
 
-    fetchUserMetadata();
+    const cleanupPromise = fetchUserMetadata();
+
+    return () => {
+      cleanupPromise.then(cleanup => cleanup?.());
+    };
   }, [pool, id, userPubkey]);
 
   const handleSendMessage = async () => {
@@ -343,21 +355,21 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
   const conversationPartner = id && userMetadata[id]?.name || id?.slice(0, 8) || 'Unknown';
 
   return (
-    <div className="container mx-auto px-4">
+    <div className="container mx-auto px-4 pt-4 pb-20 md:pb-8">
       <h1 className="text-2xl font-bold mb-4 pb-4">Conversation with {conversationPartner}</h1>
       <div className="flex mb-4 pb-64">
         <textarea
           ref={textareaRef}
           value={newMessage}
           onChange={handleTextareaChange}
-          className="flex-grow border rounded-l px-4 py-2 bg-white text-black resize-none overflow-hidden"
+          className="input-field flex-grow rounded-r-none resize-none overflow-hidden"
           placeholder="Type your message..."
           rows={1}
           style={{ minHeight: '40px' }}
         />
         <button
           onClick={handleSendMessage}
-          className="text-white px-4 py-2 rounded-r"
+          className="btn-primary rounded-l-none"
         >
           Send
         </button>
@@ -366,8 +378,10 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`p-16 rounded-lg flex ${
-              message.pubkey === userPubkey ? 'bg-[#535bf2] bg-opacity-20 ml-auto text-white' : 'bg-gray-100 text-black'
+            className={`p-16 rounded-xl flex ${
+              message.pubkey === userPubkey
+                ? 'bg-violet-600/20 border border-violet-500/30 ml-auto text-white'
+                : 'card text-white'
             } max-w-[70%]`}
           >
             <Link to={`/profile/${message.pubkey}`}>
@@ -388,7 +402,7 @@ const Conversation: React.FC<ConversationProps> = ({ keyValue, pool, nostrExists
       </div>
       <button
         onClick={handleLoadOlderMessages}
-        className="w-full bg-gray-200 text-gray-800 py-2 rounded"
+        className="w-full btn-secondary py-2"
         disabled={loadingOlderMessages || !hasOlderMessages}
       >
         {loadingOlderMessages ? 'Loading...' : hasOlderMessages ? 'Load Older Messages' : 'No Older Messages'}

@@ -134,16 +134,16 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 pt-4 pb-20 md:pb-8">
       <h1 className="text-2xl font-bold mb-6">Your Podcasts</h1>
       {requests.length === 0 ? (
         <p className="text-center text-gray-500">No podcast requests found</p>
       ) : (
         <div className="grid gap-8">
           {requests.map((request) => (
-            <div key={request.request_id} className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700">
+            <div key={request.request_id} className="card p-6">
               {request.status === 'processing' && request.completion_percentage !== undefined && (
-                <div className="w-full bg-gray-700 h-2.5 mb-4">
+                <div className="w-full bg-[var(--color-bg-input)] h-2.5 mb-4 rounded">
                   <div 
                     className="bg-blue-500 h-2.5 transition-all duration-500"
                     style={{ width: `${request.completion_percentage}%` }}
@@ -184,7 +184,7 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
                           <select
                             value={downloadTypes[request.request_id]}
                             onChange={(e) => handleDownloadTypeChange(request.request_id, e.target.value as 'audio' | 'video')}
-                            className="bg-gray-700 text-white px-4 py-2 rounded"
+                            className="input-field"
                           >
                             {request.download_url && <option value="audio">Audio (MP3)</option>}
                             {request.video_url && <option value="video">Video</option>}
@@ -193,14 +193,14 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
                             href={downloadTypes[request.request_id] === 'audio' ? request.download_url : request.video_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="bg-[#535bf2] text-white px-16 py-2 rounded hover:bg-[#4349d6] transition duration-200 text-center"
+                            className="btn-primary text-center inline-block"
                           >
                             Download
                           </a>
                         </div>
                         <button
                           onClick={() => handleShare(request)}
-                          className="bg-green-600 text-white px-16 py-2 rounded hover:bg-green-700 transition duration-200"
+                          className="btn-secondary"
                         >
                           Share
                         </button>
@@ -232,7 +232,7 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
               <button
                 onClick={loadMore}
                 disabled={loadingMore}
-                className="bg-[#535bf2] text-white px-8 py-2 rounded hover:bg-[#4349d6] disabled:opacity-50"
+                className="btn-primary disabled:opacity-50"
               >
                 {loadingMore ? 'Loading...' : 'Load More'}
               </button>
@@ -242,26 +242,26 @@ const PodcastRequests: React.FC<PodcastRequestsProps> = ({ keyValue, nostrExists
       )}
 
       {showShareDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-lg w-full">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="card p-6 max-w-lg w-full">
             <h2 className="text-xl font-bold mb-4">Share Podcast</h2>
             <textarea
               value={shareMessage}
               onChange={(e) => setShareMessage(e.target.value)}
-              className="w-full h-72 p-2 mb-4 bg-gray-700 rounded"
+              className="input-field h-72 mb-4 resize-none"
               placeholder="Enter your message..."
             />
             <div className="flex justify-end gap-4">
               <button
                 onClick={() => setShowShareDialog(false)}
-                className="px-32 py-2 bg-gray-600 rounded hover:bg-gray-700"
+                className="btn-ghost"
               >
                 Cancel
               </button>
               <button
                 onClick={handlePost}
                 disabled={posting}
-                className="px-32 py-2 bg-[#535bf2] rounded hover:bg-[#4349d6] disabled:opacity-50"
+                className="btn-primary disabled:opacity-50"
               >
                 {posting ? 'Posting...' : 'Post'}
               </button>

@@ -12,7 +12,7 @@ import Ostrich from "./Ostrich";
 import { showCustomToast } from "./CustomToast";
 import { PhotoIcon, VideoCameraIcon } from '@heroicons/react/24/solid';
 import NoteCard from "./NoteCard";
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 import { cacheNotes, clearCachedNotesOlderThanOneDay, getMetadataFromCache, setMetadataToCache } from '../utils/cachingUtils';
 import { RELAYS } from '../utils/constants';
 import { debounce } from 'lodash';
@@ -20,8 +20,6 @@ import { API_URLS } from '../utils/apiConstants';
 import { constructFilterFromBYOAlgo } from '../utils/algoUtils';
 import { createAuthHeader } from '../utils/authUtils';
 import { bech32 } from 'bech32';
-import FaviconIcon from './FaviconIcon';
-import TopicSelectionDialog from './TopicSelectionDialog';
 
 interface HomeProps {
   keyValue: string;
@@ -30,7 +28,6 @@ interface HomeProps {
 }
 
 const Home : React.FC<HomeProps> = (props: HomeProps) => {
-    if (props.nostrExists === null) return;
     const [streamedEvents, setStreamedEvents] = useState<ExtendedEvent[]>([]);
     const [eventsImmediate, _setEvents] = useState<ExtendedEvent[]>([]);
     const [events] = useDebounce(eventsImmediate, 15);
@@ -60,42 +57,49 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     const keyValueRef = useRef<string | null>(null);
     const [followingStructure, setFollowingStructure] = useState<any>(null);
     const initialLoadRef = useRef(false);
-    const [generatingPost, setGeneratingPost] = useState(false);
-    const [isTopicDialogOpen, setIsTopicDialogOpen] = useState(false);
-    const [_selectedTopic, setSelectedTopic] = useState<string | null>(null);
     const [isPoolReady, setIsPoolReady] = useState(false);
 
     const hasFetchedRef = useRef(false);
 
-    const calculateConnectionInfo = (notePubkey: string) => {
+    const batchFetchMetadata = useCallback((pubkeys: string[]) => {
+      if (!props.pool) return;
+      const cachedKeys: Record<string, Metadata> = {};
+      const uncached: string[] = [];
+      pubkeys.forEach(pk => {
+        const cached = getMetadataFromCache(pk);
+        if (cached) { cachedKeys[pk] = cached; }
+        else { uncached.push(pk); }
+      });
+      if (Object.keys(cachedKeys).length > 0) {
+        setMetadata(prev => ({...prev, ...cachedKeys}));
+      }
+      if (uncached.length > 0) {
+        const sub = props.pool.subscribeManyEose(RELAYS, [{kinds: [0], authors: [...new Set(uncached)]}], {
+          onevent(event) {
+            try {
+              const parsed = JSON.parse(event.content);
+              const m: Metadata = {
+                name: parsed.name || parsed.display_name || parsed.username,
+                about: parsed.about,
+                picture: parsed.picture,
+                nip05: parsed.nip05,
+              };
+              setMetadata(prev => ({...prev, [event.pubkey]: m}));
+              if (isLoggedIn) setMetadataToCache(event.pubkey, m);
+            } catch {}
+          },
+          onclose() { sub?.close(); }
+        });
+      }
+    }, [props.pool, isLoggedIn]);
+
+    const calculateConnectionInfo = useCallback((notePubkey: string) => {
       if (followers.includes(notePubkey)) {
         return { degree: 1 };
       } else if (followingStructure) {
         const secondDegreeConnection = followingStructure.find((fs: { following: string | string[]; }) => fs.following.includes(notePubkey));
         if (secondDegreeConnection) {
           const connectedThroughPubkey = secondDegreeConnection.id;
-          if (!metadata[connectedThroughPubkey] && props.pool) {
-            const sub = props.pool.subscribeManyEose(
-              RELAYS,
-              [{ kinds: [0], authors: [connectedThroughPubkey] }],
-              {
-                onevent(metadataEvent) {
-                  try {
-                    const newMetadata = JSON.parse(metadataEvent.content) as Metadata;
-                    setMetadata(prev => ({...prev, [connectedThroughPubkey]: newMetadata}));
-                    if (isLoggedIn) {
-                      setMetadataToCache(connectedThroughPubkey, newMetadata);
-                    }
-                  } catch (error) {
-                    console.error("Error parsing metadata:", error);
-                  }
-                },
-                onclose() {
-                  sub.close();
-                }
-              }
-            );
-          }
           return {
             degree: 2,
             connectedThrough: {
@@ -106,7 +110,17 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         }
       }
       return null;
-    };
+    }, [followers, followingStructure, metadata]);
+
+    useEffect(() => {
+      if (!followingStructure || !props.pool) return;
+      const connectorPubkeys = followingStructure
+        .map((fs: { id: string }) => fs.id)
+        .filter((pk: string) => !metadata[pk]);
+      if (connectorPubkeys.length > 0) {
+        batchFetchMetadata(connectorPubkeys);
+      }
+    }, [followingStructure, props.pool, batchFetchMetadata]);
 
     const handleEventReceived = useCallback(async (event: ExtendedEvent) => {
       setStreamedEvents(prev => {
@@ -128,30 +142,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         pubkeysToFetch.push(event.repliedEvent.pubkey);
       }
       
-      pubkeysToFetch.forEach(async pubkey => {
-        const cachedMetadata = getMetadataFromCache(pubkey);
-        if (cachedMetadata) {
-          setMetadata(prev => ({...prev, [pubkey]: cachedMetadata}));
-        } else if (props.pool && !metadata[pubkey]) {
-          const metaData = await props.pool.querySync(
-            RELAYS,
-            {
-              kinds: [0],
-              authors: [pubkey]
-            }
-          );
-          try {
-            const metadata = JSON.parse(metaData[0].content) as Metadata;
-            setMetadata(prev => ({...prev, [pubkey]: metadata}));
-            if (isLoggedIn) {
-              setMetadataToCache(pubkey, metadata);
-            }
-          } catch (error) {
-            console.error("Error parsing metadata:", error);
-          }
-        }
-      });
-  }, [props.pool, metadata, isLoggedIn, setMetadata]);
+      batchFetchMetadata(pubkeysToFetch);
+  }, [props.pool, isLoggedIn, batchFetchMetadata]);
 
 
     const fetchFollowingAndData = useCallback(async () => {
@@ -230,12 +222,17 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
               newFollowing = await getFollowing(props.pool, isLoggedIn, props.nostrExists ?? false, keyValueRef.current, setUserPublicKey, null);
             }
           }
-          catch {}
+          catch (error) {
+            console.warn("Social graph API unavailable, falling back to relay data:", error);
+            newFollowing = await getFollowing(props.pool, isLoggedIn, props.nostrExists ?? false, keyValueRef.current, setUserPublicKey, null);
+          }
           try {
             if (keyValueRef.current) {
               if (!newFollowing.includes(pk)) newFollowing.push(pk);
             }
-          } catch (error) {}
+          } catch (error) {
+            console.warn("Error adding own pubkey to following list:", error);
+          }
           setFollowers(newFollowing);
         }
           
@@ -294,31 +291,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 }
               }
               
-              pubkeysToFetch.forEach(async pubkey => {
-                const cachedMetadata = getMetadataFromCache(pubkey);
-                if (cachedMetadata) {
-                  setMetadata(prev => ({...prev, [pubkey]: cachedMetadata}));
-                } else if (props.pool && !metadata[pubkey]) {
-                  const metaData = await props.pool.querySync(
-                    RELAYS,
-                    {
-                      kinds: [0],
-                      authors: [pubkey]
-                    }
-                  );
-                  try {
-                    const metadata = JSON.parse(metaData[0].content) as Metadata;
-                    setMetadata(prev => ({...prev, [pubkey]: metadata}));
-                    if (isLoggedIn) {
-                      setMetadataToCache(pubkey, metadata);
-                    }
-                  } catch (error) {
-                    console.error("Error parsing metadata:", error);
-                  }
-                }
-              });
+              batchFetchMetadata(pubkeysToFetch);
             }
-            
             
             if (allFetchedEvents.length >= 5) break;
           }
@@ -346,7 +320,6 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     }, [props.pool,
       isPoolReady,
       initialLoadComplete,
-      loading,
       props.nostrExists,
       selectedAlgorithm]);
 
@@ -362,8 +335,9 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
 
     useEffect(() => {
       if (props.pool) {
-        const isReady = RELAYS.every(relay => props.pool?.ensureRelay(relay));
-        setIsPoolReady(isReady);
+        Promise.all(RELAYS.map(relay => props.pool!.ensureRelay(relay)))
+          .then(() => setIsPoolReady(true))
+          .catch((err) => console.error("Error connecting to relays:", err));
       }
     }, [props.pool]);
 
@@ -375,8 +349,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
         !initialLoadComplete && 
         !hasFetchedRef.current
       ) {
+        hasFetchedRef.current = true;
         initialLoadRef.current = true;
-        //setLoading(true);
         const algoId = selectedAlgorithm?.algoId || null;
         clearCachedNotesOlderThanOneDay(algoId);
         fetchFollowingAndData();
@@ -443,29 +417,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           return pubkeys;
         });
     
-        pubkeysToFetch.forEach(async pubkey => {
-          const cachedMetadata = getMetadataFromCache(pubkey);
-          if (cachedMetadata) {
-            setMetadata(prev => ({...prev, [pubkey]: cachedMetadata}));
-          } else if (props.pool && !metadata[pubkey]) {
-            const metaData = await props.pool.querySync(
-              RELAYS,
-              {
-                kinds: [0],
-                authors: [pubkey]
-              }
-            );
-            try {
-              const metadata = JSON.parse(metaData[0].content) as Metadata;
-              setMetadata(prev => ({...prev, [pubkey]: metadata}));
-              if (isLoggedIn) {
-                setMetadataToCache(pubkey, metadata);
-              }
-            } catch (error) {
-              console.error("Error parsing metadata:", error);
-            }
-          }
-        });
+        batchFetchMetadata(pubkeysToFetch);
         const newRepostEvents = allFetchedEvents.filter(event => event.repostedEvent).map(event => event.repostedEvent!);
         const newReplyEvents = [
           ...allFetchedEvents.filter(event => event.repliedEvent).map(event => event.repliedEvent!),
@@ -580,65 +532,8 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
       }
     };
 
-    const handleTopicSelectionPodcast = async (topic: string) => {
-      setSelectedTopic(topic);
-      setGeneratingPost(true);
-      try {
-        const response = await fetch(`${API_URLS.API_URL}podcast`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            topic: topic,
-            npub: userPublicKey
-          }),
-        });
 
-        if (!response.ok) {
-          throw new Error('Failed to generate podcast');
-        }
-
-        showCustomToast("Your podcast request has been queued!")
-        setTimeout(adjustTextareaHeight, 0);
-      } catch (error) {
-        console.error('Error generating podcast:', error);
-        showCustomToast('Failed to generate podcast. Please try again.', 'error');
-      } finally {
-        setGeneratingPost(false);
-      }
-    };
-    
-    const handleTopicSelectionNote = async (topic: string) => {
-      setSelectedTopic(topic);
-      setGeneratingPost(true);
-      try {
-        const response = await fetch(`${API_URLS.API_URL}llama`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            prompt: `Please write a sample social media post about ${topic}. 
-            Please make it concise and exactly how it would appear on the platform. 
-            Please also leave out any reference to it being a sample, I want the text only.`
-          }),
-        });
-    
-        if (!response.ok) {
-          throw new Error('Failed to generate post');
-        }
-    
-        const data = await response.json();
-        setMessage(data.response);
-        setTimeout(adjustTextareaHeight, 0);
-      } catch (error) {
-        console.error('Error generating post:', error);
-        showCustomToast('Failed to generate post. Please try again.', 'error');
-      } finally {
-        setGeneratingPost(false);
-      }
-    };
+    if (props.nostrExists === null) return null;
 
     const previewUser: User = {
       name: metadata[userPublicKey || '']?.name || '',
@@ -660,7 +555,7 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
     };
 
     return (
-      <div className="py-16 pt-150">
+      <div className="pt-4 pb-20 md:pb-8">
         <Helmet>
           <title>Ghostcopywrite | Nostr Client</title>
           <meta property="og:title" content="Ghostcopywrite | Nostr Client" />
@@ -670,125 +565,126 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
           <meta property="og:type" content="website" />
           <meta name="twitter:card" content="summary_large_image" />
         </Helmet>
+
+        {/* Composer */}
         {isLoggedIn && (
-          <div className="flex flex-col space-y-4 border border-gray-300 rounded-lg p-24 mb-8">
-            <div>
-              <div className="pb-2">
-                <textarea
-                  ref={textareaRef}
-                  id="message" 
-                  className="w-full text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 resize-none overflow-hidden"
-                  placeholder="What is happening?!" 
-                  required
-                  value={message}
-                  onChange={handleTextareaChange}
-                  rows={1}
+          <div className="card p-4 mb-6">
+            <textarea
+              ref={textareaRef}
+              id="message" 
+              className="input-field resize-none overflow-hidden mb-3"
+              placeholder="What's on your mind?" 
+              required
+              value={message}
+              onChange={handleTextareaChange}
+              rows={2}
+            />
+            <div className="flex justify-between items-center">
+              <div className="flex gap-1">
+                <input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploadingImage} className="hidden" id="image-upload" ref={imageInputRef} />
+                <button 
+                  className={`btn-ghost p-2 text-gray-400 hover:text-violet-400 ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={triggerImageInput}
+                  disabled={uploadingImage}
+                  title="Upload image"
+                >
+                  {uploadingImage ? <Loading vCentered={false} tiny={true} /> : <PhotoIcon className="h-5 w-5" />}
+                </button>
+                <input type="file" accept="video/*" onChange={handleVideoUpload} disabled={uploadingVideo} className="hidden" id="video-upload" ref={videoInputRef} />
+                <button 
+                  className={`btn-ghost p-2 text-gray-400 hover:text-violet-400 ${uploadingVideo ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={triggerVideoInput}
+                  disabled={uploadingVideo}
+                  title="Upload video"
+                >
+                  {uploadingVideo ? <Loading vCentered={false} tiny={true} /> : <VideoCameraIcon className="h-5 w-5" />}
+                </button>
+              </div>
+              <button 
+                className={`btn-primary text-sm px-5 py-1.5 ${(posting || uploadingImage || uploadingVideo || !message.trim()) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={(_e) => handleSendMessage()}
+                disabled={posting || uploadingImage || uploadingVideo || !message.trim()}
+              >
+                {posting ? 'Posting...' : 'Post'}
+              </button>
+            </div>
+
+            {/* Preview (only when typing) */}
+            {message.trim() && (
+              <div className="border-t border-[var(--color-border)] mt-3 pt-3">
+                <span className="text-xs text-gray-500 mb-2 block">Preview</span>
+                <NoteCard 
+                  referencedNoteInput={null}
+                  isPreview={true}
+                  event={previewNote}
+                  id={previewNote.id}
+                  content={previewNote.content}
+                  user={previewUser}
+                  created_at={previewNote.created_at}
+                  hashtags={[]}
+                  pool={props.pool}
+                  nostrExists={props.nostrExists}
+                  keyValue={props.keyValue} 
+                  deleted={undefined} 
+                  repostedEvent={null} 
+                  repliedEvent={null} 
+                  connectionInfo={null}
+                  rootEvent={null}
+                  onUserClick={() => {}}         
                 />
               </div>
-              <div className="h-64 flex justify-between items-center">
-                <div className="flex">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    disabled={uploadingImage}
-                    className="hidden"
-                    id="image-upload"
-                    ref={imageInputRef}
-                  />
-                  <button 
-                    className={`flex items-center justify-center font-bold p-16 rounded bg-transparent ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={triggerImageInput}
-                    disabled={uploadingImage}
-                  >
-                    {uploadingImage ? <Loading vCentered={false} /> : <PhotoIcon className="h-5 w-5" />}
-                  </button>
-                  <input
-                    type="file"
-                    accept="video/*"
-                    onChange={handleVideoUpload}
-                    disabled={uploadingVideo}
-                    className="hidden"
-                    id="video-upload"
-                    ref={videoInputRef}
-                  />
-                  <button 
-                    className={`flex items-center justify-center font-bold p-16 rounded bg-transparent ${uploadingVideo ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={triggerVideoInput}
-                    disabled={uploadingVideo}
-                  >
-                    {uploadingVideo ? <Loading vCentered={false} /> : <VideoCameraIcon className="h-5 w-5" />}
-                  </button>
-                  <button 
-                    className={`flex items-center justify-center font-bold p-16 rounded bg-transparent cursor-pointer ${generatingPost ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={() => setIsTopicDialogOpen(true)}
-                    disabled={generatingPost}
-                  >
-                    {generatingPost ? <Loading vCentered={false} tiny={true} /> : <FaviconIcon className="h-5 w-5 cursor-pointer" />}
-                  </button>
-                </div>
-                <div>
-                  <button 
-                    className={`text-white font-bold p-16 rounded ${(posting || uploadingImage || uploadingVideo || !message.trim()) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    onClick={(_e) => handleSendMessage()}
-                    disabled={posting || uploadingImage || uploadingVideo || !message.trim()}
-                  >
-                    {posting ? 'Posting...' : 'Post'}
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="border-t border-gray-300 pt-4">
-              <h3 className="text-lg font-semibold mb-2">Preview</h3>
-              <NoteCard 
-                referencedNoteInput={null}
-                isPreview={true}
-                event={previewNote}
-                id={previewNote.id}
-                content={previewNote.content}
-                user={previewUser}
-                created_at={previewNote.created_at}
-                hashtags={[]}
-                pool={props.pool}
-                nostrExists={props.nostrExists}
-                keyValue={props.keyValue} 
-                deleted={undefined} 
-                repostedEvent={null} 
-                repliedEvent={null} 
-                connectionInfo={null}
-                rootEvent={null}
-                onUserClick={() => {}}         
-              />
-            </div>
+            )}
           </div>
         )}
+
+        {/* Feed */}
         {loading && !initialLoadComplete ? (
-          <Loading vCentered={false} />
-        ) : error ? (
-          <div className="text-red-500 text-center mt-4">{error}</div>
-        ) : (
-          <>
-          <div className="flex space-x-4">
-            <div className="flex border-b border-gray-600">
-            {byoAlgo.map(algo => (
-              <button
-                key={algo.algoId}
-                onClick={() => {
-                  setSelectedAlgorithm(algo);
-                  setStreamedEvents([]);
-                  setLastFetchedTimestamp(Math.floor(Date.now() / 1000));
-                }}
-                className={`px-32 py-2 mx-8 -mb-px ${
-                  selectedAlgorithm?.algoId === algo.algoId
-                    ? 'bg-[#242424] border-t border-l border-r border-blue-500 text-white rounded-t-md'
-                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600 hover:text-white rounded-t-md border-transparent'
-                }`}
-              >
-                {algo.name || 'Algorithm'}
-              </button>
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="card p-4 animate-pulse">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-gray-700" />
+                  <div className="space-y-2 flex-1">
+                    <div className="h-3 bg-gray-700 rounded w-24" />
+                    <div className="h-2 bg-gray-700 rounded w-16" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 bg-gray-700 rounded w-full" />
+                  <div className="h-3 bg-gray-700 rounded w-3/4" />
+                </div>
+              </div>
             ))}
           </div>
-        </div>
+        ) : error ? (
+          <div className="card p-8 text-center">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        ) : (
+          <>
+            {/* Algorithm Tabs */}
+            {byoAlgo.length > 0 && (
+              <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+                {byoAlgo.map(algo => (
+                  <button
+                    key={algo.algoId}
+                    onClick={() => {
+                      setSelectedAlgorithm(algo);
+                      setStreamedEvents([]);
+                      setLastFetchedTimestamp(Math.floor(Date.now() / 1000));
+                    }}
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                      selectedAlgorithm?.algoId === algo.algoId
+                        ? 'bg-violet-600 text-white'
+                        : 'bg-[var(--color-bg-card)] text-gray-400 hover:text-white border border-[var(--color-border)]'
+                    }`}
+                  >
+                    {algo.name || 'Algorithm'}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className={`w-full ${!isLoggedIn ? 'pointer-events-none opacity-50' : ''}`}>
               <NotesList 
                 metadata={metadata} 
@@ -803,31 +699,23 @@ const Home : React.FC<HomeProps> = (props: HomeProps) => {
                 calculateConnectionInfo={calculateConnectionInfo}
               />
               {streamedEvents.length > 0 && initialLoadComplete && isLoggedIn && (
-                <div className="mt-8 mb-8 text-center">
+                <div className="mt-6 mb-6 text-center">
                   {loadingMore ? (
                     <Loading vCentered={false} />
                   ) : (
-                    <button 
-                      className="text-white font-bold py-3 px-6 rounded"
-                      onClick={loadMore}
-                    >
+                    <button className="btn-secondary" onClick={loadMore}>
                       Load More
                     </button>
                   )}
                 </div>
               )}
-          </div>
-        </>)}
+            </div>
+          </>
+        )}
+
         <Ostrich show={showOstrich} onClose={() => setShowOstrich(false)} 
             text="Hey! Please " linkText="set up your profile to let users know who you are" 
             linkUrl="/edit-profile" />
-        <TopicSelectionDialog
-          isOpen={isTopicDialogOpen}
-          onClose={() => setIsTopicDialogOpen(false)}
-          onSelectTopicNote={handleTopicSelectionNote}
-          onSelectTopicPodcast={handleTopicSelectionPodcast}
-          userNpub={userPublicKey ? nip19.npubEncode(userPublicKey) : ''}
-        />
       </div>
     )
   }

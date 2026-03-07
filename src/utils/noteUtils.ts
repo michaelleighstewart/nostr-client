@@ -42,7 +42,13 @@ export const fetchMetadataAlt = async (pool: SimplePool, events: ExtendedEvent[]
                     onevent(event) {
                         if (event.kind === 0) {
                             try {
-                                const metadata = JSON.parse(event.content) as Metadata;
+                                const parsed = JSON.parse(event.content);
+                                const metadata: Metadata = {
+                                    name: parsed.name || parsed.display_name || parsed.username || '',
+                                    about: parsed.about || '',
+                                    picture: parsed.picture || '',
+                                    nip05: parsed.nip05 || '',
+                                };
                                 allNewMetadata[event.pubkey] = metadata;
                                 setMetadataToCache(event.pubkey, metadata);
                             } catch (error) {
@@ -239,9 +245,17 @@ export const fetchMetadataReactionsAndReplies = async (pool: SimplePool, events:
                 {
                     onevent(event: Event) {
                         if (event.kind === 0) {
-                            const metadata = JSON.parse(event.content) as Metadata;
-                            allNewMetadata[event.pubkey] = metadata;
-                            setMetadataToCache(event.pubkey, metadata);
+                            try {
+                                const parsed = JSON.parse(event.content);
+                                const metadata: Metadata = {
+                                    name: parsed.name || parsed.display_name || parsed.username || '',
+                                    about: parsed.about || '',
+                                    picture: parsed.picture || '',
+                                    nip05: parsed.nip05 || '',
+                                };
+                                allNewMetadata[event.pubkey] = metadata;
+                                setMetadataToCache(event.pubkey, metadata);
+                            } catch {}
                         } else if (event.kind === 7) {
                             const postId = event.tags.find(tag => tag[0] === 'e')?.[1];
                             if (postId) {
@@ -392,39 +406,26 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
             ? chunkArray(filter.authors, 50)
             : [filter.authors];
 
+            const resolvedEventsCache = new Map<string, ExtendedEvent>();
+
             const handleKind1Event = async (event: Event, extendedEventToAdd: ExtendedEvent, callEventReceived: boolean) => {
                 const rootTag = event.tags.find(tag => tag[0] === 'e' && tag[3] === 'root');
                 const replyTag = event.tags.find(tag => tag[0] === 'e' && tag[3] === 'reply');
-              
-                const fetchAndCreateExtendedEvent = async (id: string | null, _type: 'root' | 'reply') => {
-                  if (!id || !pool) return null;
-                    let eventToResolve: ExtendedEvent | null = null;
-                    const resolvedEvent = await pool.querySync(
-                        RELAYS,
-                        {
-                            kinds: [1],
-                            ids: [id]
-                        }
-                    );
-                    const originalEvent = resolvedEvent[0];
-                    const extendedOriginalEvent: ExtendedEvent = {
-                        ...originalEvent,
-                        id: originalEvent.id,
-                        pubkey: originalEvent.pubkey,
-                        created_at: originalEvent.created_at,
-                        content: originalEvent.content,
-                        tags: originalEvent.tags,
-                        deleted: false,
-                        repostedEvent: null,
-                        repliedEvent: null,
-                        rootEvent: null
-                      };
-                      eventToResolve = extendedOriginalEvent;
-                      return eventToResolve;
-                };
-            
-                const rootEvent = await fetchAndCreateExtendedEvent(rootTag ? rootTag[1] : null, 'root');
-                const replyEvent = await fetchAndCreateExtendedEvent(replyTag ? replyTag[1] : null, 'reply');
+
+                const idsToFetch = [rootTag?.[1], replyTag?.[1]]
+                    .filter((id): id is string => !!id && !resolvedEventsCache.has(id));
+
+                if (idsToFetch.length > 0 && pool) {
+                    const resolved = await pool.querySync(RELAYS, { kinds: [1], ids: idsToFetch });
+                    resolved.forEach(e => {
+                        resolvedEventsCache.set(e.id, {
+                            ...e, deleted: false, repostedEvent: null, repliedEvent: null, rootEvent: null
+                        });
+                    });
+                }
+
+                const rootEvent = rootTag?.[1] ? resolvedEventsCache.get(rootTag[1]) || null : null;
+                const replyEvent = replyTag?.[1] ? resolvedEventsCache.get(replyTag[1]) || null : null;
             
                 const extendedEvent: ExtendedEvent = {
                   ...event,
@@ -570,15 +571,23 @@ export const fetchData = async (pool: SimplePool | null, _since: number, append:
         const createSubscription = (authorChunk: string[]) => {
             return new Promise<void>((resolve) => {
                 const chunkFilter = { ...filter, authors: authorChunk };
-                const sub = isRecentSubscription 
-                    ? pool?.subscribeMany(RELAYS, [chunkFilter], { onevent: (event) => {
-                        handleEvent(event, true)
-                    }, oneose: resolve })
-                    : pool?.subscribeManyEose(RELAYS, [chunkFilter], { onevent: (event) => { 
-                        handleEvent(event, false)
-                    }, onclose: () => {
-                        sub?.close();
-                        resolve()} });
+                if (isRecentSubscription) {
+                    const sub = pool?.subscribeMany(RELAYS, [chunkFilter], {
+                        onevent: (event) => handleEvent(event, true),
+                        oneose() {
+                            sub?.close();
+                            resolve();
+                        }
+                    });
+                } else {
+                    const sub = pool?.subscribeManyEose(RELAYS, [chunkFilter], {
+                        onevent: (event) => handleEvent(event, false),
+                        onclose() {
+                            sub?.close();
+                            resolve();
+                        }
+                    });
+                }
             });
         };
 

@@ -11,6 +11,15 @@ module.exports = {
     ],
     theme: {
       extend: {
+        colors: {
+          'bg-primary': 'var(--color-bg-primary)',
+          'bg-secondary': 'var(--color-bg-secondary)',
+          'bg-card': 'var(--color-bg-card)',
+          'bg-input': 'var(--color-bg-input)',
+          'bg-hover': 'var(--color-bg-hover)',
+          'accent': 'var(--color-accent)',
+          'accent-hover': 'var(--color-accent-hover)',
+        },
         screens: {
           'sm': '640px',
           'md': '768px',
@@ -24,9 +33,10 @@ module.exports = {
             "0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06)",
           md: "0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06)",
           lg: "0px 12px 16px -4px rgba(16, 24, 40, 0.1), 0px 4px 6px -2px rgba(16, 24, 40, 0.05)",
-          xl: " 0px 20px 24px -4px rgba(16, 24, 40, 0.1), 0px 8px 8px -4px rgba(16, 24, 40, 0.04)",
+          xl: "0px 20px 24px -4px rgba(16, 24, 40, 0.1), 0px 8px 8px -4px rgba(16, 24, 40, 0.04)",
           "2xl": "0px 24px 48px -12px rgba(16, 24, 40, 0.25)",
           "3xl": "0px 32px 64px -12px rgba(16, 24, 40, 0.2)",
+          "glow": "0 0 20px rgba(124, 58, 237, 0.15)",
           inner: "inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)",
           none: "none",
         },
@@ -52,25 +62,6 @@ module.exports = {
           bold: 600,
           bolder: 700,
         },
-        spacing: {
-          4: "4px",
-          8: "8px",
-          10: "10px",
-          12: "12px",
-          14: "14px",
-          16: "16px",
-          20: "20px",
-          24: "24px",
-          32: "32px",
-          36: "36px",
-          40: "40px",
-          42: "42px",
-          48: "48px",
-          52: "52px",
-          64: "64px",
-          80: "80px",
-        },
-  
         borderRadius: {
           0: "0",
           4: "4px",
@@ -88,8 +79,15 @@ module.exports = {
           inherit: "inherit",
           0: "0",
         },
-        outline: {
-          primary: ["2px solid #7B61FF", "1px"],
+        animation: {
+          'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          'shimmer': 'shimmer 2s linear infinite',
+        },
+        keyframes: {
+          shimmer: {
+            '0%': { backgroundPosition: '-200% 0' },
+            '100%': { backgroundPosition: '200% 0' },
+          },
         },
       },
     },

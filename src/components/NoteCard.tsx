@@ -101,13 +101,13 @@ interface Props {
     const [isAccordionOpen, setIsAccordionOpen] = useState(false);
     const [loadingCounts, setLoadingCounts] = useState(true);
     const [metadata, setMetadata] = useState<Record<string, Metadata>>({});
-    const [_loadingEvents, setLoadingEvents] = useState<Record<string, boolean>>({});
     const [_audioUrls, setAudioUrls] = useState<string[]>([]);
+    const contentSubsRef = useRef<any[]>([]);
+    const fetchedEntityIdsRef = useRef<Set<string>>(new Set());
 
     const toggleAccordion = async () => {
       setIsAccordionOpen(prev => !prev);
       if (!isAccordionOpen) {
-        // Fetch counts only when opening the accordion
         if (pool && event) {
           setLoadingCounts(true);
           const result = await fetchReactionsAndRepliesAlt(pool, [event], repostedEvent ? [repostedEvent] : [], localReplies) as {
@@ -207,7 +207,6 @@ interface Props {
         setCachedReplies(cachedCounts.replies);
       }
     
-      // Update cache if new counts are higher
       const updateCache = () => {
         const newReactions = localReactions?.length || 0;
         const newReposts = localReposts?.length || 0;
@@ -226,26 +225,24 @@ interface Props {
       };
     
       updateCache();
-    //}, [id, reactions, reposts, replies]);
   }, [id, localReactions, localReposts, localReplies]);
 
     useEffect(() => {
-      // Check if content contains image URLs
+      contentSubsRef.current.forEach(s => s?.close());
+      contentSubsRef.current = [];
+
       const imageRegex = /(https?:\/\/.*\.(?:png|jpg|jpeg|gif))/gi;
       const imageMatches: string[] = content.match(imageRegex) || [];
       setImageUrls(imageMatches);
 
-      // Check if content contains video URLs
       const videoRegex = /(https?:\/\/.*\.(?:mp4|avi|mov))/gi;
       const videoMatches: string[] = content.match(videoRegex) || [];
       setVideoUrls(videoMatches);
 
-      // Audio
       const audioRegex = /(https?:\/\/.*?\.(?:mp3|wav|ogg|m4a)(?:[^"\s]*)?(?:\?[^"\s]*)?)/gi;
       const audioMatches: string[] = content.match(audioRegex) || [];
       setAudioUrls(audioMatches);
 
-      // Check for YouTube video
       const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?(.+)/g;
       const youtubeMatch = youtubeRegex.exec(content);
       if (youtubeMatch && youtubeMatch[1]) {
@@ -255,214 +252,61 @@ interface Props {
       const linkRegex = /(https?:\/\/[^\s]+)/g;
       const nostrBech32Regex = /(nostr:(naddr|npub|note|nsec|nprofile|nevent)1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]+)\b/g;
       const hashtagRegex = /#(\w+)/g;
+
+      const eventIdsToFetch: string[] = [];
+      const pubkeysToFetch: string[] = [];
+      const naddrToFetch: {pubkey: string, identifier: string}[] = [];
+
       const parts: string[] = content.split(linkRegex);
       
       const processed = parts.map((part, index) => {
         if (part.match(linkRegex)) {
-          if (audioMatches.includes(part as string)) {
-            return <AudioEmbed url={part} />
-          }
-          if (videoMatches.includes(part as string)) {
-            return <VideoEmbed key={index} url={part} />;
-          } else if (!imageMatches.includes(part as string) && !youtubeMatch) {
-            return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">{part}</a>;
+          if (audioMatches.includes(part)) return <AudioEmbed url={part} />;
+          if (videoMatches.includes(part)) return <VideoEmbed key={index} url={part} />;
+          if (!imageMatches.includes(part) && !youtubeMatch) {
+            return <a key={index} href={part} target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:text-violet-300 hover:underline break-all">{part}</a>;
           }
           return null;
         }
-        let result = [];
+        let result: (string | JSX.Element)[] = [];
         let lastIndex = 0;
         let match;
 
-        
         while ((match = nostrBech32Regex.exec(part)) !== null) {
           const [fullMatch, nostrEntity] = match;
           const beforeText = part.slice(lastIndex, match.index);
-          if (beforeText) {
-            result.push(beforeText);
-          }
+          if (beforeText) result.push(beforeText);
+
           try {
             const decoded = nip19.decode(nostrEntity.slice(6));
             if (decoded.type === 'nevent') {
-              const eventId = decoded.data.id;
-              pool?.subscribeManyEose(RELAYS, [{
-                ids: [decoded.data.id],
-                authors: decoded.data.author ? [decoded.data.author] : undefined,
-              }], 
-              {
-                onevent(event) {
-                  setReferencedNote({
-                    id: event.id,
-                    content: event.content,
-                    created_at: event.created_at,
-                    pubkey: event.pubkey,
-                    tags: event.tags,
-                    deleted: false,
-                    repostedEvent: null,
-                    repliedEvent: null,
-                    rootEvent: null
-                  });
-                  
-                  // Fetch metadata for the referenced note's author if not in cache
-                  if (!metadata?.[event.pubkey]) {
-                    pool?.subscribeManyEose(RELAYS, [{
-                      kinds: [0],
-                      authors: [event.pubkey]
-                    }], 
-                    {
-                      onevent(metadataEvent) {
-                        const eventMetadata = JSON.parse(metadataEvent.content);
-                        setMetadata((prev: any) => ({
-                          ...prev,
-                          [event.pubkey]: {
-                            name: eventMetadata.name || 'Unknown',
-                            picture: eventMetadata.picture
-                          }
-                        }));
-                      }
-                    });
-                  }
-                  setLoadingEvents(prev => ({ ...prev, [eventId]: false }));
-                }
-              });
-              
-              // Add a loading placeholder while the event is being fetched
-              /*if (loadingEvents[eventId] && !referencedNote) {
-                result.push(
-                  <span key={`nevent-${index}-${match.index}`} className="text-blue-500">
-                    Loading referenced note...
-                  </span>
-                );
-              } else if (!referencedNote) {
-                // michael - completely removed
-                result.push(
-                  <Link 
-                    key={`nostr-${index}-${match.index}`}
-                    to={`/note/${eventId}`}
-                    className="text-blue-500 hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {nostrEntity}
-                  </Link>
-                );
-              }*/
-            }
-            else if (decoded.type === 'naddr' && decoded.data.kind === 30023) {
-              pool?.subscribeManyEose(RELAYS, [{
-                kinds: [30023],
-                authors: [decoded.data.pubkey],
-                '#d': [decoded.data.identifier]
-              }], 
-              {
-                onevent(event) {
-                  const npub = nip19.npubEncode(event.pubkey);
-                  setProcessedContent(prevContent => {
-                    // Check if this event has already been processed
-                    if (prevContent.some(item => 
-                      item !== null && typeof item === 'object' && 'key' in item && item.key === `preview-${event.id}`
-                    )) {
-                      return prevContent;
-                    }
-                    // If it hasn't been processed, add it to the content
-                    return [
-                      ...prevContent,
-                      <div key={`preview-${event.id}`} className="border rounded-lg p-4 my-2">
-                        <h3 className="text-lg font-semibold">{event.tags.find(tag => tag[0] === 'title')?.[1] || 'Untitled'}</h3>
-                        <p className="text-sm text-gray-400 my-2">{event.tags.find(tag => tag[0] === 'summary')?.[1] || 'No summary available'}</p>
-                        {event.tags.find(tag => tag[0] === 'image')?.[1] && (
-                          <img src={event.tags.find(tag => tag[0] === 'image')?.[1]} alt={event.tags.find(tag => tag[0] === 'title')?.[1] || 'Untitled'} className="w-full h-auto max-h-96 object-contain rounded my-2" />
-                        )}
-                        <a href={`https://highlighter.com/${npub}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                          View on Highlighter
-                        </a>
-                      </div>
-                    ];
-                  });
-                }
-              });
+              if (!fetchedEntityIdsRef.current.has(decoded.data.id)) {
+                eventIdsToFetch.push(decoded.data.id);
+              }
+            } else if (decoded.type === 'naddr' && decoded.data.kind === 30023) {
+              naddrToFetch.push({pubkey: decoded.data.pubkey, identifier: decoded.data.identifier});
             }
             if (decoded.type === 'npub') {
-              if (!metadata?.[decoded.data]) {
-                pool?.subscribeManyEose(RELAYS, [{
-                  kinds: [0],
-                  authors: [decoded.data]
-                }], 
-                {
-                  onevent(event) {
-                    const eventMetadata = JSON.parse(event.content);
-                    setMetadata((prev: any) => ({
-                      ...prev,
-                      [decoded.data]: {
-                          name: eventMetadata.name || 'Unknown',
-                          picture: eventMetadata.picture
-                      }
-                    }));
-                  }
-                });
-              }
+              if (!metadata?.[decoded.data]) pubkeysToFetch.push(decoded.data);
               const npub = nostrEntity.slice(6);
               const name = metadata?.[decoded.data]?.name || npub;
               result.push(
-                <Link 
-                  key={`npub-${index}-${match.index}`}
-                  to={`/profile/${npub}`}
-                  className="text-blue-500 hover:underline"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {name}
+                <Link key={`npub-${index}-${match.index}`} to={`/profile/${npub}`}
+                  className="text-violet-400 hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
+                  @{name}
                 </Link>
               );
             } else if (decoded.type === 'note') {
-              pool?.subscribeManyEose(RELAYS, [{
-                ids: [decoded.data]
-              }], 
-              {
-                onevent(event) {
-                  setReferencedNote({
-                    id: event.id,
-                    content: event.content,
-                    created_at: event.created_at,
-                    pubkey: event.pubkey,
-                    tags: event.tags,
-                    deleted: false,
-                    repostedEvent: null,
-                    repliedEvent: null,
-                    rootEvent: null
-                  });
-                  
-                  // Fetch metadata for the referenced note's author if not in cache
-                  if (!metadata?.[event.pubkey]) {
-                    pool?.subscribeManyEose(RELAYS, [{
-                      kinds: [0],
-                      authors: [event.pubkey]
-                    }], 
-                    {
-                      onevent(metadataEvent) {
-                        const eventMetadata = JSON.parse(metadataEvent.content);
-                        setMetadata((prev: any) => ({
-                          ...prev,
-                          [event.pubkey]: {
-                            name: eventMetadata.name || 'Unknown',
-                            picture: eventMetadata.picture
-                          }
-                        }));
-                      }
-                    });
-                  }
-                }
-              });
-            } else {
-              if (decoded.type !== 'nevent') {
-                result.push(
-                  <Link 
-                    key={`nostr-${index}-${match.index}`}
-                    to={`/profile/${nostrEntity.slice(6)}`}
-                    className="text-blue-500 hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {nostrEntity}
-                  </Link>
-                );
+              if (!fetchedEntityIdsRef.current.has(decoded.data)) {
+                eventIdsToFetch.push(decoded.data);
               }
+            } else if (decoded.type !== 'nevent' && decoded.type !== 'naddr') {
+              result.push(
+                <Link key={`nostr-${index}-${match.index}`} to={`/profile/${nostrEntity.slice(6)}`}
+                  className="text-violet-400 hover:underline" onClick={(e) => e.stopPropagation()}>
+                  {nostrEntity}
+                </Link>
+              );
             }
           } catch (error) {
             console.error("Error decoding Nostr entity:", error);
@@ -470,10 +314,9 @@ interface Props {
           }
           lastIndex = match.index + fullMatch.length;
         }
-        if (lastIndex < part.length) {
-          result.push(part.slice(lastIndex));
-        }
-        return result.map((item: string | JSX.Element | null, i) => {
+        if (lastIndex < part.length) result.push(part.slice(lastIndex));
+
+        return result.map((item: string | JSX.Element, i) => {
           if (typeof item === 'string') {
             const lines = item.split('\n');
             return (
@@ -484,12 +327,8 @@ interface Props {
                     {line.split(hashtagRegex).map((segment, segmentIndex) => {
                       if (segmentIndex % 2 === 1) {
                         return (
-                          <Link 
-                            key={segmentIndex} 
-                            to={`/people-to-follow?hashtag=${segment}`}
-                            className="text-blue-500 hover:underline"
-                            onClick={(e) => e.stopPropagation()} // Prevent the post click event from triggering
-                          >
+                          <Link key={segmentIndex} to={`/people-to-follow?hashtag=${segment}`}
+                            className="text-violet-400 hover:underline" onClick={(e) => e.stopPropagation()}>
                             #{segment}
                           </Link>
                         );
@@ -504,20 +343,103 @@ interface Props {
           return item;
         });
       });
-      // Filter out nostr:nevent links from processed content
+
       setProcessedContent(processed.flat().filter(Boolean));
+
+      if (!pool) return;
+
+      const newEventIds = [...new Set(eventIdsToFetch)].filter(id => !fetchedEntityIdsRef.current.has(id));
+      if (newEventIds.length > 0) {
+        newEventIds.forEach(id => fetchedEntityIdsRef.current.add(id));
+        const sub = pool.subscribeManyEose(RELAYS, [{ids: newEventIds}], {
+          onevent(event) {
+            setReferencedNote({
+              id: event.id, content: event.content, created_at: event.created_at,
+              pubkey: event.pubkey, tags: event.tags, deleted: false,
+              repostedEvent: null, repliedEvent: null, rootEvent: null
+            });
+            if (!metadata?.[event.pubkey]) pubkeysToFetch.push(event.pubkey);
+          },
+          onclose() {
+            sub?.close();
+            const uncached = [...new Set(pubkeysToFetch)].filter(pk => !metadata?.[pk]);
+            if (uncached.length > 0 && pool) {
+              const metaSub = pool.subscribeManyEose(RELAYS, [{kinds: [0], authors: uncached}], {
+                onevent(e) {
+                  try {
+                    const m = JSON.parse(e.content);
+                    setMetadata(prev => ({...prev, [e.pubkey]: {name: m.name || m.display_name || m.username || 'Unknown', picture: m.picture}}));
+                  } catch {}
+                },
+                onclose() { metaSub?.close(); }
+              });
+              contentSubsRef.current.push(metaSub);
+            }
+          }
+        });
+        contentSubsRef.current.push(sub);
+      } else {
+        const uncached = [...new Set(pubkeysToFetch)].filter(pk => !metadata?.[pk]);
+        if (uncached.length > 0) {
+          const sub = pool.subscribeManyEose(RELAYS, [{kinds: [0], authors: uncached}], {
+            onevent(event) {
+              try {
+                const m = JSON.parse(event.content);
+                setMetadata(prev => ({...prev, [event.pubkey]: {name: m.name || m.display_name || m.username || 'Unknown', picture: m.picture}}));
+              } catch {}
+            },
+            onclose() { sub?.close(); }
+          });
+          contentSubsRef.current.push(sub);
+        }
+      }
+
+      if (naddrToFetch.length > 0) {
+        const sub = pool.subscribeManyEose(RELAYS,
+          naddrToFetch.map(ref => ({kinds: [30023], authors: [ref.pubkey], '#d': [ref.identifier]})),
+          {
+            onevent(event) {
+              const npub = nip19.npubEncode(event.pubkey);
+              setProcessedContent(prevContent => {
+                if (prevContent.some(item => item !== null && typeof item === 'object' && 'key' in item && item.key === `preview-${event.id}`)) return prevContent;
+                return [...prevContent,
+                  <div key={`preview-${event.id}`} className="card p-4 my-3">
+                    <h3 className="text-base font-semibold text-white">{event.tags.find(tag => tag[0] === 'title')?.[1] || 'Untitled'}</h3>
+                    <p className="text-sm text-gray-400 my-2">{event.tags.find(tag => tag[0] === 'summary')?.[1] || 'No summary available'}</p>
+                    {event.tags.find(tag => tag[0] === 'image')?.[1] && (
+                      <img src={event.tags.find(tag => tag[0] === 'image')?.[1]} alt={event.tags.find(tag => tag[0] === 'title')?.[1] || 'Untitled'} className="w-full h-auto max-h-96 object-contain rounded-lg my-2" />
+                    )}
+                    <a href={`https://highlighter.com/${npub}`} target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:underline text-sm">View on Highlighter</a>
+                  </div>
+                ];
+              });
+            },
+            onclose() { sub?.close(); }
+          }
+        );
+        contentSubsRef.current.push(sub);
+      }
+
+      return () => {
+        contentSubsRef.current.forEach(s => s?.close());
+        contentSubsRef.current = [];
+      };
     }, [content, metadata]);
   
     useEffect(() => {
       async function fetchPublicKey() {
-        if ((window as any).nostr && (window as any).nostr.getPublicKey) {
-          const pk = await (window as any).nostr.getPublicKey();
-          if (pk === user.pubkey) {
-            setCanDelete(true);
+        try {
+          if ((window as any).nostr && (window as any).nostr.getPublicKey) {
+            const pk = await (window as any).nostr.getPublicKey();
+            if (pk === user.pubkey) {
+              setCanDelete(true);
+            }
+            setPublicKey(pk);
+            return;
           }
-          setPublicKey(pk);
+        } catch {
+          // Extension error (e.g. nos2x key not found) - fall through to keyValue
         }
-        else {
         if (keyValue) {
           try {
             let skDecoded = bech32Decoder('nsec', keyValue);
@@ -534,7 +456,6 @@ interface Props {
         } else {
           setPublicKey(null);
           setCanDelete(false);
-        }
         }
       }
       fetchPublicKey();
@@ -605,94 +526,110 @@ interface Props {
       });
     };
 
-    const handleShowLikes = () => {
-      setShowLikesModal(true);
-    };
+    const handleShowLikes = () => setShowLikesModal(true);
+    const handleShowDislikes = () => setShowDislikesModal(true);
+    const handleShowReposts = () => setShowRepostsModal(true);
 
-    const handleShowDislikes = () => {
-      setShowDislikesModal(true);
-    };
-
-    const handleShowReposts = () => {
-      setShowRepostsModal(true);
+    const formatTime = (timestamp: number) => {
+      const now = Date.now() / 1000;
+      const diff = now - timestamp;
+      if (diff < 60) return 'just now';
+      if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+      if (diff < 604800) return `${Math.floor(diff / 86400)}d`;
+      return new Date(timestamp * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     };
 
     if (localDeleted) {
       return (
-        <div className="rounded p-16 border border-gray-600 bg-[#535bf2] bg-opacity-10 flex flex-col gap-16 break-words">
-          <p className="text-body3 text-gray-400">This post has been deleted</p>
+        <div className="card p-4 opacity-60">
+          <p className="text-sm text-gray-500 italic">This post has been deleted</p>
         </div>
       );
     }
+
     return (
-      <div className="rounded p-16 border border-gray-600 bg-[#535bf2] bg-opacity-10 flex flex-col gap-16 break-words">
-        <div className="flex gap-12 items-center overflow-hidden justify-between">
-          <div className="flex gap-12 items-center overflow-hidden">
-            {user.image ?
-            <Link to={`/profile/${userNpub}`}>
-              <img
-                src={user.image}
-                alt="note"
-                className="rounded-full w-40 h-40 object-cover bg-gray-100 cursor-pointer"
-              />
-            </Link> : <></>}
-            <div>
-              <Link to={`/profile/${userNpub}`} className="text-body3 text-white overflow-hidden text-ellipsis">
-                {user.name}
+      <div className="card p-4 hover:border-[var(--color-border-light)] transition-colors duration-150">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {user.image ? (
+              <Link to={`/profile/${userNpub}`} className="flex-shrink-0">
+                <img
+                  src={user.image}
+                  alt=""
+                  className="w-10 h-10 rounded-full object-cover ring-1 ring-white/10"
+                />
               </Link>
-              <Link to={`/note/${id}`} className="px-16 text-body5 text-gray-400 cursor-pointer">
-                {new Date(created_at * 1000).toLocaleString(undefined, {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false
-                })}
+            ) : (
+              <Link to={`/profile/${userNpub}`} className="flex-shrink-0 w-10 h-10 rounded-full bg-violet-600/20 flex items-center justify-center">
+                <span className="text-violet-400 text-sm font-bold">
+                  {(user.name || '?')[0]?.toUpperCase()}
+                </span>
+              </Link>
+            )}
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <Link to={`/profile/${userNpub}`} className="text-sm font-semibold text-white hover:text-violet-400 truncate transition-colors">
+                  {user.name}
+                </Link>
+                {connectionInfo && (
+                  <button
+                    onClick={openConnectionInfo}
+                    className="flex-shrink-0 text-violet-400/60 hover:text-violet-400 transition-colors"
+                    title="Connection info"
+                  >
+                    <QuestionMarkCircleIcon className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <Link to={`/note/${id}`} className="text-xs text-gray-500 hover:text-gray-400 transition-colors">
+                {formatTime(created_at)}
               </Link>
             </div>
           </div>
-          {connectionInfo && (
-            <div className="flex-shrink-0">
-              <QuestionMarkCircleIcon
-                className="w-6 h-6 text-[#535bf2] cursor-pointer hover:text-white"
-                onClick={openConnectionInfo}
-              />
-            </div>
-          )}
         </div>
+
+        {/* Content */}
+        <div className="text-sm text-gray-200 leading-relaxed mb-3 break-words">
+          <div>{processedContent}</div>
+        </div>
+
+        {/* Images */}
         {imageUrls.length > 0 && (
-          <div className="relative">
+          <div className="mb-3 -mx-1">
             {imageUrls.length > 1 && (
-            <div className="flex justify-center mb-4">
-              <button onClick={handlePrev} 
-              disabled={currentIndex === 0}
-              className={`font-bold py-2 px-6 rounded flex items-center mb-2 sm:mb-0 sm:mr-2 ${currentIndex === 0 ? 'bg-gray-500 text-gray-300 cursor-not-allowed hover:bg-gray-500 hover:text-gray-300' : 'text-white'}`}>
-                Previous
-              </button>
-              <button onClick={handleNext} 
-              className={`font-bold py-2 px-6 rounded flex items-center mb-2 sm:mb-0 sm:mr-2 ${currentIndex === imageUrls.length - 1 ? 'bg-gray-500 text-gray-300 cursor-not-allowed hover:bg-gray-500 hover:text-gray-300' : 'text-white'}`}
-              disabled={currentIndex === imageUrls.length - 1}>
-                Next
-              </button>
-            </div>)}
-            <div ref={carouselRef} className="overflow-hidden">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <button
+                  onClick={handlePrev}
+                  disabled={currentIndex === 0}
+                  className={`btn-ghost px-3 py-1 text-xs ${currentIndex === 0 ? 'opacity-30 cursor-not-allowed' : ''}`}
+                >
+                  Prev
+                </button>
+                <span className="text-xs text-gray-500">{currentIndex + 1} / {imageUrls.length}</span>
+                <button
+                  onClick={handleNext}
+                  disabled={currentIndex === imageUrls.length - 1}
+                  className={`btn-ghost px-3 py-1 text-xs ${currentIndex === imageUrls.length - 1 ? 'opacity-30 cursor-not-allowed' : ''}`}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+            <div ref={carouselRef} className="overflow-hidden rounded-lg">
               <div
                 className="flex transition-transform duration-300 ease-in-out"
                 style={{ transform: `translateX(-${currentIndex * 100}%)` }}
               >
                 {imageUrls.map((url, index) => (
-                  <div key={index} className="w-full flex-shrink-0 p-4">
+                  <div key={index} className="w-full flex-shrink-0">
                     <img
                       src={url}
                       alt={`Post content ${index + 1}`}
-                      className="max-w-full h-auto rounded-lg mt-2 cursor-pointer" 
-                      style={{ maxHeight: '1200px', objectFit: 'cover' }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleImageClick(url);
-                      }}
+                      className="w-full h-auto rounded-lg cursor-pointer object-cover"
+                      style={{ maxHeight: '500px' }}
+                      onClick={(e) => { e.stopPropagation(); handleImageClick(url); }}
                     />
                   </div>
                 ))}
@@ -700,11 +637,28 @@ interface Props {
             </div>
           </div>
         )}
+
+        {/* YouTube */}
+        {youtubeVideoId && (
+          <div className="mb-3 rounded-lg overflow-hidden">
+            <iframe
+              width="100%"
+              height="315"
+              src={`https://www.youtube.com/embed/${youtubeVideoId}`}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="rounded-lg"
+            />
+          </div>
+        )}
+
+        {/* Referenced Note */}
         {referencedNote && (
-          <div className="mt-4 border-l-2 border-gray-500 pl-4">
-            <div className="flex justify-between items-center mb-2">
-              <p className="text-gray-400 text-sm">Referenced Note:</p>
-              <Link to={`/note/${referencedNote.id}`} className="text-blue-500 hover:underline text-sm">
+          <div className="mb-3 border-l-2 border-violet-500/30 pl-3">
+            <div className="flex justify-between items-center mb-1.5">
+              <span className="text-xs text-gray-500">Referenced Note</span>
+              <Link to={`/note/${referencedNote.id}`} className="text-xs text-violet-400 hover:underline">
                 View
               </Link>
             </div>
@@ -734,14 +688,18 @@ interface Props {
             />
           </div>
         )}
+
+        {/* Replied Event Label */}
         {repliedEvent && (
-          <div className="mt-2 border-l-2 border-gray-500">
-            <p className="text-gray-400 text-sm mb-2 pl-4">Replied</p>
+          <div className="mb-2 border-l-2 border-violet-500/30 pl-3">
+            <span className="text-xs text-gray-500">Replied</span>
           </div>
         )}
+
+        {/* Reposted Event */}
         {repostedEvent && (
-          <div className="mt-2 border-l-2 border-gray-500">
-            <p className="text-gray-400 text-sm mb-2 pl-4">Reposted</p>
+          <div className="mb-3 border-l-2 border-violet-500/30 pl-3">
+            <span className="text-xs text-gray-500 mb-1.5 block">Reposted</span>
             <NoteCard
               referencedNoteInput={referencedNote}
               event={repostedEvent}
@@ -749,14 +707,11 @@ interface Props {
               id={repostedEvent.id}
               content={repostedEvent.content}
               user={{
-                name:
-                    metadata?.[repostedEvent.pubkey]?.name ??
-                    `${nip19.npubEncode(repostedEvent.pubkey).slice(0, 12)}...`,
-                image:
-                    metadata?.[repostedEvent.pubkey]?.picture,
+                name: metadata?.[repostedEvent.pubkey]?.name ?? `${nip19.npubEncode(repostedEvent.pubkey).slice(0, 12)}...`,
+                image: metadata?.[repostedEvent.pubkey]?.picture,
                 pubkey: repostedEvent.pubkey,
                 nip05: metadata?.[repostedEvent.pubkey]?.nip05
-            }}
+              }}
               created_at={repostedEvent.created_at}
               hashtags={[]}
               pool={pool}
@@ -772,187 +727,191 @@ interface Props {
           </div>
         )}
 
+        {/* Reply depth indicator */}
         {replyDepth && replyDepth > 0 && (
           <div 
-            className="absolute left-0 top-0 bottom-0 border-l-2 border-gray-400"
+            className="absolute left-0 top-0 bottom-0 border-l-2 border-violet-500/20"
             style={{ left: `${(replyDepth - 1) * 20}px` }}
-          ></div>
+          />
         )}
 
-        <div>
-          <p>{processedContent}</p>
-          {youtubeVideoId && (
-            <div className="mt-2">
-              <iframe
-                width="100%"
-                height="315"
-                src={`https://www.youtube.com/embed/${youtubeVideoId}`}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              ></iframe>
-            </div>
-          )}
-        </div>
-        <ul className="flex flex-wrap gap-12">
-          {hashtags
-            .filter((t) => hashtags.indexOf(t) === hashtags.lastIndexOf(t))
-            .map((hashtag) => (
-              <Link
-                key={hashtag}
-                to={`/people-to-follow?hashtag=${hashtag}`}
-                className="bg-gray-300 text-body5 text-gray-900 font-medium rounded-24 px-12 py-4 hover:underline"
-                onClick={(e) => e.stopPropagation()}
-              >
-                #{hashtag}
-              </Link>
-            ))}
-        </ul>
-      {!isPreview && (
-        <div className="flex justify-between items-center">
-          <button 
-            onClick={toggleAccordion} 
-            className="flex items-center text-blue-500 focus:outline-none"
-            style={{ padding: '10px', background: 'transparent', border: 'none' }}
-          >
-            <svg
-              className={`w-6 h-6 transform transition-transform duration-200 ${isAccordionOpen ? 'rotate-180' : ''}`}
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-        </div>)}
-
-      {isAccordionOpen && (
-      <div className="flex flex-wrap items-center justify-start">
-        {!repostedEvent && !isPreview && (
-          <>
-            <div className="p-4">
-              <BoltIcon
-                className={user.nip05 ? "h-6 w-6 text-[#535bf2] cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
-                title={user.nip05 ? "Zap " + user.name + " for this post" : user.name + " does not have zaps enabled"}
-                onClick={() => sendZap(user, id)}>
-              </BoltIcon>
-            </div>
-            <div className="p-4 pl-8 md:pl-32">
-              <HandThumbUpIcon
-                className={!alreadyLiked ? "h-6 w-6 text-[#535bf2] cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
-                title={!alreadyLiked ? "Like this post" : "You have already liked this post"}
-                onClick={!alreadyLiked ? () => handleReaction("+") : undefined}
-              />
-            </div>
-            {loadingCounts ? <Loading vCentered={true} tiny={true}></Loading> : (
-            <div className="p-4">
-              <span 
-                className="text-body5 text-gray-400 cursor-pointer hover:underline"
-                onClick={() => handleShowLikes()}
-              >
-                {localReactions.filter((r) => r.type !== "-").length}
-              </span>
-            </div>)}
-            
-            <ProfilesModal
-              npubs={localReactions.length ? localReactions.filter(r => r.type !== "-").map(r => nip19.npubEncode(r.liker_pubkey)) : []}
-              pool={pool}
-              isOpen={showLikesModal}
-              onClose={() => setShowLikesModal(false)}
-              title="Users Who Liked This Note"
-            />
-            <div className="p-4 pl-8 md:pl-32">
-              <HandThumbDownIcon
-                className={!alreadyDisliked ? "h-6 w-6 text-[#535bf2] cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
-                title={!alreadyDisliked ? "Dislike this post" : "You have already disliked this post"}
-                onClick={!alreadyDisliked ? () => handleReaction("-") : undefined}
-              />
-            </div>
-            {loadingCounts ? <Loading vCentered={true} tiny={true}></Loading> : (
-              <div className="p-4">
-                <span 
-                  className="text-body5 text-gray-400 cursor-pointer hover:underline"
-                  onClick={() => handleShowDislikes()}
+        {/* Hashtags */}
+        {hashtags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {hashtags
+              .filter((t) => hashtags.indexOf(t) === hashtags.lastIndexOf(t))
+              .map((hashtag) => (
+                <Link
+                  key={hashtag}
+                  to={`/people-to-follow?hashtag=${hashtag}`}
+                  className="text-xs text-violet-400 bg-violet-500/10 rounded-full px-2.5 py-0.5 hover:bg-violet-500/20 transition-colors"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  {cachedCounts ? cachedCounts.dislikes : (localReactions ? localReactions.filter((r) => r.type === "-").length : <Loading vCentered={true} tiny={true} />)}
-                </span>
-              </div>)}
-            <ProfilesModal
-              npubs={localReactions.length ? localReactions.filter(r => r.type === '-').map(r => nip19.npubEncode(r.liker_pubkey)) : []}
-              pool={pool}
-              isOpen={showDislikesModal}
-              onClose={() => setShowDislikesModal(false)}
-              title="Users Who Disliked This Note"
-            />
-            <div className="p-4 pl-8 md:pl-32">
-              <ArrowPathRoundedSquareIcon
-                className="h-6 w-6 text-[#535bf2] cursor-pointer"
-                title="Repost this post"
-                onClick={handleRepost}
-              />
-            </div>
-            {loadingCounts ? <Loading vCentered={true} tiny={true}></Loading> : (
-              <div className="p-4">
-                <span 
-                  className="text-body5 text-gray-400 cursor-pointer hover:underline"
-                  onClick={() => handleShowReposts()}
-                >
-                  {cachedCounts ? cachedCounts.reposts : (localReposts ? localReposts.length : <Loading vCentered={true} tiny={true} />)}
-                </span>
-              </div>)}
-            <ProfilesModal
-              npubs={(localReposts) ? localReposts.map(r => nip19.npubEncode(r.pubkey)) : []}
-              pool={pool}
-              isOpen={showRepostsModal}
-              onClose={() => setShowRepostsModal(false)}
-              title="Users Who Reposted This Note"
-            />
-            <div className="p-4 pl-8 md:pl-32">
-              <ChatBubbleLeftIcon
-                className="h-6 w-6 text-[#535bf2] cursor-pointer"
-                title="View replies"
-                onClick={() => navigate(`/note/${id}`)}
-              />
-            </div>
-              {loadingCounts ? <Loading vCentered={true} tiny={true}></Loading> : (
-                <div className="p-4">
-                  <Link to={`/note/${id}`}>
-                    <span className="text-body5 text-gray-400 cursor-pointer hover:underline font-normal">
-                    {cachedCounts ? cachedCounts.replies : (localReplies ? localReplies.length : <Loading vCentered={true} tiny={true} />)}
-                    </span>
-                  </Link>
-                </div>
-              )}
-          </>
-        )}
-        {canDelete && !isPreview &&
-          <div className={`p-4 ${!repostedEvent ? 'pl-8 md:pl-32' : ''}`}>
-            <TrashIcon
-              className={canDelete ? "h-6 w-6 text-[#535bf2] cursor-pointer" : "h-6 w-6 text-grey-500 cursor-not-allowed"}
-                title={canDelete ? "Delete this post" : "You cannot delete this post"}
-                onClick={canDelete ? () => handleDelete(id) : undefined}
-              />
+                  #{hashtag}
+                </Link>
+              ))}
           </div>
-        }
-        </div>
-      )}
+        )}
+
+        {/* Action Bar */}
+        {!isPreview && (
+          <div className="flex items-center pt-2 border-t border-[var(--color-border)]/50">
+            <button
+              onClick={toggleAccordion}
+              className="btn-ghost p-1.5 mr-1"
+              title={isAccordionOpen ? 'Hide interactions' : 'Show interactions'}
+            >
+              <svg
+                className={`w-4 h-4 text-gray-500 transform transition-transform duration-200 ${isAccordionOpen ? 'rotate-180' : ''}`}
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {!repostedEvent && (
+              <div className="flex items-center gap-1 ml-auto">
+                <button
+                  onClick={() => navigate(`/note/${id}`)}
+                  className="btn-ghost p-1.5 text-gray-500 hover:text-violet-400"
+                  title="View thread"
+                >
+                  <ChatBubbleLeftIcon className="h-4 w-4" />
+                </button>
+                {cachedCounts && (
+                  <span className="text-xs text-gray-600 mr-2">
+                    {cachedCounts.replies || ''}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Expanded Actions */}
+        {isAccordionOpen && (
+          <div className="flex flex-wrap items-center gap-1 pt-2 mt-1">
+            {!repostedEvent && !isPreview && (
+              <>
+                <ActionButton
+                  icon={<BoltIcon className="h-4 w-4" />}
+                  onClick={() => sendZap(user, id)}
+                  disabled={!user.nip05}
+                  title={user.nip05 ? `Zap ${user.name}` : `${user.name} has no zaps`}
+                  color="yellow"
+                />
+                <ActionButton
+                  icon={<HandThumbUpIcon className="h-4 w-4" />}
+                  onClick={() => handleReaction("+")}
+                  disabled={alreadyLiked}
+                  title={!alreadyLiked ? "Like" : "Already liked"}
+                />
+                {loadingCounts ? (
+                  <Loading vCentered={false} tiny={true} />
+                ) : (
+                  <button className="text-xs text-gray-500 hover:text-gray-300 px-1 transition-colors" onClick={handleShowLikes}>
+                    {localReactions.filter((r) => r.type !== "-").length || ''}
+                  </button>
+                )}
+                <ProfilesModal
+                  npubs={localReactions.length ? localReactions.filter(r => r.type !== "-").map(r => nip19.npubEncode(r.liker_pubkey)) : []}
+                  pool={pool}
+                  isOpen={showLikesModal}
+                  onClose={() => setShowLikesModal(false)}
+                  title="Users Who Liked This Note"
+                />
+
+                <ActionButton
+                  icon={<HandThumbDownIcon className="h-4 w-4" />}
+                  onClick={() => handleReaction("-")}
+                  disabled={alreadyDisliked}
+                  title={!alreadyDisliked ? "Dislike" : "Already disliked"}
+                />
+                {loadingCounts ? (
+                  <Loading vCentered={false} tiny={true} />
+                ) : (
+                  <button className="text-xs text-gray-500 hover:text-gray-300 px-1 transition-colors" onClick={handleShowDislikes}>
+                    {cachedCounts ? cachedCounts.dislikes || '' : (localReactions ? localReactions.filter((r) => r.type === "-").length || '' : '')}
+                  </button>
+                )}
+                <ProfilesModal
+                  npubs={localReactions.length ? localReactions.filter(r => r.type === '-').map(r => nip19.npubEncode(r.liker_pubkey)) : []}
+                  pool={pool}
+                  isOpen={showDislikesModal}
+                  onClose={() => setShowDislikesModal(false)}
+                  title="Users Who Disliked This Note"
+                />
+
+                <ActionButton
+                  icon={<ArrowPathRoundedSquareIcon className="h-4 w-4" />}
+                  onClick={handleRepost}
+                  title="Repost"
+                />
+                {loadingCounts ? (
+                  <Loading vCentered={false} tiny={true} />
+                ) : (
+                  <button className="text-xs text-gray-500 hover:text-gray-300 px-1 transition-colors" onClick={handleShowReposts}>
+                    {cachedCounts ? cachedCounts.reposts || '' : (localReposts ? localReposts.length || '' : '')}
+                  </button>
+                )}
+                <ProfilesModal
+                  npubs={(localReposts) ? localReposts.map(r => nip19.npubEncode(r.pubkey)) : []}
+                  pool={pool}
+                  isOpen={showRepostsModal}
+                  onClose={() => setShowRepostsModal(false)}
+                  title="Users Who Reposted This Note"
+                />
+
+                <button
+                  onClick={() => navigate(`/note/${id}`)}
+                  className="btn-ghost p-1.5 text-gray-500 hover:text-violet-400 transition-colors"
+                  title="View replies"
+                >
+                  <ChatBubbleLeftIcon className="h-4 w-4" />
+                </button>
+                {loadingCounts ? (
+                  <Loading vCentered={false} tiny={true} />
+                ) : (
+                  <Link to={`/note/${id}`} className="text-xs text-gray-500 hover:text-gray-300 px-1 transition-colors">
+                    {cachedCounts ? cachedCounts.replies || '' : (localReplies ? localReplies.length || '' : '')}
+                  </Link>
+                )}
+              </>
+            )}
+            {canDelete && !isPreview && (
+              <ActionButton
+                icon={<TrashIcon className="h-4 w-4" />}
+                onClick={() => handleDelete(id)}
+                disabled={!canDelete}
+                title="Delete"
+                color="red"
+              />
+            )}
+          </div>
+        )}
+
+        {/* Full-size image overlay */}
         {selectedImage && (
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50"
             onClick={() => setSelectedImage(null)}
           >
             <img 
               src={selectedImage} 
               alt="Full size" 
-              className="max-w-full max-h-full object-contain"
+              className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
               onClick={() => setSelectedImage(null)}
             />
           </div>
         )}
+
+        {/* Replied To */}
         {repliedEvent && (
-          <div className="mt-2 border-l-2 border-gray-500">
-            <p className="text-gray-400 text-sm mb-2 pl-4">Replied to</p>
+          <div className="mt-3 border-l-2 border-violet-500/30 pl-3">
+            <span className="text-xs text-gray-500 mb-1.5 block">Replied to</span>
             <NoteCard
               event={repliedEvent}
               referencedNoteInput={null}
@@ -960,9 +919,7 @@ interface Props {
               id={repliedEvent.id}
               content={repliedEvent.content}
               user={{
-                name:
-                  metadata?.[repliedEvent.pubkey]?.name ??
-                  `${nip19.npubEncode(repliedEvent.pubkey).slice(0, 12)}...`,
+                name: metadata?.[repliedEvent.pubkey]?.name ?? `${nip19.npubEncode(repliedEvent.pubkey).slice(0, 12)}...`,
                 image: metadata?.[repliedEvent.pubkey]?.picture,
                 pubkey: repliedEvent.pubkey,
                 nip05: metadata?.[repliedEvent.pubkey]?.nip05
@@ -981,9 +938,11 @@ interface Props {
             />
           </div>
         )}
+
+        {/* Root Event */}
         {rootEvent && (
-          <div className="mt-2 border-l-2 border-gray-500">
-            <p className="text-gray-400 text-sm mb-2 pl-4">Original note</p>
+          <div className="mt-3 border-l-2 border-violet-500/30 pl-3">
+            <span className="text-xs text-gray-500 mb-1.5 block">Original note</span>
             <NoteCard
               event={rootEvent}
               referencedNoteInput={null}
@@ -991,9 +950,7 @@ interface Props {
               id={rootEvent.id}
               content={rootEvent.content}
               user={{
-                name:
-                  metadata?.[rootEvent.pubkey]?.name ??
-                  `${nip19.npubEncode(rootEvent.pubkey).slice(0, 12)}...`,
+                name: metadata?.[rootEvent.pubkey]?.name ?? `${nip19.npubEncode(rootEvent.pubkey).slice(0, 12)}...`,
                 image: metadata?.[rootEvent.pubkey]?.picture,
                 pubkey: rootEvent.pubkey,
                 nip05: metadata?.[rootEvent.pubkey]?.nip05
@@ -1012,18 +969,43 @@ interface Props {
             />
           </div>
         )}
-      <ConnectionInfoDialog
-        isOpen={isConnectionInfoOpen}
-        onClose={() => setIsConnectionInfoOpen(false)}
-        user={{
-          name: user.name || 'Unknown',
-          picture: user.image || '',
-          about: metadata?.[user.pubkey]?.about || '',
-        }}
-        connectionInfo={connectionInfo}
-      />
+
+        <ConnectionInfoDialog
+          isOpen={isConnectionInfoOpen}
+          onClose={() => setIsConnectionInfoOpen(false)}
+          user={{
+            name: user.name || 'Unknown',
+            picture: user.image || '',
+            about: metadata?.[user.pubkey]?.about || '',
+          }}
+          connectionInfo={connectionInfo}
+        />
       </div>
     );
   })
+
+function ActionButton({ icon, onClick, disabled, title, color }: {
+  icon: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  title: string;
+  color?: 'yellow' | 'red';
+}) {
+  const colorClasses = color === 'yellow' 
+    ? 'hover:text-yellow-400' 
+    : color === 'red' 
+    ? 'hover:text-red-400'
+    : 'hover:text-violet-400';
+  
+  return (
+    <button
+      className={`btn-ghost p-1.5 transition-colors ${disabled ? 'text-gray-700 cursor-not-allowed' : `text-gray-500 ${colorClasses}`}`}
+      onClick={!disabled ? onClick : undefined}
+      title={title}
+    >
+      {icon}
+    </button>
+  );
+}
 
   export default NoteCard;

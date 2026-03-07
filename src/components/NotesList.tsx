@@ -45,8 +45,8 @@ const NotesList = React.memo(({ notes, metadata, pool, nostrExists, keyValue, in
 
     if (!initialLoadComplete || visibleNotes.length === 0) {
         return (
-            <div className="flex flex-col gap-16">
-                <p className="text-center text-gray-500">Waiting for recent notes...</p>
+            <div className="card p-8 text-center">
+                <p className="text-sm text-gray-500">Waiting for recent notes...</p>
             </div>
         )
     }
@@ -57,34 +57,33 @@ const NotesList = React.memo(({ notes, metadata, pool, nostrExists, keyValue, in
       };
 
     return (
-        <div className="w-full">
-            {visibleNotes.map((note, _index) => (
-                <div key={note.id} className="mb-4 py-16">
-                    <NoteCard
-                        event={note}
-                        referencedNoteInput={null}
-                        isPreview={false}
-                        id={note.id}
-                        created_at={note.created_at}
-                        user={{
-                            name: metadata[note.pubkey]?.name ?? `${nip19.npubEncode(note.pubkey).slice(0, 12)}...`,
-                            image: metadata[note.pubkey]?.picture,
-                            pubkey: note.pubkey,
-                            nip05: metadata[note.pubkey]?.nip05
-                        }}
-                        content={note.content}
-                        hashtags={note.tags.filter((t) => t[0] === "t").map((t) => t[1])}
-                        pool={pool}
-                        nostrExists={nostrExists}
-                        keyValue={keyValue}
-                        deleted={note.deleted}
-                        repostedEvent={note.repostedEvent}
-                        repliedEvent={note.repliedEvent}
-                        connectionInfo={calculateConnectionInfo(note.pubkey)}
-                        rootEvent={note.rootEvent}
-                        onUserClick={() => {handleUserClick(note.pubkey)}}
-                    />
-                </div>
+        <div className="w-full space-y-3">
+            {visibleNotes.map((note) => (
+                <NoteCard
+                    key={note.id}
+                    event={note}
+                    referencedNoteInput={null}
+                    isPreview={false}
+                    id={note.id}
+                    created_at={note.created_at}
+                    user={{
+                        name: metadata[note.pubkey]?.name || `${nip19.npubEncode(note.pubkey).slice(0, 12)}...`,
+                        image: metadata[note.pubkey]?.picture,
+                        pubkey: note.pubkey,
+                        nip05: metadata[note.pubkey]?.nip05
+                    }}
+                    content={note.content}
+                    hashtags={note.tags.filter((t) => t[0] === "t").map((t) => t[1])}
+                    pool={pool}
+                    nostrExists={nostrExists}
+                    keyValue={keyValue}
+                    deleted={note.deleted}
+                    repostedEvent={note.repostedEvent}
+                    repliedEvent={note.repliedEvent}
+                    connectionInfo={calculateConnectionInfo(note.pubkey)}
+                    rootEvent={note.rootEvent}
+                    onUserClick={() => {handleUserClick(note.pubkey)}}
+                />
             ))}
         </div>
     );

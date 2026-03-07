@@ -1,4 +1,4 @@
-import React, { useState, KeyboardEvent, useEffect } from 'react';
+import React, { useState, KeyboardEvent, useEffect, useRef } from 'react';
 import { SimplePool, nip19, getPublicKey } from 'nostr-tools';
 import { Link } from 'react-router-dom';
 import { RELAYS } from '../utils/constants';
@@ -28,12 +28,22 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
   const [hasSearched, setHasSearched] = useState(false);
   const [currentUserPubkey, setCurrentUserPubkey] = useState<string | null>(null);
   const [followingList, setFollowingList] = useState<string[]>([]);
+  const searchSubRef = useRef<ReturnType<SimplePool['subscribeMany']> | null>(null);
 
   useEffect(() => {
     const fetchCurrentUserPubkey = async () => {
       if (nostrExists) {
-        const pubkey = await (window as any).nostr.getPublicKey();
-        setCurrentUserPubkey(pubkey);
+        try {
+          const pubkey = await (window as any).nostr.getPublicKey();
+          setCurrentUserPubkey(pubkey);
+        } catch (error) {
+          console.warn("Nostr extension error:", (error as Error).message);
+          if (keyValue) {
+            const skDecoded = bech32Decoder("nsec", keyValue);
+            const pubkey = getPublicKey(skDecoded);
+            setCurrentUserPubkey(pubkey);
+          }
+        }
       } else if (keyValue) {
         const skDecoded = bech32Decoder("nsec", keyValue);
         const pubkey = getPublicKey(skDecoded);
@@ -95,6 +105,7 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
           return;
         }
 
+        searchSubRef.current?.close();
         const sub = pool.subscribeMany(
           RELAYS,
           [
@@ -120,6 +131,7 @@ const Search: React.FC<SearchProps> = ({ pool, nostrExists, keyValue }) => {
             },
           }
         );
+        searchSubRef.current = sub;
       } else {
         // Search by term using the API
         const response = await fetch(`https://api.nostr.wine/search?query=${encodeURIComponent(searchTerm)}&kind=0`);
@@ -177,7 +189,7 @@ const handleUnfollow = async (pubkey: string) => {
   const showFollowFunctionality = true;
 
   return (
-    <div className="p-4">
+    <div className="pt-4 pb-20 md:pb-8 px-4">
       <div className="flex mb-4 pb-32">
         <input
           type="text"
@@ -185,11 +197,11 @@ const handleUnfollow = async (pubkey: string) => {
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyPress={handleKeyPress}
           placeholder="Enter npub or username"
-          className="flex-grow p-2 border rounded-l bg-white text-black"
+          className="input-field rounded-r-none flex-grow"
         />
         <button
           onClick={handleSearch}
-          className="px-4 py-2 text-white rounded-r"
+          className="btn-primary rounded-l-none"
         >
           Search
         </button>
@@ -201,7 +213,7 @@ const handleUnfollow = async (pubkey: string) => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
           {searchResults.map((result) => (
-            <div key={result.npub} className="flex flex-col items-center justify-between p-32 border rounded hover:shadow-md transition-shadow h-full">
+            <div key={result.npub} className="card flex flex-col items-center justify-between p-32 hover:shadow-md transition-shadow h-full">
               <Link
                 to={`/profile/${result.npub}`}
                 className="flex flex-col items-center"
@@ -222,8 +234,8 @@ const handleUnfollow = async (pubkey: string) => {
               {showFollowFunctionality && (
                 <button
                   onClick={() => result.isFollowing ? handleUnfollow(result.npub) : handleFollow(result.npub)}
-                  className={`mt-4 flex items-center justify-center px-8 py-2 text-white rounded ${
-                    result.isFollowing ? 'bg-red-500 hover:bg-red-600' : 'bg-[#535bf2]-500 hover:bg-[#535bf2]-600'
+                  className={`mt-4 flex items-center justify-center px-8 py-2 rounded ${
+                    result.isFollowing ? 'bg-red-500 hover:bg-red-600 text-white' : 'btn-primary'
                   }`}
                 >
                   {result.isFollowing ? (

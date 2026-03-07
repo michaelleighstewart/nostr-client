@@ -35,5 +35,5 @@ export async function createAuthHeader(method: string, path: string,
     }
   }
   const token = btoa(`${timestamp}:${signature.sig}`);
-  return `Bearer ${token}`;
+  return token;
 }

@@ -38,9 +38,14 @@ export const handleFollowUnfollow = async (
         await pool.publish(RELAYS, signedEvent);
       }
   
-      const currentUserPubkey = nostrExists 
-        ? await (window as any).nostr.getPublicKey()
-        : getPublicKey(bech32Decoder("nsec", keyValue));
+      let currentUserPubkey: string;
+      try {
+        currentUserPubkey = nostrExists && (window as any).nostr
+          ? await (window as any).nostr.getPublicKey()
+          : getPublicKey(bech32Decoder("nsec", keyValue));
+      } catch {
+        currentUserPubkey = getPublicKey(bech32Decoder("nsec", keyValue));
+      }
   
       const response = await fetch(API_URLS.API_URL + 'batch-processor', {
         method: 'POST',

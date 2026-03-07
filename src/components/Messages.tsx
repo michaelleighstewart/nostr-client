@@ -50,7 +50,13 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
 
       let userPubkey: string;
       if (nostrExists) {
-        userPubkey = await (window as any).nostr.getPublicKey();
+        try {
+          userPubkey = await (window as any).nostr.getPublicKey();
+        } catch (error) {
+          console.warn("Nostr extension error:", (error as Error).message);
+          const skDecoded = bech32Decoder('nsec', keyValue);
+          userPubkey = getPublicKey(skDecoded);
+        }
       } else {
         const skDecoded = bech32Decoder('nsec', keyValue);
         userPubkey = getPublicKey(skDecoded);
@@ -175,12 +181,12 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
   if (loading) return <div className="h-screen"><Loading vCentered={false} /></div>;
 
   return (
-    <div className="container mx-auto px-4">
+    <div className="container mx-auto px-4 pt-4 pb-20 md:pb-8">
       <h1 className="text-2xl font-bold mb-4">Messages</h1>
       <div>
       <button
         onClick={() => setIsDialogOpen(true)}
-        className="mb-4 bg-[#535bf2] hover:bg-[#535bf2]-700 text-white font-bold py-2 px-16 rounded mt-16 mb-16"
+        className="mb-4 btn-primary mt-16 mb-16"
       >
           Send New Message
         </button>
@@ -190,7 +196,7 @@ const Messages: React.FC<MessagesProps> = ({ keyValue, pool, nostrExists }) => {
           <Link
             key={group.pubkey}
             to={`/conversation/${group.pubkey}`}
-            className="block border-b border-gray-200 py-32 hover:bg-gray-50"
+            className="card block p-4 hover:bg-[var(--color-bg-card)]/80 transition-colors mb-2"
           >
             <div className="flex items-center pl-16 pr-16">
               {group.userInfo?.picture && (

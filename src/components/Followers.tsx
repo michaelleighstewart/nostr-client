@@ -90,7 +90,7 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
       
             const followerProfiles: Event[] = [];
             await new Promise<void>((resolve) => {
-                pool.subscribeManyEose(
+                activeSub = pool.subscribeManyEose(
                     RELAYS,
                     [
                         {
@@ -130,9 +130,14 @@ const Followers: React.FC<FollowersProps> = ({ keyValue: _keyValue, pool, nostrE
             setLoading(false);
         };
 
+        let activeSub: any;
+
         fetchUserMetadata();
         fetchFollowers();
-    }, [isPoolReady]);
+        return () => {
+            activeSub?.close();
+        };
+    }, [isPoolReady, npub]);
 
     const handleTouchStart = (e: React.TouchEvent) => {
         touchStartX.current = e.touches[0].clientX;

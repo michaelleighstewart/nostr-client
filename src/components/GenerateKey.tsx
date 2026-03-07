@@ -7,7 +7,7 @@ import { showCustomToast } from './CustomToast';
 import Ostrich from './Ostrich';
 import { RELAYS } from "../utils/constants";
 import { bech32Decoder } from "../utils/helperFunctions";
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 
 interface GenerateKeyProps {
     setKeyValue: (value: string) => void;
@@ -25,6 +25,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, nostrExist
     const [profileName, setProfileName] = useState<string>("Gnostrich");
     const [profilePicture, setProfilePicture] = useState<string>("https://ghostcopywrite-uploads.s3.us-west-2.amazonaws.com/ostrich.png");
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const profileSubRef = useRef<ReturnType<SimplePool['subscribeMany']> | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isSigningUp, setIsSigningUp] = useState<boolean>(false);
     const [showNpubDialog, setShowNpubDialog] = useState<boolean>(false);
@@ -34,17 +35,28 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, nostrExist
         if (localIsLoggedIn) {
             let pk = '';
             if (nostrExists) {
-                pk = await (window as any).nostr.getPublicKey();
-            } else if (keyValue) {
+                try {
+                    pk = await (window as any).nostr.getPublicKey();
+                } catch (error) {
+                    console.warn("Nostr extension error:", (error as Error).message);
+                    if (keyValue) {
+                        const skDecoded = bech32Decoder('nsec', keyValue);
+                        pk = getPublicKey(skDecoded);
+                    }
+                }
+            }
+            if (!pk && keyValue) {
                 const skDecoded = bech32Decoder('nsec', keyValue);
                 pk = getPublicKey(skDecoded);
             }
-            const npubWords = bech32.toWords(new Uint8Array(pk.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
-            const npubEncoded = bech32.encode('npub', npubWords);
-            setNpub(npubEncoded);
-            setNsec(keyValue);
-            setIsLoading(false);
-            return;
+            if (pk) {
+                const npubWords = bech32.toWords(new Uint8Array(pk.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))));
+                const npubEncoded = bech32.encode('npub', npubWords);
+                setNpub(npubEncoded);
+                setNsec(keyValue);
+                setIsLoading(false);
+                return;
+            }
         }
 
         const storedPrivateKey = localStorage.getItem('privateKey');
@@ -72,7 +84,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, nostrExist
             setKeyValue(storedPrivateKey);
             setLocalIsLoggedIn(true);
         }
-        pool?.subscribeMany(RELAYS, [
+        profileSubRef.current = pool?.subscribeMany(RELAYS, [
             {
             kinds: [0],
             authors: [publicKey],
@@ -85,13 +97,16 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, nostrExist
                     setShowOstrich(true);
                 }
             }
-        });
+        }) ?? null;
 
         setIsLoading(false);
     }, [keyValue, setKeyValue, localIsLoggedIn, nostrExists]);
 
     useEffect(() => {
         generateKeys(pool);
+        return () => {
+            profileSubRef.current?.close();
+        };
     }, [generateKeys, pool]);
 
     useEffect(() => {
@@ -189,7 +204,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, nostrExist
     }
 
     return (
-        <div className="py-64 relative" style={{ pointerEvents: 'auto' }} onClick={handleScreenClick}>
+        <div className="pt-4 pb-20 md:pb-8 relative" style={{ pointerEvents: 'auto' }} onClick={handleScreenClick}>
             <Helmet>
                 <title>Ghostcopywrite | Sign Up Or Sign In</title>
                 <meta property="og:title" content="Ghostcopywrite | Sign Up Or Sign In" />
@@ -204,14 +219,14 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, nostrExist
                     <label htmlFor="npub" className="block mb-2 text-sm font-medium text-white">Public Key (npub): </label>
                     <div className="flex">
                         <input type="text" id="npub" 
-                            className="text-gray-900 text-sm rounded-l-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" 
+                            className="input-field rounded-r-none" 
                             value={npub}
                             readOnly
                             disabled={!!npub}
                         />
                         <button 
                             onClick={() => copyToClipboard(npub, 'Public')}
-                            className="text-white font-bold py-2.5 px-4 rounded-r-lg"
+                            className="btn-ghost rounded-l-none border-l border-[var(--color-border)]"
                         >
                             <ClipboardDocumentIcon className="h-5 w-5" />
                         </button>
@@ -228,7 +243,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, nostrExist
                     <label htmlFor="nsec" className="block mb-2 text-sm font-medium text-white">Private Key (nsec): </label>
                     <div className="flex">
                         <input type={nostrExists && keyValue ? "password" : "text"} id="nsec" 
-                            className="text-gray-900 text-sm rounded-l-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" 
+                            className="input-field rounded-r-none" 
                             value={nsec}
                             readOnly
                             disabled={!!nsec}
@@ -236,7 +251,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, nostrExist
                         <button 
                             disabled={!!(nostrExists && keyValue)}
                             onClick={() => copyToClipboard(nsec, 'Private')}
-                            className={`text-white font-bold py-2.5 px-4 rounded-r-lg ${
+                            className={`btn-ghost rounded-l-none border-l border-[var(--color-border)] ${
                                 !!(nostrExists && keyValue) ? 'opacity-50 cursor-not-allowed' : ''
                             }`}
                         >
@@ -255,14 +270,14 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, nostrExist
                 </div>
                 {!localIsLoggedIn && keyValue === "" && (
                     <>
-                        <div className="pb-24 border border-gray-300 rounded-lg p-32">
+                        <div className="pb-24 card p-8">
                             <h3 className="text-lg font-medium text-white mb-32">Extra Information:</h3>
                             <div className="mb-8">
                                 <label htmlFor="profileName" className="block mb-2 text-sm font-medium text-white">Name: </label>
                                 <input
                                     type="text"
                                     id="profileName"
-                                    className="text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                                    className="input-field"
                                     value={profileName}
                                     onChange={(e) => setProfileName(e.target.value)}
                                 />
@@ -280,7 +295,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, nostrExist
                                     />
                                     <button
                                         onClick={() => fileInputRef.current?.click()}
-                                        className="text-white font-bold py-2 px-4 rounded pl-16 pr-16"
+                                        className="btn-secondary"
                                     >
                                         Choose File
                                     </button>
@@ -296,7 +311,7 @@ const GenerateKey: React.FC<GenerateKeyProps> = ({ setKeyValue, pool, nostrExist
                         <div className="pb-24 pt-16">
                             <button
                                 onClick={handleSignUp}
-                                className="text-white font-bold py-3 px-6 rounded"
+                                className="btn-primary"
                                 disabled={isSigningUp}
                             >
                                 {isSigningUp ? 'Signing Up...' : 'Sign Up'}

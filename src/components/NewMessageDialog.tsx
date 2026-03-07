@@ -92,8 +92,15 @@ const NewMessageDialog: React.FC<NewMessageDialogProps> = ({ isOpen, onClose, po
       let encryptedContent: string;
 
       if (nostrExists) {
-        userPubkey = await (window as any).nostr.getPublicKey();
-        encryptedContent = await (window as any).nostr.nip04.encrypt(recipientPubkey, messageContent);
+        try {
+          userPubkey = await (window as any).nostr.getPublicKey();
+          encryptedContent = await (window as any).nostr.nip04.encrypt(recipientPubkey, messageContent);
+        } catch (error) {
+          console.warn("Nostr extension error:", (error as Error).message);
+          const skDecoded = bech32Decoder('nsec', keyValue);
+          userPubkey = skDecoded.toString('hex');
+          encryptedContent = await nip04.encrypt(userPubkey, recipientPubkey, messageContent);
+        }
       } else {
         const skDecoded = bech32Decoder('nsec', keyValue);
         userPubkey = skDecoded.toString('hex');
@@ -134,10 +141,16 @@ const NewMessageDialog: React.FC<NewMessageDialogProps> = ({ isOpen, onClose, po
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-      <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-gray-800">
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        className="card w-96 max-w-full p-5 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="mt-3 text-center">
-          <ChatBubbleLeftRightIcon className="mx-auto h-64 w-64 text-[#535bf2]" />
+          <ChatBubbleLeftRightIcon className="mx-auto h-64 w-64 text-violet-600" />
           <div className="mt-2 px-7 py-3">
             {initialRecipientNpub ? (
               recipientInfo && (
@@ -159,7 +172,7 @@ const NewMessageDialog: React.FC<NewMessageDialogProps> = ({ isOpen, onClose, po
                   value={recipientNpub}
                   onChange={handleRecipientChange}
                   placeholder="Recipient's npub"
-                  className="px-8 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 bg-white text-black"
+                  className="input-field mt-1"
                 />
                 {recipientInfo && (
                   <div className="mt-2 flex items-center">
@@ -179,21 +192,21 @@ const NewMessageDialog: React.FC<NewMessageDialogProps> = ({ isOpen, onClose, po
               value={messageContent}
               onChange={(e) => setMessageContent(e.target.value)}
               placeholder="Message content"
-              className="px-8 mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 bg-white text-black"
+              className="input-field mt-1"
               rows={4}
             />
           </div>
-          <div className="items-center px-4 py-3">
+          <div className="items-center px-4 py-3 space-y-3">
             <button
               onClick={handleSendMessage}
               disabled={isSending}
-              className="px-4 py-2 bg-[#535bf2]-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-[#535bf2]-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+              className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSending ? 'Sending...' : 'Send'}
             </button>
             <button
               onClick={onClose}
-              className="mt-3 px-4 py-2 bg-gray-300 text-gray-800 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300"
+              className="btn-secondary w-full"
             >
               Cancel
             </button>

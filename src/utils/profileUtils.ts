@@ -4,10 +4,23 @@ import { RELAYS } from "./constants";
 import { Metadata } from "./interfaces";
 import { getMetadataFromCache, setMetadataToCache } from './cachingUtils';
 
+export async function getNostrPublicKeySafe(): Promise<string | null> {
+  try {
+    if ((window as any).nostr && (window as any).nostr.getPublicKey) {
+      return await (window as any).nostr.getPublicKey();
+    }
+  } catch (error) {
+    console.warn("Nostr extension error:", (error as Error).message);
+  }
+  return null;
+}
+
 export async function getUserPublicKey(nostrExists: boolean, keyValue: string | null): Promise<string> {
   if (nostrExists) {
-    return await (window as any).nostr.getPublicKey();
-  } else if (keyValue) {
+    const pk = await getNostrPublicKeySafe();
+    if (pk) return pk;
+  }
+  if (keyValue) {
     const skDecoded = bech32Decoder('nsec', keyValue);
     return getPublicKey(skDecoded);
   }
@@ -114,7 +127,13 @@ export const fetchUserMetadata = async (pool: SimplePool | null, userPublicKey: 
 
   if (events.length > 0) {
     const event = events[0];
-    const metadata = JSON.parse(event.content) as Metadata;
+    const parsed = JSON.parse(event.content);
+    const metadata: Metadata = {
+      name: parsed.name || parsed.display_name || parsed.username || '',
+      about: parsed.about || '',
+      picture: parsed.picture || '',
+      nip05: parsed.nip05 || '',
+    };
     setMetadata((cur) => ({
       ...cur,
       [userPublicKey]: metadata,

@@ -35,8 +35,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
 
     useEffect(() => {
         if (props.pool) {
-          const isReady = RELAYS.every(relay => props.pool?.ensureRelay(relay));
-          setIsPoolReady(isReady);
+          Promise.all(RELAYS.map(relay => props.pool!.ensureRelay(relay))).then(() => setIsPoolReady(true));
         }
     }, [props.pool]);
 
@@ -69,7 +68,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
             });
         }
         fetchData();
-      }, [props.nostrExists, isPoolReady, props.keyValue, props.pool, saving]);
+      }, [props.nostrExists, isPoolReady, props.keyValue, props.pool]);
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -172,29 +171,29 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
     if (loading || saving) return <div className="h-screen"><Loading vCentered={false}></Loading></div>
 
     return (
-        <div className="py-64">
-            <div>
-                <div className="pb-24">
+        <div className="pt-4 pb-20 md:pb-8">
+            <div className="card p-6">
+                <div className="pb-6">
                     <label htmlFor="name" 
                         className="block mb-2 text-sm font-medium text-white">Name: </label>
                     <input type="text" id="name" 
-                        className={"text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"} 
+                        className="input-field" 
                         placeholder={"John Smith"}
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         />
                 </div>
-                <div className="pb-24">
+                <div className="pb-6">
                     <label htmlFor="about" 
                         className="block mb-2 text-sm font-medium text-white">About: </label>
                     <input type="text" id="about" 
-                        className={"text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"} 
+                        className="input-field" 
                         placeholder={"Something about you..."}
                         value={about}
                         onChange={(e) => setAbout(e.target.value)}
                         />
                 </div>
-                <div className="pb-24">
+                <div className="pb-6">
                     <label htmlFor="picture" 
                         className="block mb-2 text-sm font-medium text-white">Picture: </label>
                     <input 
@@ -207,7 +206,7 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                     />
                     <button 
                         onClick={() => fileInputRef.current?.click()}
-                        className="text-white font-bold py-2 px-16 rounded"
+                        className="btn-secondary"
                         disabled={uploadingPicture}
                     >
                         {uploadingPicture ? 'Uploading...' : 'Choose File'}
@@ -217,26 +216,24 @@ const EditProfile : React.FC<EditProfileProps> = (props: EditProfileProps) => {
                         <img src={picture} alt="Profile" className="mt-2 w-80 h-80 object-cover rounded-full" />
                     )}
                 </div>
-                <div className="pb-24">
+                <div className="pb-6">
                     <label htmlFor="lightning-address"
                         className="block mb-2 text-sm font-medium text-white">Lightning Wallet Address: </label>
                     <input type="text" id="lightning-address"
-                        className={"text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"} 
+                        className="input-field" 
                         placeholder={"Lightning Wallet Address - eg. john@getalby.com"}
                         value={lightningAddress}
                         onChange={(e) => setLightningAddress(e.target.value)}
                         /> 
                 </div>
-                <div className="h-64">
-                    <div className="float-right">
+                <div className="pt-4 flex justify-end">
                     <button 
-                        className={`text-white font-bold p-16 rounded ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`btn-primary ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
                         onClick={saveProfile}
                         disabled={saving}
                     >
-                        {'Save'}
+                        Save
                     </button>
-                    </div>
                 </div>
             </div>
         </div>

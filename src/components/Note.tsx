@@ -7,7 +7,7 @@ import { bech32Decoder } from '../utils/helperFunctions';
 import { ExtendedEvent, Metadata, Reaction } from '../utils/interfaces';
 import Loading from './Loading';
 import { showCustomToast } from './CustomToast';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 import { fetchMetadataReactionsAndReplies } from '../utils/noteUtils';
 import ThreadedReply from "./ThreadedReply";
 import FaviconIcon from './FaviconIcon';
@@ -375,7 +375,7 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
   const image = metadata[post.pubkey]?.picture || 'https://ghostcopywrite.com/ostrich.png';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pt-4 pb-20 md:pb-8">
         <Helmet>
           <meta name="description" content={description} />
           <meta property="og:title" content={title} />
@@ -409,25 +409,25 @@ const Note: React.FC<PostProps> = ({ pool, nostrExists, keyValue }) => {
         rootEvent={null}
         onUserClick={() => handleUserClick(post.pubkey)}
         />
-      <div className="mt-8 p-16 rounded-lg">
+      <div className="card mt-8 p-4">
         <textarea
           ref={textareaRef}
           value={replyContent}
           onChange={handleTextareaChange}
           placeholder="Write your reply..."
-          className="w-full p-2 border rounded bg-white text-black resize-none overflow-hidden"
+          className="input-field resize-none overflow-hidden"
           style={{ minHeight: '100px' }}
         />
         <div className="flex items-center space-x-2 mt-2">
           <button 
-            className={`text-white font-bold p-16 rounded mr-16 ${(!replyContent.trim() || isGeneratingReply) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#535bf2]-700 transition-colors duration-200'}`}
+            className={`btn-primary mr-2 ${(!replyContent.trim() || isGeneratingReply) ? 'opacity-50 cursor-not-allowed' : ''}`}
             onClick={handleReply}
             disabled={!replyContent.trim() || isGeneratingReply}
           >
             {'Reply'}
           </button>
           <button 
-            className={`flex items-center justify-center font-bold p-16 rounded bg-transparent ${isGeneratingReply ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#535bf2]-700 transition-colors duration-200'}`}
+            className={`btn-ghost flex items-center justify-center ${isGeneratingReply ? 'opacity-50 cursor-not-allowed' : ''}`}
             onClick={handleGenerateReply}
             disabled={isGeneratingReply}
           >

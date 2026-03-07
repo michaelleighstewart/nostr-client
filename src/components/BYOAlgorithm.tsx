@@ -171,7 +171,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
     : algorithms[0]) || { name: '', byoDegrees: 1, byoPosts: true, byoReposts: true, byoReplies: false, basedOn: 'Following' };
 
   return (
-    <div className="py-16 px-4 max-w-2xl mx-auto">
+    <div className="pt-4 pb-20 md:pb-8 px-4 max-w-2xl mx-auto">
       {!isCreatingNew && (
       <div className="mb-4">
         <label className="block text-sm font-medium mb-2">Select Algorithm</label>
@@ -179,7 +179,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
           <select
             value={selectedAlgorithm || ''}
             onChange={(e) => setSelectedAlgorithm(e.target.value)}
-            className={`flex-grow p-2 border rounded bg-white text-black ${algorithms.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`input-field flex-grow ${algorithms.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
             disabled={algorithms.length === 0}
           >
             {algorithms.length === 0 ? (
@@ -192,7 +192,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
           </select>
           <PlusCircleIcon
             onClick={handleAddNew}
-            className="h-6 w-6 text-[#535bf2] cursor-pointer hover:text-white transition duration-200"
+            className="h-6 w-6 text-violet-500 cursor-pointer hover:text-white transition duration-200"
             title="Create New Algorithm"
           />
         </div>
@@ -206,7 +206,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
               type="text"
               value={currentAlgorithm.name}
               onChange={(e) => handleSettingChange('name', e.target.value)}
-              className={`w-full p-2 border rounded bg-white text-black ${nameError ? 'border-red-500' : ''}`}
+              className={`input-field ${nameError ? 'border-red-500' : ''}`}
               placeholder="Enter algorithm name"
             />
             {nameError && <p className="text-red-500 text-sm mt-1">{nameError}</p>}
@@ -216,7 +216,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
             <select
               value={currentAlgorithm.basedOn}
               onChange={(e) => handleSettingChange('basedOn', e.target.value)}
-              className="w-full p-2 border rounded bg-white text-black"
+              className="input-field"
             >
               <option value="Following">Following</option>
             </select>
@@ -229,11 +229,11 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
               max="2"
               value={currentAlgorithm.byoDegrees}
               onChange={(e) => handleSettingChange('byoDegrees', parseInt(e.target.value))}
-              className="w-full p-2 border rounded bg-white text-black"
+              className="input-field"
             />
           </div>
-          <div className="border rounded p-32 relative">
-            <span className="absolute -top-3 left-3 bg-[#242424] p-2 text-med font-medium">Include</span>
+          <div className="card p-8 relative">
+            <span className="absolute -top-3 left-3 bg-[var(--color-bg-card)] p-2 text-med font-medium">Include</span>
             <div className="space-y-2">
               {['byoPosts', 'byoReposts', 'byoReplies'].map((setting) => (
                 <div key={setting} className="flex items-center">
@@ -254,7 +254,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
           <div className="flex space-x-4 pt-16">
             <button
               onClick={handleSaveSettings}
-              className="flex-1 py-2 px-4 mr-32 bg-[#535bf2]-600 text-white rounded hover:bg-[#535bf2]-700 transition duration-200"
+              className="btn-primary flex-1 mr-2"
               disabled={!currentAlgorithm.name?.trim()}
             >
               {isCreatingNew ? 'Create Algorithm' : 'Update Algorithm'}
@@ -262,7 +262,7 @@ const BYOAlgorithm: React.FC<BYOAlgorithmProps> = ({ keyValue, nostrExists }) =>
             {isCreatingNew && (
               <button
                 onClick={handleCancel}
-                className="flex-1 py-2 px-4 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition duration-200"
+                className="btn-secondary flex-1"
               >
                 Cancel
               </button>

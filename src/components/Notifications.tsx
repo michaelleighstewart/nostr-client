@@ -36,7 +36,14 @@ const Notifications: React.FC<NotificationsProps> = ({ pool, nostrExists, keyVal
     const fetchNotifications = async () => {
       let pk = "";
       if (nostrExists) {
-        pk = await (window as any).nostr.getPublicKey();
+        try {
+          pk = await (window as any).nostr.getPublicKey();
+        } catch (error) {
+          console.warn("Nostr extension error:", (error as Error).message);
+          let sk = keyValue;
+          let skDecoded = bech32Decoder('nsec', sk);
+          pk = getPublicKey(skDecoded);
+        }
       } else {
         let sk = keyValue;
         let skDecoded = bech32Decoder('nsec', sk);
@@ -127,7 +134,7 @@ const Notifications: React.FC<NotificationsProps> = ({ pool, nostrExists, keyVal
   if (loading) return <div className="h-screen"><Loading vCentered={false} /></div>;
 
   return (
-    <div className="p-4">
+    <div className="pt-4 pb-20 md:pb-8 px-4">
       <h2 className="text-2xl font-bold mb-4">Notifications</h2>
       {notifications.length === 0 ? (
         <p>No new notifications.</p>
@@ -136,9 +143,9 @@ const Notifications: React.FC<NotificationsProps> = ({ pool, nostrExists, keyVal
           {notifications.map((notification) => {
             const userData = userMetadata[notification.pubkey] || {};
             return (
-              <li key={notification.id} className="mb-4 p-4 bg-gray-800 rounded-lg flex items-center">
+              <li key={notification.id} className="card mb-4 p-4 flex items-center">
                 <div>
-                  <Link to={`/profile/${nip19.npubEncode(notification.pubkey)}`} className="font-bold text-blue-500">
+                  <Link to={`/profile/${nip19.npubEncode(notification.pubkey)}`} className="font-bold text-violet-400 hover:text-violet-300">
                     {userData.name || notification.pubkey.slice(0, 8) + '...'}
                   </Link>
                   {notification.kind === 1 ? (

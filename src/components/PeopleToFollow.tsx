@@ -183,8 +183,12 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
     useEffect(() => {
         poolRef.current = props.pool;
         keyValueRef.current = props.keyValue;
-        setupFollowingList();
-        fetchFollowingList();
+        const setupCleanup = setupFollowingList();
+        const fetchCleanup = fetchFollowingList();
+        return () => {
+            setupCleanup?.then(cleanup => cleanup?.());
+            fetchCleanup?.then(cleanup => cleanup?.());
+        };
     }, [selectedHashtag, props.nostrExists]);
 
     useEffect(() => {
@@ -238,14 +242,22 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
         person.loadingFollowing = true;
         const success = await handleFollowUnfollow(props.pool, props.nostrExists ?? false, props.keyValue, person.npub, false, followingList);
         if (success) {
+            let pubkeyForBatch: string | null = null;
+            try {
+                if (props.nostrExists) {
+                    pubkeyForBatch = await (window as any).nostr.getPublicKey();
+                } else {
+                    pubkeyForBatch = getPublicKey(bech32Decoder('nsec', props.keyValue));
+                }
+            } catch (error) {
+                console.warn("Nostr extension error:", (error as Error).message);
+                pubkeyForBatch = getPublicKey(bech32Decoder('nsec', props.keyValue));
+            }
             setFollowingList(prev => {
                 const newFollowingList = [...prev, nip19.decode(person.npub).data as string];
-                if (prev.length === 0 && newFollowingList.length === 1) {
+                if (prev.length === 0 && newFollowingList.length === 1 && pubkeyForBatch) {
                     setShowOstrich(true);
                     // Call the batch-processor endpoint
-                    const pubkey = props.nostrExists 
-                    ? (window as any).nostr.getPublicKey()
-                    : getPublicKey(bech32Decoder('nsec', props.keyValue));
                     fetch(`${API_URLS.API_URL}batch-processor`, {
                         method: 'POST',
                         headers: {
@@ -254,7 +266,7 @@ const PeopleToFollow : React.FC<PeopleToFollowProps> = (props: PeopleToFollowPro
                         body: JSON.stringify({
                             type: "trending_topics_processor",
                             params: {
-                                npub: pubkey
+                                npub: pubkeyForBatch
                         }
                     }),
                 }).catch(error => console.error('Error calling batch-processor:', error));

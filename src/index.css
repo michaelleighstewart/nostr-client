@@ -3,13 +3,34 @@
 @tailwind utilities;
 
 :root {
+  --color-bg-primary: #1a1a2e;
+  --color-bg-secondary: #16213e;
+  --color-bg-card: #1e1e3a;
+  --color-bg-input: #2a2a4a;
+  --color-bg-hover: #2e2e4e;
+
+  --color-accent: #7c3aed;
+  --color-accent-hover: #6d28d9;
+  --color-accent-muted: rgba(124, 58, 237, 0.15);
+
+  --color-text-primary: #f0f0f5;
+  --color-text-secondary: #9ca3af;
+  --color-text-muted: #6b7280;
+
+  --color-border: #374151;
+  --color-border-light: #4b5563;
+
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color-scheme: dark;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-primary);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -20,31 +41,70 @@
 
 a {
   font-weight: 500;
-  color: #535bf2;
+  color: var(--color-accent);
   text-decoration: inherit;
-}
-
-button {
-  font-weight: 500;
-  background-color: #535bf2;
-  opacity: 0.8;
-  color: white;
-  text-decoration: inherit;
-}
-
-button:hover {
-  background-color: #535bf2;
-  opacity: 1;
-  color: white;
 }
 
 a:hover {
-  color: #535bf2;
+  color: var(--color-accent-hover);
 }
 
 body {
   margin: 0;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+}
+
+@layer base {
+  button {
+    @apply bg-transparent border-none cursor-pointer text-inherit;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-violet-600 hover:bg-violet-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-150;
+  }
+
+  .btn-secondary {
+    @apply bg-transparent border border-violet-600 text-violet-400 hover:bg-violet-600/10 font-medium py-2 px-4 rounded-lg transition-colors duration-150;
+  }
+
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-150;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors duration-150;
+  }
+
+  .card {
+    @apply bg-[var(--color-bg-card)] border border-[var(--color-border)] rounded-xl;
+  }
+
+  .input-field {
+    @apply bg-[var(--color-bg-input)] border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-colors duration-150 w-full;
+  }
+}
+
+::selection {
+  background-color: var(--color-accent);
+  color: white;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-light);
 }

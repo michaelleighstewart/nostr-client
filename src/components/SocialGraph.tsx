@@ -491,7 +491,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
           });
       
           setTotalUsers(allPubkeys.size);
-          const metadataRetrieved = await fetchMetadata(Array.from(allPubkeys));
+          const { metadata: metadataRetrieved } = await fetchMetadata(Array.from(allPubkeys));
           setMetadata(metadataRetrieved);
 
           const nodes = new DataSet();
@@ -544,7 +544,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
     };
 
     fetchData();
-  }, []);
+  }, [pool, keyValue, nostrExists]);
 
   useEffect(() => {
     if (graphData && networkRef.current && !isNetworkInitialized.current) {
@@ -615,6 +615,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   const fetchMetadata = async (pubkeys: string[]) => {
     const metadata: { [key: string]: any } = {};
     const chunkSize = 100;
+    const subs: ReturnType<SimplePool['subscribeManyEose']>[] = [];
   
     const chunks = [];
     for (let i = 0; i < pubkeys.length; i += chunkSize) {
@@ -623,7 +624,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   
     for (const chunk of chunks) {
       await new Promise<void>((resolve) => {
-        pool?.subscribeManyEose(
+        const sub = pool?.subscribeManyEose(
           RELAYS,
           [{ kinds: [0], authors: chunk }],
           {
@@ -646,9 +647,10 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
             }
           }
         );
+        if (sub) subs.push(sub);
       });
     }
-    return metadata;
+    return { metadata, subs };
   };
 
   const handleSynchronize = async () => {
@@ -704,16 +706,16 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
   }
 
   return (
-    <div className="py-16">
+    <div className="pt-4 pb-20 md:pb-8">
       {needsSynchronization && (
-        <div className="absolute bottom-0 left-0 right-0 bg-gray-800 p-4 z-10">
+        <div className="card absolute bottom-0 left-0 right-0 p-4 z-10">
           <p className="text-center mb-2">
             We have not yet synchronized an optimized social graph for your account. Once generated, we can further improve your Nostr experience on Ghostcopywrite.
           </p>
           <div className="flex justify-center py-8">
             <button
               onClick={handleSynchronize}
-              className="flex items-center justify-center px-32 py-2 bg-[#535bf2] text-white rounded hover:bg-[#4349d6] transition duration-200"
+              className="btn-primary flex items-center justify-center"
             >
               <ArrowPathIcon className="h-5 w-5 mr-2 p-y" />
               Synchronize now
@@ -723,8 +725,8 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
       )}
       <div ref={networkRef} style={{ height: '600px', width: '100%', border: 'solid', color: 'light-gray' }}></div>
       {!needsSynchronization && selectedNode && (
-        <div className="mt-4 p-16 px-32 bg-gray-800 rounded-lg shadow-lg justify-center">
-          <div className="pt-4 pb-16 flex flex-col items-center">
+        <div className="card mt-4 p-4 justify-center">
+          <div className="pt-4 pb-4 flex flex-col items-center">
             <h3 className="text-xl font-bold mb-2 text-center">{selectedNode.label}</h3>
             <img 
               src={selectedNode.image} 
@@ -734,7 +736,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
             />
             <Link 
               to={`/profile/${nip19.npubEncode(selectedNode.id)}`}
-              className="mt-4 mb-16 flex items-center justify-center px-16 py-8 bg-[#535bf2] text-white rounded hover:bg-[#4349d6] transition duration-200"
+              className="btn-primary mt-4 mb-4 flex items-center justify-center"
             >
               <UserIcon className="h-5 w-5 mr-2" />
               View Profile
@@ -743,7 +745,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
               {!isFollowing ? (
                 <button
                   onClick={handleFollow}
-                  className="flex items-center justify-center px-16 py-8 bg-[#535bf2] text-white rounded hover:bg-[#4349d6] transition duration-200"
+                  className="btn-primary flex items-center justify-center"
                 >
                   <UserPlusIcon className="h-5 w-5 mr-2" />
                   Follow
@@ -751,7 +753,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
               ) : (
                 <button
                   onClick={handleUnfollow}
-                  className="flex items-center justify-center px-16 py-8 bg-red-500 text-white rounded hover:bg-red-600 transition duration-200"
+                  className="flex items-center justify-center px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition duration-200 font-medium"
                 >
                   <UserMinusIcon className="h-5 w-5 mr-2" />
                   Unfollow
@@ -759,15 +761,15 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
               )}
               <button
                 onClick={() => setIsMessageDialogOpen(true)}
-                className="flex items-center justify-center px-16 py-8 bg-[#535bf2] text-white rounded hover:bg-[#4349d6] transition duration-200"
+                className="btn-primary flex items-center justify-center"
               >
                 <ChatBubbleLeftRightIcon className="h-5 w-5 mr-2" />
                 Message
               </button>
             </div>
           </div>
-          <div className="flex flex-col space-y-4 rounded-lg relative my-16">
-            <div className="border border-gray-600 p-4 rounded-lg py-16">
+          <div className="flex flex-col space-y-4 rounded-lg relative my-4">
+            <div className="border border-[var(--color-border)] p-4 rounded-lg py-4">
                 <p className="text-sm text-gray-400 whitespace-nowrap text-center">
                   {isSecondDegreeFollow 
                     ? "The social graph currently only supports two degrees of separation"
@@ -779,10 +781,10 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
                   <button
                     onClick={() => loadMoreNodes(selectedNode.id)}
                     disabled={nodeFollowCounts[selectedNode.id] === graphData?.edges.get({filter: edge => edge.from === selectedNode.id}).length}
-                    className={`px-6 py-2 rounded transition duration-200 flex items-center justify-center ${
+                    className={`btn-primary flex items-center justify-center ${
                       nodeFollowCounts[selectedNode.id] === graphData?.edges.get({filter: edge => edge.from === selectedNode.id}).length
-                        ? 'bg-gray-500 text-gray-300 cursor-not-allowed'
-                        : 'bg-[#535bf2] text-white hover:bg-[#4349d6]'
+                        ? 'opacity-50 cursor-not-allowed'
+                        : ''
                     }`}
                   >
                     {nodeFollowCounts[selectedNode.id] === graphData?.edges.get({filter: edge => edge.from === selectedNode.id}).length
@@ -793,7 +795,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
                   </button>
                   <button
                     onClick={() => removeSecondDegreeNodes(selectedNode.id)}
-                    className="px-6 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition duration-200"
+                    className="btn-ghost px-6 py-2"
                   >
                     Hide
                   </button>
@@ -804,7 +806,7 @@ const SocialGraph: React.FC<SocialGraphProps> = ({ keyValue, pool, nostrExists }
         </div>
       )}
       {modalImage && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onClick={() => setModalImage(null)}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setModalImage(null)}>
           <img src={modalImage} alt="Enlarged profile" className="max-w-full max-h-full object-contain" />
         </div>
       )}
